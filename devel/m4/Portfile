@@ -9,16 +9,15 @@ categories      devel
 license         GPL-3+
 installs_libs   no
 maintainers     nomaintainer
-platforms       darwin
 description     GNU macro processor
 
 long_description \
-    GNU `m4' is an implementation of the traditional Unix macro         \
-    processor.  It is mostly SVR4 compatible, although it has some      \
+    GNU m4 is an implementation of the traditional Unix macro \
+    processor. It is mostly SVR4 compatible, although it has some \
     extensions (for example, handling more than 9 positional parameters \
-    to macros). `m4' also has built-in functions for including files,   \
-    running shell commands, doing arithmetic, etc. Autoconf needs GNU   \
-    `m4' for generating `configure' scripts, but not for running them.
+    to macros). m4 also has built-in functions for including files, \
+    running shell commands, doing arithmetic etc. Autoconf needs GNU \
+    m4 for generating configure scripts, but not for running them.
 
 homepage        https://www.gnu.org/software/m4/
 master_sites    gnu
@@ -35,7 +34,7 @@ platform darwin 8 {
     patchfiles-append      patch-m4-use-older-regnames-on-tiger.diff
 }
 
-if {${os.platform} eq "darwin" && ${os.major} < 10} {
+if {${os.platform} eq "darwin" && ${os.major} < 11} {
     # https://trac.macports.org/ticket/62994
     patchfiles-append      patch-m4-confdir-error.diff
 }
@@ -48,6 +47,14 @@ configure.args  --disable-silent-rules \
                 --with-packager-version="revision $revision" \
                 --with-packager-bug-reports=https://trac.macports.org/wiki/Tickets \
                 ac_cv_libsigsegv=no
+
+# Fix for Rosetta build
+configure.args-append \
+                CC_FOR_BUILD="gcc-4.2 -arch ppc" \
+                CFLAGS_FOR_BUILD="-arch ppc" \
+                --build=powerpc-apple-darwin10 \
+                --with-ld=/usr/bin/ld \
+                --with-as=/usr/bin/as
 
 post-destroot {
     move ${destroot}${prefix}/share/info/m4.info ${destroot}${prefix}/share/info/gm4.info
