@@ -32,7 +32,10 @@ post-patch {
 configure.args \
     --disable-debug \
     --enable-optimize='${configure.optflags}' \
-    --libdir=${prefix}/lib/nspr
+    --libdir=${prefix}/lib/nspr \
+    --build=powerpc-apple-darwin10 \
+    --host=powerpc-apple-darwin10 \
+    --target=powerpc-apple-darwin10
 
 platform darwin 9 {
     if {${build_arch} eq "ppc" || ${build_arch} eq "ppc64"} {
