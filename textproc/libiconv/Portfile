@@ -37,8 +37,6 @@ if {${os.platform} eq "darwin" && ${os.major} < 11 && ${cxx_stdlib} eq "libc++"}
     clang_dependency.extra_versions 3.7
 }
 
-minimum_xcodeversions {10 3.2.6}
-
 configure.checks.implicit_function_declaration.whitelist-append strchr
 configure.cmd-prepend   mv Makefile.devel Makefile.devel.orig \
                         && sed -E {"s|^(CFLAGS *=).*|\1 $CFLAGS|"} < Makefile.devel.orig \
@@ -54,7 +52,8 @@ configure.args \
     --without-libiconv-prefix \
     --without-libintl-prefix \
     --disable-nls \
-    --enable-extra-encodings
+    --enable-extra-encodings \
+    --build=powerpc-apple-darwin10
 
 build.cmd               ${build.cmd} CC=${configure.cc} -f Makefile.devel && ${build.cmd}
 
