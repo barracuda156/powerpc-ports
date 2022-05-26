@@ -4,11 +4,10 @@ PortSystem          1.0
 PortGroup           clang_dependency 1.0
 
 name                sqlite3
-# don't forget to update the checksums for sqlite3-tools when updating sqlite3
+# don’t forget to update the checksums for sqlite3-tools when updating sqlite3
 version             3.38.5
 revision            0
 categories          databases
-platforms           darwin
 license             public-domain
 
 maintainers         {mps @Schamschula} openmaintainer
@@ -46,7 +45,8 @@ configure.args      --enable-threadsafe \
                     --enable-dynamic-extensions \
                     --disable-readline \
                     --enable-editline \
-                    AWK=/usr/bin/awk
+                    AWK=/usr/bin/awk \
+                    --build=powerpc-apple-darwin10
 
 build.type          gnu
 
@@ -64,7 +64,7 @@ if {${subport} eq ${name}} {
         reinplace "s|-ltinfo||" ${worksrcpath}/configure
     }
 
-    # search in worksrcpath for sqlite3.h first -- don't pick up an installed one!
+    # search in worksrcpath for sqlite3.h first -- don’t pick up an installed one!
     configure.cppflags-prepend  -DSQLITE_DISABLE_INTRINSIC \
                                 -DSQLITE_ENABLE_COLUMN_METADATA \
                                 -DSQLITE_ENABLE_FTS3_PARENTHESIS \
@@ -102,8 +102,8 @@ subport ${name}-tools {
                             database files
 
     long_description        A bundle of command-line tools for managing SQLite \
-                            database files, including the sqldiff program and the \
-                            sqlite3_analyzer program.
+                            database files, including the sqldiff program \
+                            and the sqlite3_analyzer program.
 
     checksums       rmd160  7bbc7fe5a153074247f988ab4289fe78d2412c83 \
                     sha256  6503bb59e39ec8663083696940ec818cd5555196e6ca543d4029440cca7b00d9 \
