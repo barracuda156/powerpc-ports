@@ -52,8 +52,8 @@ checksums           rmd160  40979ca9ff4a4dd57fdb579ced7124e66885c954 \
                     size    15058905
 
 if {${os.platform} eq "darwin" && ${os.major} < 11} {
-    # Having the stdlib set to libc++ on 10.6 causes a dependency on a
-    # macports-clang compiler to be added, which would be a dep cycle.
+    # Having the stdlib set to libc++ on 10.6 causes a dependency
+    # on a macports-clang compiler to be added, which would be a dep cycle.
     configure.cxx_stdlib
 }
 
@@ -113,7 +113,7 @@ platform darwin {
         configure.args-append no-async
     }
     # Don't use x86-64 assembly on Tiger or Leopard.
-    if {${os.major} <= 9} {
+    if {${os.major} <= 10} {
         append merger_configure_args(x86_64) { no-asm}
         # OpenSSL requires Perl 5.10.0, while Leopard ships Perl 5.8.8
         depends_build-append    port:perl5
