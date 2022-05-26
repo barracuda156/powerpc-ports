@@ -5,7 +5,7 @@ PortGroup select 1.0
 
 name                python39
 
-# Remember to keep py39-tkinter and py39-gdbm's versions sync'd with this
+# Remember to keep py39-tkinter and py39-gdbmʼs versions synced with this
 version             3.9.13
 
 set branch          [join [lrange [split ${version} .] 0 1] .]
@@ -41,6 +41,11 @@ if {${os.platform} eq "darwin" && ${os.major} < 10} {
                        patch-threadid-older-systems.diff
 }
 
+if {${os.platform} eq "darwin" && ${os.major} == 10 && ${build_arch} eq "ppc"} {
+    # this is needed for a PPC build on SL
+    patchfiles-append  patch-threadid-older-systems.diff
+}
+
 depends_build       port:pkgconfig
 depends_lib         port:bzip2 \
                     port:expat \
@@ -56,10 +61,9 @@ depends_run         port:python_select \
                     port:python3_select
 
 # blacklist llvm-gcc-4.2 compiler known to produce bad code
-compiler.blacklist  *llvm-gcc-4.2
+compiler.blacklist-append *llvm-gcc-4.2
 
-# ensurepip arg may be removed later, now conflicts with pip and setuptools
-# packages
+# ensurepip arg may be removed later, now conflicts with pip and setuptools packages
 configure.args      --enable-framework=${frameworks_dir} \
                     --enable-ipv6 \
                     --enable-loadable-sqlite-extensions \
@@ -103,63 +107,72 @@ platform darwin {
     set framewdir   ${framewpath}/Versions/${branch}
     set confdir     config-${branch}-darwin
 
-    post-configure {
-        # poll() misbehaves on 10.8 and older
-        # See https://trac.macports.org/ticket/18376
-        if {${os.major} <= 12} {
-            set oldmtime [file mtime ${worksrcpath}/pyconfig.h]
-            system -W ${worksrcpath} "ed - pyconfig.h < ${filespath}/pyconfig.ed"
-            file mtime ${worksrcpath}/pyconfig.h $oldmtime
-        }
-    }
+	if {![variant_isset universal]} {
+		post-configure {
+			# poll() misbehaves on 10.8 and older
+			# See https://trac.macports.org/ticket/18376
+			if {${os.major} <= 12} {
+				set oldmtime [file mtime ${worksrcpath}/pyconfig.h]
+				system -W ${worksrcpath} "ed - pyconfig.h < ${filespath}/pyconfig.ed"
+				file mtime ${worksrcpath}/pyconfig.h $oldmtime
+			}
+		}
+	
+		post-build {
+			set buildlibdir [lindex [glob -directory ${worksrcpath}/build lib.*-*-*-${branch}] 0]
+			# preserve mtime of sysconfig data file to avoid rebuilding things after changing it
+			set oldmtime [file mtime ${buildlibdir}/_sysconfigdata__darwin_darwin.py]
+	
+			# Without this, LINKFORSHARED is set to
+			# ... $(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)
+			# (this becomes Python.framework/Versions/3.9/Python) which doesnʼt
+			# work for dependents that incorrectly use this variable to find out
+			# how to link against python (see ticket #15099); instead we mirror
+			# the behavior of `python-config --ldflags` here.
+			set lfs_pattern {^([[:space:]]*'LINKFORSHARED':).*}
+			set lfs_replacement "\\1 '-L${framewdir}/lib/python${branch}/${confdir} -lpython${branch} -ldl -framework CoreFoundation',"
+			reinplace -E s|${lfs_pattern}|${lfs_replacement}| \
+				${buildlibdir}/_sysconfigdata__darwin_darwin.py
+	
+			# remove -arch flags from the config
+			reinplace -E {s|-arch [a-z0-9_]+||g} \
+				${buildlibdir}/_sysconfigdata__darwin_darwin.py
+	
+			# also remove gettext overlinking
+			reinplace "s|-lintl||" \
+				${buildlibdir}/_sysconfigdata__darwin_darwin.py
+	
+			file mtime ${buildlibdir}/_sysconfigdata__darwin_darwin.py $oldmtime
+		}
 
-    post-destroot {
-        foreach dir { Headers Resources Python Versions/Current } {
-            file delete ${destroot}${framewpath}/${dir}
-        }
-
-        ln -s ${framewdir}/share/man/man1/python${branch}.1 ${destroot}${prefix}/share/man/man1/
-        ln -s ${framewdir}/lib/pkgconfig/python-${branch}.pc ${destroot}${prefix}/lib/pkgconfig/
-        ln -s ${framewdir}/lib/pkgconfig/python-${branch}-embed.pc ${destroot}${prefix}/lib/pkgconfig/
-
-        set libdir ${destroot}${framewdir}/lib/python${branch}
-        # Without this, LINKFORSHARED is set to
-        # ... $(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)
-        # (this becomes Python.framework/Versions/3.9/Python) which doesn't
-        # work for dependents that incorrectly use this variable to find out
-        # how to link against python (see ticket #15099); instead we mirror
-        # the behavior of `python-config --ldflags` here.
-        set lfs_pattern {^([[:space:]]*'LINKFORSHARED':).*}
-        set lfs_replacement "\\1 '-L${framewdir}/lib/python${branch}/${confdir} -lpython${branch} -ldl -framework CoreFoundation',"
-        reinplace -E s|${lfs_pattern}|${lfs_replacement}| \
-            ${libdir}/_sysconfigdata__darwin_darwin.py
-
-        # remove -arch flags from the config
-        reinplace -E {s|-arch [a-z0-9_]+||g} \
-            ${libdir}/_sysconfigdata__darwin_darwin.py
-
-        # also remove gettext overlinking
-        reinplace "s|-lintl||" \
-            ${libdir}/_sysconfigdata__darwin_darwin.py
-
-        # recompile the modified file
-        set python_for_build python.exe
-        # executable differs depending on filesystem case sensitivity
-        if {![file exists ${worksrcpath}/${python_for_build}]} {
-            set python_for_build python
-        }
-        system -W ${worksrcpath} "env DYLD_FRAMEWORK_PATH=. ./${python_for_build} -E -m compileall -d [shellescape ${framewdir}/lib/python${branch}] -o 0 -o 1 -o 2 [shellescape ${libdir}/_sysconfigdata__darwin_darwin.py]"
-
-        # Also make the sysconfig changes in the Makefile
-        reinplace {s|^\(LINKFORSHARED=\).*$|\1 -L$(LIBPL) -lpython$(VERSION)$(ABIFLAGS) $(LIBS) $(SYSLIBS)|} \
-            ${libdir}/${confdir}/Makefile
-
-        reinplace -E {s|-arch [a-z0-9_]+||g} \
-           ${libdir}/${confdir}/Makefile
-
-        reinplace "s|-lintl||" \
-           ${libdir}/${confdir}/Makefile
-    }
+	} else {
+        # universal variant
+		post-configure {
+			if {${os.major} <= 12} {
+				set oldmtime [file mtime ${worksrcpath}-${build_arch}/pyconfig.h]
+				system -W ${worksrcpath}-${build_arch} "ed - pyconfig.h < ${filespath}/pyconfig.ed"
+				file mtime ${worksrcpath}-${build_arch}/pyconfig.h $oldmtime
+			}
+		}
+	
+		post-build {
+			set buildlibdir [lindex [glob -directory ${worksrcpath}-${build_arch}/build lib.*-*-*-${branch}] 0]
+			set oldmtime [file mtime ${buildlibdir}/_sysconfigdata__darwin_darwin.py]
+	
+			set lfs_pattern {^([[:space:]]*'LINKFORSHARED':).*}
+			set lfs_replacement "\\1 '-L${framewdir}/lib/python${branch}/${confdir} -lpython${branch} -ldl -framework CoreFoundation',"
+			reinplace -E s|${lfs_pattern}|${lfs_replacement}| \
+				${buildlibdir}/_sysconfigdata__darwin_darwin.py
+	
+			reinplace -E {s|-arch [a-z0-9_]+||g} \
+				${buildlibdir}/_sysconfigdata__darwin_darwin.py
+	
+			reinplace "s|-lintl||" \
+				${buildlibdir}/_sysconfigdata__darwin_darwin.py
+	
+			file mtime ${buildlibdir}/_sysconfigdata__darwin_darwin.py $oldmtime
+		}
+	}
 }
 
 post-destroot {
@@ -176,70 +189,17 @@ the 'python' or 'python3' commands), run one or both of:
     sudo port select --set python3 $pythonNoDot
 "
 
-variant universal {
-    post-patch {
-        set universal_arch_flags {}
-        set arch_run_32bit {}
-        set lipo_32bit_flags {}
-        set lipo_intel64_flags {}
-        set any64 no
-        foreach arch ${configure.universal_archs} {
-            lappend universal_arch_flags -arch ${arch}
-            if {${arch} in {i386 ppc}} {
-                lappend arch_run_32bit -${arch}
-                lappend lipo_32bit_flags -extract ${arch}
-            } else {
-                set any64 yes
-            }
-        }
-        if {$any64} {
-            if {$arch_run_32bit eq ""} {
-                set arch_run_32bit true
-                set lipo_32bit_flags ""
-            } else {
-                set arch_run_32bit "/usr/bin/arch $arch_run_32bit"
-                #lipo_32bit_flags already correct
-            }
-            if {"arm64" in ${configure.universal_archs} && "x86_64" in ${configure.universal_archs}} {
-                set lipo_intel64_flags "-extract x86_64"
-            }
-        } else {
-            set arch_run_32bit ""
-            set lipo_32bit_flags ""
-        }
-        reinplace \
-            "s|@@UNIVERSAL_ARCH_FLAGS@@|${universal_arch_flags}|" \
-            ${worksrcpath}/configure
-        reinplace \
-            "s|@@LIPO_32BIT_FLAGS@@|${lipo_32bit_flags}|" \
-            ${worksrcpath}/configure
-        reinplace \
-            "s|@@LIPO_INTEL64_FLAGS@@|${lipo_intel64_flags}|" \
-            ${worksrcpath}/configure
-        reinplace \
-            "s|@@ARCH_RUN_32BIT@@|${arch_run_32bit}|" \
-            ${worksrcpath}/configure
-    }
-    configure.args-append   --enable-universalsdk=${configure.sysroot}
-    post-configure {
-        set oldmtime [file mtime ${worksrcpath}/pyconfig.h]
-        system -W ${worksrcpath} "ed - pyconfig.h < ${filespath}/pyconfig.h-universal.ed"
-        file mtime ${worksrcpath}/pyconfig.h $oldmtime
-    }
-
-    post-destroot {
-        foreach unversioned {python3-32 python3-intel64} {
-            delete ${destroot}${prefix}/bin/${unversioned}
-        }
-    }
-}
-
 variant optimizations description {enable expensive, stable optimizations (including PGO)} {
     configure.args-append   --enable-optimizations
 }
 
 variant lto description {enable Link-Time Optimization} {
     configure.args-append   --with-lto
+    if {${os.major} < 11} {
+    patchfiles-append       patch-enable_dynamic.diff
+    # lto requires a newer compiler
+    compiler.blacklist-append *clang* *gcc-4.0 *gcc-4.2
+    }
 }
 
 platform darwin {
