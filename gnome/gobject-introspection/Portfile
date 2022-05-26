@@ -12,14 +12,13 @@ version             1.72.0
 revision            0
 
 categories          gnome
-platforms           darwin
 # library under LGPL-2+, tools under GPL-2+
 license             {LGPL GPL-2+}
 maintainers         {mascguy @mascguy} openmaintainer
 
 description         GObject Introspection
 long_description    Gobject Introspection acts as a bridge between low-level C+GObject code and \
-                    a managed runtime (JavaScript, Python, Java, Lua, .NET, Scheme, etc.).
+                    a managed runtime (JavaScript, Python, Java, Lua, .NET, Scheme etc.).
 homepage            https://wiki.gnome.org/Projects/GObjectIntrospection
 
 set branch          [join [lrange [split ${version} .] 0 1] .]
@@ -77,7 +76,7 @@ configure.args      -Ddoctool=enabled \
 # when building this project. Identical logic already exists
 # in the gobject_introspection PortGroup, so dependent projects
 # should not require modification.
-build.env-append    CC=${configure.cc}
+build.env-append    CC=/Developer/usr/bin/powerpc-apple-darwin10-gcc-4.2.1
 
 platform darwin 8 {
     # Tiger does not support RPATHs at this time
