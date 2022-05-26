@@ -13,7 +13,6 @@ if {${subport} eq "bison"} {
     revision        0
 }
 categories          devel
-platforms           darwin
 if {${subport} eq "bison-runtime"} {
     supported_archs noarch
 }
@@ -71,6 +70,18 @@ configure.args      --disable-silent-rules \
                     ac_cv_prog_HAVE_JRE_IN_PATH= \
                     ac_cv_prog_HAVE_JVIEW_IN_PATH= \
                     ac_cv_prog_VALGRIND=
+
+# Needed for Rosetta
+configure.args-append \
+                    CC="gcc-4.2 -arch ppc" \
+                    CXX="g++-4.2 -arch ppc" \
+                    CFLAGS="-arch ppc" \
+                    CXXLAGS="-arch ppc" \
+                    LDFLAGS="-L/opt/local/lib" \
+                    --build=powerpc-apple-darwin10 \
+                    --host=powerpc-apple-darwin10 \
+                    --with-libiconv-prefix=/opt/local \
+                    --with-libintl-prefix=/opt/local
 
 if {${subport} eq "bison-runtime"} {
     build.dir       ${worksrcpath}/runtime-po
