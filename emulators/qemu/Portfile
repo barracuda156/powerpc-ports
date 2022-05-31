@@ -45,6 +45,14 @@ depends_lib             path:lib/pkgconfig/glib-2.0.pc:glib2 \
                         port:zlib \
                         path:lib/pkgconfig/pixman-1.pc:libpixman
 
+platform darwin powerpc {
+    # Restore support for 32-bit
+    post-extract {
+        copy ${worksrcpath}/common-user/host/ppc64 ${worksrcpath}/common-user/host/ppc
+    }
+    patchfiles-append   patch-ppc.diff
+}
+
 # This patch sets the python interpreter from meson's shebang line
 patchfiles-append       patch-qemu-configure.diff
 
