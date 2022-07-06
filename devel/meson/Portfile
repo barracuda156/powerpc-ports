@@ -91,6 +91,12 @@ patchfiles-append   patch-meson-search-prefix-for-cross-files.diff
 post-patch {
     reinplace "s|@@PREFIX@@|${prefix}|g" ${worksrcpath}/data/shell-completions/bash/meson \
                                          ${worksrcpath}/mesonbuild/coredata.py
+
+    # Revert https://github.com/mesonbuild/meson/commit/f5bd325
+    reinplace "s|allow_default_for_cross=False|allow_default_for_cross=True|g" \
+        ${worksrcpath}/mesonbuild/cmake/executor.py \
+        ${worksrcpath}/mesonbuild/dependencies/configtool.py \
+        ${worksrcpath}/mesonbuild/dependencies/pkgconfig.py
 }
 
 post-destroot {
@@ -101,11 +107,6 @@ post-destroot {
     # install our MacPorts cross files
     xinstall -m 755 -d ${destroot}${prefix}/share/meson/
     copy ${filespath}/cross ${destroot}${prefix}/share/meson/
-
-    fs-traverse f ${destroot}${prefix}/share/meson/cross/ {
-        if {![file isdirectory ${f}]} {
-            reinplace "s|@@PREFIX@@|${prefix}|g" ${f}
-        }
     }
 
     # install shell completion files
