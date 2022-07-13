@@ -33,11 +33,11 @@ default destroot.post_args  ""
 namespace eval meson { }
 
 proc meson::get_post_args {} {
-    global configure.dir build_dir muniversal.current_arch
+    global configure.build_arch configure.dir build_dir muniversal.current_arch
     if {[info exists muniversal.current_arch]} {
         return "${configure.dir} ${build_dir}-${muniversal.current_arch} --cross-file=${muniversal.current_arch}-darwin"
     } else {
-        return "${configure.dir} ${build_dir}"
+        return "${configure.dir} ${build_dir} --cross-file=${configure.build_arch}-darwin"
     }
 }
 
