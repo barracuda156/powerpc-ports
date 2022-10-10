@@ -60,6 +60,9 @@ universal_variant   no
 
 configure.cxx_stdlib
 
+# ssl fails with 10.6 target on 10A190: Utilities/cmcurl/lib/vtls/darwinssl.c
+set macosx_deployment_target 10.5
+
 platform darwin {
     configure.env-append   CMAKE_OSX_DEPLOYMENT_TARGET=${macosx_deployment_target}
 
