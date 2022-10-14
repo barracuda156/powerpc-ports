@@ -370,6 +370,11 @@ platform darwin {
         # from 'Expected<vector<unsigned char,allocator<unsigned char>>>' to 'Expected<vector<char,allocator<char>>>'
         # Patch borrows from llvm-7.1: https://github.com/iains/LLVM-7-branch/blob/7.1.1-Darwin-WIP/llvm/include/llvm/ExecutionEngine/Orc/OrcRemoteTargetClient.h
         patchfiles-append patch-include-orc.diff
+        
+        # Fix for 10A190:
+        if {${os.major} == 10 && ${build_arch} eq "ppc"} {
+            patchfiles-append patch-gethostuuid.diff
+        }
     }
 
     # https://llvm.org/bugs/show_bug.cgi?id=25674
