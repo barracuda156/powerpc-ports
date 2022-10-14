@@ -1,0 +1,13 @@
+# Fix for 10A190
+
+--- a/lib/Support/LockFileManager.cpp	2017-06-06 19:49:48.000000000 +0800
++++ b/lib/Support/LockFileManager.cpp	2022-10-14 23:12:56.000000000 +0800
+@@ -31,7 +31,7 @@
+ #include <unistd.h>
+ #endif
+ 
+-#if defined(__APPLE__) && defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && (__MAC_OS_X_VERSION_MIN_REQUIRED > 1050)
++#if defined(__APPLE__) && defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && (__MAC_OS_X_VERSION_MIN_REQUIRED > 1060)
+ #define USE_OSX_GETHOSTUUID 1
+ #else
+ #define USE_OSX_GETHOSTUUID 0
