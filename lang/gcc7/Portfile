@@ -88,8 +88,10 @@ patchfiles-append   notparallel-install-headers.patch
 
 set major           [lindex [split ${version} .-] 0]
 
-platform darwin {
-    configure.pre_args-append --build=${build_arch}-apple-darwin${os.major}
+# Fix for 10A190
+platform darwin 10 powerpc {
+    configure.pre_args-append --build=powerpc-apple-darwin${os.major}
+    patchfiles-append   patch-SLPPC.diff
 }
 
 platform darwin 8 i386 {
@@ -121,7 +123,8 @@ configure.args      --enable-languages=c,c++,objc,obj-c++,lto,fortran \
                     --with-as=${prefix}/bin/as \
                     --with-ld=${prefix}/bin/ld \
                     --with-ar=${prefix}/bin/ar \
-                    --with-bugurl=https://trac.macports.org/newticket
+                    --with-bugurl=https://trac.macports.org/newticket \
+                    --with-tune-cpu=G5
 
 # see https://lists.macports.org/pipermail/macports-dev/2017-August/036209.html
 # --disable-tls does not limit functionality
