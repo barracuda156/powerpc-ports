@@ -1,0 +1,366 @@
+From 35b2d0a00c1e031973938afe538769e4331c3b60 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Fri, 21 Oct 2022 05:24:20 +0800
+Subject: [PATCH 21/21] compiler-rt: initial restore of PPC
+
+---
+ .../cmake/Modules/CompilerRTDarwinUtils.cmake | 28 ++++++++++-
+ .../cmake/Modules/CompilerRTUtils.cmake       | 26 +++++++---
+ compiler-rt/cmake/builtin-config-ix.cmake     | 34 +++++++++++--
+ compiler-rt/cmake/config-ix.cmake             | 48 ++++++++++++++-----
+ compiler-rt/lib/builtins/CMakeLists.txt       |  5 ++
+ .../scripts/gen_dynamic_list.py               |  1 +
+ 6 files changed, 118 insertions(+), 24 deletions(-)
+
+diff --git a/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake b/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
+index ab0b0a43f2b6..6a4dae3c4e2e 100644
+--- llvm_master/projects/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
++++ macports_master/projects/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
+@@ -89,7 +89,7 @@ function(darwin_get_toolchain_supported_archs output_var)
+   else()
+     # If auto-detecting fails, fall back to a default set
+     message(WARNING "Detecting supported architectures from 'ld -v' failed. Returning default set.")
+-    set(ARCHES "i386;x86_64;armv7;armv7s;arm64")
++    set(ARCHES "i386;x86_64;armv7;armv7s;arm64;ppc;ppc64")
+   endif()
+   
+   set(${output_var} ${ARCHES} PARENT_SCOPE)
+@@ -128,6 +128,16 @@ function(darwin_test_archs os valid_archs)
+         message(STATUS "Disabling i386 slice for ${valid_archs}")
+         list(REMOVE_ITEM archs "i386")
+       endif()
++      # The last macOS to support ppc is 10.6.8
++      if ("${macosx_sdk_version}" VERSION_GREATER 10.7 OR "${macosx_sdk_version}" VERSION_EQUAL 10.7)
++        message(STATUS "Disabling ppc slice for ${valid_archs}")
++        list(REMOVE_ITEM archs "ppc")
++      endif()
++      # The last macOS to support ppc64 is 10.5.8
++      if ("${macosx_sdk_version}" VERSION_GREATER 10.6 OR "${macosx_sdk_version}" VERSION_EQUAL 10.6)
++        message(STATUS "Disabling ppc64 slice for ${valid_archs}")
++        list(REMOVE_ITEM archs "ppc64")
++      endif()
+     endif()
+   endif()
+ 
+@@ -165,11 +175,18 @@ function(darwin_test_archs os valid_archs)
+     CACHE STRING "List of valid architectures for platform ${os}." FORCE)
+ endfunction()
+ 
++set(ROSETTA_HOST Off)
++if (CMAKE_OSX_DEPLOYMENT_TARGET STREQUAL "10.6" AND CMAKE_OSX_ARCHITECTURES MATCHES "ppc")
++  message(STATUS "10.6 Rosetta: building for ppc")
++  set(ROSETTA_HOST On)
++endif()
++
+ # This function checks the host cputype/cpusubtype to filter supported
+ # architecture for the host OS. This is used to determine which tests are
+ # available for the host.
+ function(darwin_filter_host_archs input output)
+   list_intersect(tmp_var DARWIN_osx_ARCHS ${input})
++if(NOT ROSETTA_HOST)
+   execute_process(
+     COMMAND sysctl hw.cputype
+     OUTPUT_VARIABLE CPUTYPE)
+@@ -205,6 +222,15 @@ function(darwin_filter_host_archs input output)
+     endif()
+   endif()
+ 
++else()
++# We want to avoid FAT builds on Rosetta:
++    list(REMOVE_ITEM tmp_var i386)
++    list(REMOVE_ITEM tmp_var x86_64)
++    list(REMOVE_ITEM tmp_var x86_64h)
++    list(REMOVE_ITEM tmp_var arm64)
++    list(REMOVE_ITEM tmp_var arm64e)
++
++endif()
+   set(${output} ${tmp_var} PARENT_SCOPE)
+ endfunction()
+ 
+diff --git a/compiler-rt/cmake/Modules/CompilerRTUtils.cmake b/compiler-rt/cmake/Modules/CompilerRTUtils.cmake
+index 99b9f0e4af44..3aacd2f834e3 100644
+--- llvm_master/projects/compiler-rt/cmake/Modules/CompilerRTUtils.cmake
++++ macports_master/projects/compiler-rt/cmake/Modules/CompilerRTUtils.cmake
+@@ -158,6 +158,8 @@ macro(detect_target_arch)
+   check_symbol_exists(__i386__ "" __I386)
+   check_symbol_exists(__mips__ "" __MIPS)
+   check_symbol_exists(__mips64__ "" __MIPS64)
++  check_symbol_exists(__ppc__ "" __PPC)
++  check_symbol_exists(__ppc64__ "" __PPC64)
+   check_symbol_exists(__powerpc64__ "" __PPC64)
+   check_symbol_exists(__powerpc64le__ "" __PPC64LE)
+   check_symbol_exists(__riscv "" __RISCV)
+@@ -179,10 +181,21 @@ macro(detect_target_arch)
+     add_default_target_arch(mips64)
+   elseif(__MIPS)
+     add_default_target_arch(mips)
+-  elseif(__PPC64)
+-    add_default_target_arch(powerpc64)
+   elseif(__PPC64LE)
+     add_default_target_arch(powerpc64le)
++  # It is confusing which should be used with LLVM:
++  elseif(__PPC64)
++    if(APPLE)
++      add_default_target_arch(ppc64)
++    else()
++      add_default_target_arch(powerpc64)
++    endif()
++  elseif(__PPC)
++    if(APPLE)
++      add_default_target_arch(ppc)
++    else()
++      add_default_target_arch(powerpc)
++    endif()
+   elseif(__RISCV)
+     if(CMAKE_SIZEOF_VOID_P EQUAL "4")
+       add_default_target_arch(riscv32)
+@@ -323,8 +336,7 @@ macro(construct_compiler_rt_default_triple)
+ 
+   string(REPLACE "-" ";" TARGET_TRIPLE_LIST ${COMPILER_RT_DEFAULT_TARGET_TRIPLE})
+   list(GET TARGET_TRIPLE_LIST 0 COMPILER_RT_DEFAULT_TARGET_ARCH)
+-  # Determine if test target triple is specified explicitly, and doesn't match the
+-  # default.
++  # Determine if test target triple is specified explicitly and doesn't match the default.
+   if(NOT COMPILER_RT_DEFAULT_TARGET_TRIPLE STREQUAL TARGET_TRIPLE)
+     set(COMPILER_RT_HAS_EXPLICIT_DEFAULT_TARGET_TRIPLE TRUE)
+   else()
+@@ -332,9 +344,9 @@ macro(construct_compiler_rt_default_triple)
+   endif()
+ endmacro()
+ 
+-# Filter out generic versions of routines that are re-implemented in an
+-# architecture specific manner. This prevents multiple definitions of the same
+-# symbols, making the symbol selection non-deterministic.
++# Filter out generic versions of routines that are re-implemented
++# in an architecture specific manner. This prevents multiple definitions
++# of the same symbols, making the symbol selection non-deterministic.
+ #
+ # We follow the convention that a source file that exists in a sub-directory
+ # (e.g. `ppc/divtc3.c`) is architecture-specific and that if a generic
+diff --git a/compiler-rt/cmake/builtin-config-ix.cmake b/compiler-rt/cmake/builtin-config-ix.cmake
+index 904d8ca93fca..6180c6926cb9 100644
+--- llvm_master/projects/compiler-rt/cmake/builtin-config-ix.cmake
++++ macports_master/projects/compiler-rt/cmake/builtin-config-ix.cmake
+@@ -22,14 +22,14 @@ int foo(int x, int y) {
+ }
+ ")
+ 
+-
+-set(ARM64 aarch64)
+ set(ARM32 arm armhf armv6m armv7m armv7em armv7 armv7s armv7k)
++set(ARM64 aarch64)
+ set(HEXAGON hexagon)
+ set(X86 i386)
+ set(X86_64 x86_64)
+ set(MIPS32 mips mipsel)
+ set(MIPS64 mips64 mips64el)
++set(PPC32 powerpc)
+ set(PPC64 powerpc64 powerpc64le)
+ set(RISCV32 riscv32)
+ set(RISCV64 riscv64)
+@@ -40,21 +40,46 @@ set(WASM64 wasm64)
+ set(VE ve)
+ 
+ if(APPLE)
+-  set(ARM64 arm64 arm64e)
+   set(ARM32 armv7 armv7k armv7s)
++  set(ARM64 arm64 arm64e)
++  set(PPC32 ppc)
++  set(PPC64 ppc64)
+   set(X86_64 x86_64 x86_64h)
+ endif()
+ 
+ set(ALL_BUILTIN_SUPPORTED_ARCH
+   ${X86} ${X86_64} ${ARM32} ${ARM64}
+-  ${HEXAGON} ${MIPS32} ${MIPS64} ${PPC64}
++  ${HEXAGON} ${MIPS32} ${MIPS64} ${PPC32} ${PPC64}
+   ${RISCV32} ${RISCV64} ${SPARC} ${SPARCV9}
+   ${WASM32} ${WASM64} ${VE})
+ 
+ include(CompilerRTUtils)
+ include(CompilerRTDarwinUtils)
+ 
++if (APPLE AND CMAKE_OSX_ARCHITECTURES)
++  set(TARGET_ARCH ${CMAKE_OSX_ARCHITECTURES})
++else()
++  set(TARGET_ARCH ${CMAKE_SYSTEM_PROCESSOR})
++endif()
++
+ if(APPLE)
++  list(APPEND DARWIN_osx_BUILTIN_ALL_POSSIBLE_ARCHS ${arch})
++
++# Trickery with detecting archs from SDK does not seem to work on PPC.
++if(TARGET_ARCH MATCHES "^powerpc" OR TARGET_ARCH MATCHES "^ppc" OR TARGET_ARCH MATCHES "^ppc64")
++  set(DARWIN_osx_BUILTIN_MIN_VER 10.5)
++  set(DARWIN_osx_BUILTIN_MIN_VER_FLAG
++      -mmacosx-version-min=${DARWIN_osx_BUILTIN_MIN_VER})
++  if(NOT DARWIN_osx_BUILTIN_ALL_POSSIBLE_ARCHS)
++    if(CMAKE_OSX_DEPLOYMENT_TARGET STREQUAL "10.5")
++      set(DARWIN_osx_BUILTIN_ALL_POSSIBLE_ARCHS ${PPC32} ${PPC64})
++    else()
++      set(DARWIN_osx_BUILTIN_ALL_POSSIBLE_ARCHS ${PPC32})
++    endif()
++  endif()
++
++# Everything besides PPC:
++else()
+ 
+   find_darwin_sdk_dir(DARWIN_osx_SYSROOT macosx)
+   find_darwin_sdk_dir(DARWIN_iossim_SYSROOT iphonesimulator)
+@@ -122,6 +147,7 @@ if(APPLE)
+     set(DARWIN_tvos_BUILTIN_ALL_POSSIBLE_ARCHS armv7 arm64)
+     set(DARWIN_tvossim_BUILTIN_ALL_POSSIBLE_ARCHS ${X86} ${X86_64})
+   endif()
++endif()
+ 
+   set(BUILTIN_SUPPORTED_OS osx)
+ 
+diff --git a/compiler-rt/cmake/config-ix.cmake b/compiler-rt/cmake/config-ix.cmake
+index 67d8d64da790..f3b37b3b2973 100644
+--- llvm_master/projects/compiler-rt/cmake/config-ix.cmake
++++ macports_master/projects/compiler-rt/cmake/config-ix.cmake
+@@ -221,7 +221,7 @@ endmacro()
+ function(get_test_cflags_for_apple_platform platform arch cflags_out)
+   is_valid_apple_platform("${platform}" is_valid_platform)
+   if (NOT is_valid_platform)
+-    message(FATAL_ERROR "\"${platform}\" is not a valid apple platform")
++    message(FATAL_ERROR "\"${platform}\" is not a valid Apple platform")
+   endif()
+   set(test_cflags "")
+   get_target_flags_for_arch(${arch} test_cflags)
+@@ -254,13 +254,14 @@ function(is_valid_apple_platform platform is_valid_out)
+   set(${is_valid_out} ${is_valid} PARENT_SCOPE)
+ endfunction()
+ 
+-set(ARM64 aarch64)
+ set(ARM32 arm armhf)
++set(ARM64 aarch64)
+ set(HEXAGON hexagon)
+ set(X86 i386)
+ set(X86_64 x86_64)
+ set(MIPS32 mips mipsel)
+ set(MIPS64 mips64 mips64el)
++set(PPC32 powerpc)
+ set(PPC64 powerpc64 powerpc64le)
+ set(RISCV32 riscv32)
+ set(RISCV64 riscv64)
+@@ -271,16 +272,23 @@ set(WASM32 wasm32)
+ set(WASM64 wasm64)
+ 
+ if(APPLE)
+-  set(ARM64 arm64)
+   set(ARM32 armv7 armv7s armv7k)
++  set(ARM64 arm64)
++  set(PPC32 ppc)
++  set(PPC64 ppc64)
+   set(X86_64 x86_64 x86_64h)
+ endif()
+ 
+-set(ALL_SANITIZER_COMMON_SUPPORTED_ARCH ${X86} ${X86_64} ${PPC64} ${RISCV64}
++if(APPLE)
++  set(ALL_SANITIZER_COMMON_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM32} ${ARM64})
++else()
++  set(ALL_SANITIZER_COMMON_SUPPORTED_ARCH ${X86} ${X86_64} ${PPC64} ${RISCV64}
+     ${ARM32} ${ARM64} ${MIPS32} ${MIPS64} ${S390X} ${SPARC} ${SPARCV9})
++endif()
+ set(ALL_ASAN_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM32} ${ARM64}
+     ${MIPS32} ${MIPS64} ${PPC64} ${S390X} ${SPARC} ${SPARCV9})
+-set(ALL_CRT_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM32} ${ARM64} ${RISCV32} ${RISCV64})
++# TODO: Should PPC be here for Darwin?
++set(ALL_CRT_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM32} ${ARM64} ${PPC32} ${PPC64} ${RISCV32} ${RISCV64} ${HEXAGON})
+ set(ALL_DFSAN_SUPPORTED_ARCH ${X86_64} ${MIPS64} ${ARM64})
+ 
+ if(ANDROID)
+@@ -301,25 +309,41 @@ endif()
+ 
+ set(ALL_GWP_ASAN_SUPPORTED_ARCH ${X86} ${X86_64})
+ if(APPLE)
+-  set(ALL_LSAN_SUPPORTED_ARCH ${X86} ${X86_64} ${MIPS64} ${ARM64})
++  set(ALL_LSAN_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM64})
+ else()
+   set(ALL_LSAN_SUPPORTED_ARCH ${X86} ${X86_64} ${MIPS64} ${ARM64} ${ARM32} ${PPC64} ${S390X})
+ endif()
+-set(ALL_MSAN_SUPPORTED_ARCH ${X86_64} ${MIPS64} ${ARM64} ${PPC64} ${S390X})
++if(APPLE)
++  set(ALL_MSAN_SUPPORTED_ARCH ${X86_64} ${ARM64})
++else()
++  set(ALL_MSAN_SUPPORTED_ARCH ${X86_64} ${MIPS64} ${ARM64} ${PPC64} ${S390X})
++endif()
+ set(ALL_HWASAN_SUPPORTED_ARCH ${X86_64} ${ARM64})
+ set(ALL_PROFILE_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM32} ${ARM64} ${PPC64}
+     ${MIPS32} ${MIPS64} ${S390X} ${SPARC} ${SPARCV9})
+-set(ALL_TSAN_SUPPORTED_ARCH ${X86_64} ${MIPS64} ${ARM64} ${PPC64})
+-set(ALL_UBSAN_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM32} ${ARM64} ${RISCV64}
++if(APPLE)
++  set(ALL_TSAN_SUPPORTED_ARCH ${X86_64} ${ARM64})
++else()
++  set(ALL_TSAN_SUPPORTED_ARCH ${X86_64} ${MIPS64} ${ARM64} ${PPC64})
++endif()
++if(APPLE)
++  set(ALL_UBSAN_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM32} ${ARM64})
++else()
++  set(ALL_UBSAN_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM32} ${ARM64} ${RISCV64}
+     ${MIPS32} ${MIPS64} ${PPC64} ${S390X} ${SPARC} ${SPARCV9})
++endif()
+ set(ALL_SAFESTACK_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM64} ${MIPS32} ${MIPS64})
+ set(ALL_CFI_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM32} ${ARM64} ${MIPS64})
+-set(ALL_SCUDO_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM32} ${ARM64} ${MIPS32} ${MIPS64} ${PPC64})
++if(APPLE)
++  set(ALL_SCUDO_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM32} ${ARM64})
++else()
++  set(ALL_SCUDO_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM32} ${ARM64} ${MIPS32} ${MIPS64} ${PPC64})
++endif()
+ set(ALL_SCUDO_STANDALONE_SUPPORTED_ARCH ${X86} ${X86_64})
+ if(APPLE)
+-set(ALL_XRAY_SUPPORTED_ARCH ${X86_64})
++  set(ALL_XRAY_SUPPORTED_ARCH ${X86_64})
+ else()
+-set(ALL_XRAY_SUPPORTED_ARCH ${X86_64} ${ARM32} ${ARM64} ${MIPS32} ${MIPS64} powerpc64le)
++  set(ALL_XRAY_SUPPORTED_ARCH ${X86_64} ${ARM32} ${ARM64} ${MIPS32} ${MIPS64} powerpc64le)
+ endif()
+ set(ALL_SHADOWCALLSTACK_SUPPORTED_ARCH ${ARM64})
+ 
+diff --git a/compiler-rt/lib/builtins/CMakeLists.txt b/compiler-rt/lib/builtins/CMakeLists.txt
+index 3a66dd9c3fb3..004e2fc05db7 100644
+--- llvm_master/projects/compiler-rt/lib/builtins/CMakeLists.txt
++++ macports_master/projects/compiler-rt/lib/builtins/CMakeLists.txt
+@@ -531,6 +531,7 @@ set(mips64_SOURCES ${GENERIC_TF_SOURCES}
+ set(mips64el_SOURCES ${GENERIC_TF_SOURCES}
+                      ${mips_SOURCES})
+ 
++
+ set(powerpc64_SOURCES
+   ppc/divtc3.c
+   ppc/fixtfti.c
+@@ -548,12 +549,16 @@ set(powerpc64_SOURCES
+   ${GENERIC_SOURCES}
+ )
+ set(powerpc64le_SOURCES ${powerpc64_SOURCES})
++set(ppc64_SOURCES ${powerpc64_SOURCES}) # TODO: check compliance with Darwin ABI
++set(powerpc_SOURCES ${powerpc64_SOURCES})
++set(ppc_SOURCES ${powerpc64_SOURCES}) # TODO: check compliance with Darwin ABI
+ 
+ set(riscv_SOURCES ${GENERIC_SOURCES} ${GENERIC_TF_SOURCES})
+ set(riscv32_SOURCES
+   riscv/mulsi3.S
+   ${riscv_SOURCES}
+ )
++
+ set(riscv64_SOURCES ${riscv_SOURCES})
+ 
+ set(sparc_SOURCES ${GENERIC_SOURCES} ${GENERIC_TF_SOURCES})
+diff --git a/compiler-rt/lib/sanitizer_common/scripts/gen_dynamic_list.py b/compiler-rt/lib/sanitizer_common/scripts/gen_dynamic_list.py
+index 6585a42dc81b..6fc5ea88c2c6 100755
+--- llvm_master/projects/compiler-rt/lib/sanitizer_common/scripts/gen_dynamic_list.py
++++ macports_master/projects/compiler-rt/lib/sanitizer_common/scripts/gen_dynamic_list.py
+@@ -71,6 +71,7 @@ def get_global_functions(nm_executable, library):
+     raise subprocess.CalledProcessError(nm_proc.returncode, nm)
+   func_symbols = ['T', 'W']
+   # On PowerPC, nm prints function descriptors from .data section.
++  # TODO: may not be the case on Darwin:
+   if platform.uname()[4] in ["powerpc", "ppc64"]:
+     func_symbols += ['D']
+   for line in nm_out:
+-- 
+2.36.1
+

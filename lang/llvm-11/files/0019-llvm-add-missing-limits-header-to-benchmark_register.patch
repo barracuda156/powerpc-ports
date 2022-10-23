@@ -1,0 +1,26 @@
+# error: 'numeric_limits' is not a member of 'std'
+
+From 6e144ca95b1f355c48a6ac5efdc5685b5e6120ec Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sat, 22 Oct 2022 20:21:26 +0800
+Subject: [PATCH 19/21] llvm: add missing limits header to benchmark_register
+
+---
+ llvm/utils/benchmark/src/benchmark_register.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/llvm/utils/benchmark/src/benchmark_register.h b/llvm/utils/benchmark/src/benchmark_register.h
+index 0705e219f2fa..6001fb8e0e48 100644
+--- llvm_master/utils/benchmark/src/benchmark_register.h
++++ macports_master/utils/benchmark/src/benchmark_register.h
+@@ -2,6 +2,7 @@
+ #define BENCHMARK_REGISTER_H
+ 
+ #include <vector>
++#include <limits>
+ 
+ #include "check.h"
+ 
+-- 
+2.36.1
+

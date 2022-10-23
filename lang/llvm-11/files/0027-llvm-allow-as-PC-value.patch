@@ -1,0 +1,88 @@
+From 90356f7bbe11ca3419598dfc43a3f0b8422cdf97 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sun, 23 Oct 2022 01:25:37 +0800
+Subject: [PATCH 27/30] llvm: allow $ as PC value Forwardport of:
+ https://github.com/iains/LLVM-7-branch/commit/cab8aac049bb3e597a9b575bafcc67281b6702f8
+
+---
+ .../PowerPC/MCTargetDesc/PPCMCAsmInfo.cpp     | 34 +++++++++++++++++--
+ .../test/MC/PowerPC/darwin-accept-dollar-pc.s | 19 +++++++++++
+ 2 files changed, 51 insertions(+), 2 deletions(-)
+ create mode 100644 llvm/test/MC/PowerPC/darwin-accept-dollar-pc.s
+
+diff --git a/llvm/lib/Target/PowerPC/MCTargetDesc/PPCMCAsmInfo.cpp b/llvm/lib/Target/PowerPC/MCTargetDesc/PPCMCAsmInfo.cpp
+index 593dc2843c3d..73f7a04463bd 100644
+--- llvm_master/lib/Target/PowerPC/MCTargetDesc/PPCMCAsmInfo.cpp
++++ macports_master/lib/Target/PowerPC/MCTargetDesc/PPCMCAsmInfo.cpp
+@@ -16,11 +16,41 @@
+ 
+ using namespace llvm;
+ 
++void PPCMCAsmInfoDarwin::anchor() { }
++
++PPCMCAsmInfoDarwin::PPCMCAsmInfoDarwin(bool is64Bit, const Triple& T) {
++  if (is64Bit) {
++    CodePointerSize = CalleeSaveStackSlotSize = 8;
++  }
++  IsLittleEndian = false;
++
++  // Use the same comment and separator markers as cctools.
++  CommentString = ";";
++  SeparatorString = "@";
++  // ... and PC.
++  DollarIsPC = true;
++
++  ExceptionsType = ExceptionHandling::DwarfCFI;
++
++  if (!is64Bit)
++    Data64bitsDirective = nullptr; // We can't emit a 64-bit unit in PPC32 mode.
++
++  AssemblerDialect = 1;           // New-Style mnemonics.
++  SupportsDebugInformation= true; // Debug information.
++
++  // The installed assembler for OSX < 10.6 lacks some directives.
++  // FIXME: this should really be a check on the assembler characteristics
++  // rather than OS version
++  if (T.isMacOSX() && T.isMacOSXVersionLT(10, 6))
++    HasWeakDefCanBeHiddenDirective = false;
++
++  UseIntegratedAssembler = true;
++}
++
+ void PPCELFMCAsmInfo::anchor() { }
+ 
+ PPCELFMCAsmInfo::PPCELFMCAsmInfo(bool is64Bit, const Triple& T) {
+-  // FIXME: This is not always needed. For example, it is not needed in the
+-  // v2 abi.
++  // FIXME: This is not always needed. For example, it is not needed in the v2 abi.
+   NeedsLocalForSize = true;
+ 
+   if (is64Bit) {
+diff --git a/llvm/test/MC/PowerPC/darwin-accept-dollar-pc.s b/llvm/test/MC/PowerPC/darwin-accept-dollar-pc.s
+new file mode 100644
+index 000000000000..2239bd3c7229
+--- /dev/null
++++ macports_master/test/MC/PowerPC/darwin-accept-dollar-pc.s
+@@ -0,0 +1,19 @@
++# RUN:llvm-mc -triple=powerpc-apple-darwin -filetype=obj %s | llvm-objdump -s - | \
++# RUN:        FileCheck %s --check-prefix=CHECK
++# RUN:llvm-mc -triple=powerpc64-apple-darwin -filetype=obj %s | llvm-objdump -s - | \
++# RUN:        FileCheck %s --check-prefix=CHECK
++
++# This checks that we correctly accept both '.' and '$' as representing "current
++# PC".  In principle, it would be enough to pass parsing, but we might as well
++# check for correct output too.
++
++	.text
++
++Lfoo:
++	.long 5
++	.long .-Lfoo
++	.long $-Lfoo
++	.long Lfoo-$
++	.long Lfoo-.
++
++# CHECK: 00000005 00000004 00000008 fffffff4
+-- 
+2.36.1
+

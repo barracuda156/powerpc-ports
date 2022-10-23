@@ -1,0 +1,24 @@
+From 45facaa6a6727926f35d14f10654915be49a9aca Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Fri, 21 Oct 2022 09:32:30 +0800
+Subject: [PATCH 16/19] compiler-rt: Include the compiler test build function
+ for the fuzzer Forwardport of:
+ https://github.com/iains/LLVM-7-branch/commit/8b454ee831810f811fb1a404fb16052d9e8cf0d0
+
+---
+ compiler-rt/lib/fuzzer/CMakeLists.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/compiler-rt/lib/fuzzer/CMakeLists.txt b/compiler-rt/lib/fuzzer/CMakeLists.txt
+index b5be6b89452e..3074f156432f 100644
+--- llvm_master/projects/compiler-rt/lib/fuzzer/CMakeLists.txt
++++ macports_master/projects/compiler-rt/lib/fuzzer/CMakeLists.txt
+@@ -1,3 +1,5 @@
++include(CompilerRTCompile)
++
+ set(LIBFUZZER_SOURCES
+   FuzzerCrossOver.cpp
+   FuzzerDataFlowTrace.cpp
+-- 
+2.36.1
+

@@ -1,0 +1,30 @@
+From ab67fbba14d4580ca4d92bc90d38c2878593f64e Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sun, 23 Oct 2022 01:00:08 +0800
+Subject: [PATCH 24/24] compiler-rt: environ patch to fuzzer
+
+---
+ compiler-rt/lib/fuzzer/FuzzerUtilDarwin.cpp | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/compiler-rt/lib/fuzzer/FuzzerUtilDarwin.cpp b/compiler-rt/lib/fuzzer/FuzzerUtilDarwin.cpp
+index b853462df3d2..f09fd37701f1 100644
+--- llvm_master/projects/compiler-rt/lib/fuzzer/FuzzerUtilDarwin.cpp
++++ macports_master/projects/compiler-rt/lib/fuzzer/FuzzerUtilDarwin.cpp
+@@ -27,8 +27,12 @@
+ #define POSIX_SPAWN_SETSIGDEF           0x0004
+ #endif
+ 
+-// There is no header for this on macOS so declare here
++#ifdef __APPLE__
++#include <crt_externs.h>
++#define environ (*_NSGetEnviron())
++#else
+ extern "C" char **environ;
++#endif
+ 
+ namespace fuzzer {
+ 
+-- 
+2.36.1
+

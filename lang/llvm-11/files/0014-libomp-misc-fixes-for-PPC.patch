@@ -1,0 +1,724 @@
+From 01b4a78f4eaea133e28089995b562a44211e6e19 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Fri, 21 Oct 2022 07:11:38 +0800
+Subject: [PATCH 14/19] libomp: misc fixes for PPC
+
+---
+ openmp/CMakeLists.txt                         |  4 +-
+ openmp/README.rst                             |  2 +-
+ openmp/libomptarget/src/rtl.cpp               |  2 +-
+ openmp/runtime/CMakeLists.txt                 | 11 +++--
+ openmp/runtime/cmake/LibompDefinitions.cmake  |  3 ++
+ .../runtime/cmake/LibompGetArchitecture.cmake |  4 +-
+ openmp/runtime/cmake/LibompHandleFlags.cmake  |  8 ++++
+ openmp/runtime/cmake/LibompMicroTests.cmake   |  8 +++-
+ openmp/runtime/cmake/LibompUtils.cmake        |  2 +
+ openmp/runtime/cmake/config-ix.cmake          |  3 +-
+ openmp/runtime/src/kmp.h                      | 19 ++++++++
+ openmp/runtime/src/kmp_csupport.cpp           |  2 +-
+ openmp/runtime/src/kmp_dispatch.h             |  2 +-
+ openmp/runtime/src/kmp_gsupport.cpp           |  4 +-
+ openmp/runtime/src/kmp_os.h                   | 10 ++---
+ openmp/runtime/src/kmp_platform.h             | 20 ++++++---
+ openmp/runtime/src/kmp_runtime.cpp            |  2 +-
+ openmp/runtime/src/kmp_wrapper_getpid.h       |  7 ++-
+ .../thirdparty/ittnotify/ittnotify_config.h   |  8 +++-
+ .../thirdparty/ittnotify/ittnotify_static.cpp |  4 +-
+ openmp/runtime/src/z_Linux_asm.S              | 44 ++++++++++++++-----
+ openmp/runtime/test/ompt/callback.h           |  5 +++
+ openmp/runtime/tools/lib/Platform.pm          |  6 ++-
+ openmp/runtime/tools/lib/Uname.pm             | 10 ++++-
+ 24 files changed, 147 insertions(+), 43 deletions(-)
+
+diff --git a/openmp/CMakeLists.txt b/openmp/CMakeLists.txt
+index 6f0d9e728002..6c5581675ba8 100644
+--- llvm_master/projects/openmp/CMakeLists.txt
++++ macports_master/projects/openmp/CMakeLists.txt
+@@ -26,7 +26,9 @@ if (OPENMP_STANDALONE_BUILD OR "${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_S
+     "C compiler to use for testing OpenMP runtime libraries.")
+   set(OPENMP_TEST_CXX_COMPILER ${CMAKE_CXX_COMPILER} CACHE STRING
+     "C++ compiler to use for testing OpenMP runtime libraries.")
+-  set(OPENMP_LLVM_TOOLS_DIR "" CACHE PATH "Path to LLVM tools for testing.")
++  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
++     set(OPENMP_LLVM_TOOLS_DIR "" CACHE PATH "Path to LLVM tools for testing.")
++   endif()
+ else()
+   set(OPENMP_ENABLE_WERROR ${LLVM_ENABLE_WERROR})
+   # If building in tree, we honor the same install suffix LLVM uses.
+diff --git a/openmp/README.rst b/openmp/README.rst
+index aac0f7fc10d3..ec06ed9c939b 100644
+--- llvm_master/projects/openmp/README.rst
++++ macports_master/projects/openmp/README.rst
+@@ -137,7 +137,7 @@ Options for all Libraries
+ Options for ``libomp``
+ ----------------------
+ 
+-**LIBOMP_ARCH** = ``aarch64|arm|i386|mic|mips|mips64|ppc64|ppc64le|x86_64|riscv64``
++**LIBOMP_ARCH** = ``aarch64|arm|i386|mic|mips|mips64|ppc|ppc64|ppc64le|x86_64|riscv64``
+   The default value for this option is chosen based on probing the compiler for
+   architecture macros (e.g., is ``__x86_64__`` predefined by compiler?).
+ 
+diff --git a/openmp/libomptarget/src/rtl.cpp b/openmp/libomptarget/src/rtl.cpp
+index 7c344ca6ee66..3fc3e76039b5 100644
+--- llvm_master/projects/openmp/libomptarget/src/rtl.cpp
++++ macports_master/projects/openmp/libomptarget/src/rtl.cpp
+@@ -24,7 +24,7 @@
+ // List of all plugins that can support offloading.
+ static const char *RTLNames[] = {
+     /* SX-Aurora VE target  */ "libomptarget.rtl.ve.so",
+-    /* PowerPC target */ "libomptarget.rtl.ppc64.so",
++    /* PowerPC64 target     */ "libomptarget.rtl.ppc64.so",
+     /* x86_64 target  */ "libomptarget.rtl.x86_64.so",
+     /* CUDA target    */ "libomptarget.rtl.cuda.so",
+     /* AArch64 target */ "libomptarget.rtl.aarch64.so"};
+diff --git a/openmp/runtime/CMakeLists.txt b/openmp/runtime/CMakeLists.txt
+index 40a0fb9afee1..595840f237cd 100644
+--- llvm_master/projects/openmp/runtime/CMakeLists.txt
++++ macports_master/projects/openmp/runtime/CMakeLists.txt
+@@ -30,7 +30,7 @@ if(${OPENMP_STANDALONE_BUILD})
+   # If adding a new architecture, take a look at cmake/LibompGetArchitecture.cmake
+   libomp_get_architecture(LIBOMP_DETECTED_ARCH)
+   set(LIBOMP_ARCH ${LIBOMP_DETECTED_ARCH} CACHE STRING
+-    "The architecture to build for (x86_64/i386/arm/ppc64/ppc64le/aarch64/mic/mips/mips64/riscv64).")
++    "The architecture to build for (x86_64/i386/arm/ppc/ppc64/ppc64le/aarch64/mic/mips/mips64/riscv64).")
+   # Should assertions be enabled?  They are on by default.
+   set(LIBOMP_ENABLE_ASSERTIONS TRUE CACHE BOOL
+     "enable assertions?")
+@@ -50,8 +50,10 @@ else() # Part of LLVM build
+     set(LIBOMP_ARCH x86_64)
+   elseif(LIBOMP_NATIVE_ARCH MATCHES "powerpc64le")
+     set(LIBOMP_ARCH ppc64le)
+-  elseif(LIBOMP_NATIVE_ARCH MATCHES "powerpc")
++  elseif(LIBOMP_NATIVE_ARCH MATCHES "powerpc64")
+     set(LIBOMP_ARCH ppc64)
++  elseif(LIBOMP_NATIVE_ARCH MATCHES "powerpc")
++    set(LIBOMP_ARCH ppc)
+   elseif(LIBOMP_NATIVE_ARCH MATCHES "aarch64")
+     set(LIBOMP_ARCH aarch64)
+   elseif(LIBOMP_NATIVE_ARCH MATCHES "arm64")
+@@ -66,7 +68,7 @@ else() # Part of LLVM build
+   endif ()
+   set(LIBOMP_ENABLE_ASSERTIONS ${LLVM_ENABLE_ASSERTIONS})
+ endif()
+-libomp_check_variable(LIBOMP_ARCH 32e x86_64 32 i386 arm ppc64 ppc64le aarch64 mic mips mips64 riscv64)
++libomp_check_variable(LIBOMP_ARCH 32e x86_64 32 i386 arm ppc ppc64 ppc64le aarch64 mic mips mips64 riscv64)
+ 
+ set(LIBOMP_LIB_TYPE normal CACHE STRING
+   "Performance,Profiling,Stubs library (normal/profile/stubs)")
+@@ -139,6 +141,7 @@ set(AARCH64 FALSE)
+ set(PPC64BE FALSE)
+ set(PPC64LE FALSE)
+ set(PPC64 FALSE)
++set(PPC FALSE)
+ set(MIC FALSE)
+ set(MIPS64 FALSE)
+ set(MIPS FALSE)
+@@ -155,6 +158,8 @@ elseif("${LIBOMP_ARCH}" STREQUAL "ppc64") # PPC64BE architecture
+ elseif("${LIBOMP_ARCH}" STREQUAL "ppc64le") # PPC64LE architecture
+   set(PPC64LE TRUE)
+   set(PPC64 TRUE)
++elseif("${LIBOMP_ARCH}" STREQUAL "ppc") # PPC32BE architecture
++  set(PPC TRUE)
+ elseif("${LIBOMP_ARCH}" STREQUAL "aarch64") # AARCH64 architecture
+   set(AARCH64 TRUE)
+ elseif("${LIBOMP_ARCH}" STREQUAL "mic") # Intel(R) Many Integrated Core Architecture
+diff --git a/openmp/runtime/cmake/LibompDefinitions.cmake b/openmp/runtime/cmake/LibompDefinitions.cmake
+index 46beec79f701..1f23eb5b00b8 100644
+--- llvm_master/projects/openmp/runtime/cmake/LibompDefinitions.cmake
++++ macports_master/projects/openmp/runtime/cmake/LibompDefinitions.cmake
+@@ -20,6 +20,9 @@ function(libomp_get_definitions_flags cppflags)
+     libomp_append(cppflags_local "-D _USRDLL")
+     libomp_append(cppflags_local "-D _ITERATOR_DEBUG_LEVEL=0" IF_TRUE DEBUG_BUILD)
+     libomp_append(cppflags_local "-D _DEBUG" IF_TRUE DEBUG_BUILD)
++  elseif(APPLE)
++    libomp_append(cppflags_local "-D _DARWIN_C_SOURCE")
++    libomp_append(cppflags_local "-D _REENTRANT")
+   else()
+     libomp_append(cppflags_local "-D _GNU_SOURCE")
+     libomp_append(cppflags_local "-D _REENTRANT")
+diff --git a/openmp/runtime/cmake/LibompGetArchitecture.cmake b/openmp/runtime/cmake/LibompGetArchitecture.cmake
+index 897f99a39a3c..425fe856b5fd 100644
+--- llvm_master/projects/openmp/runtime/cmake/LibompGetArchitecture.cmake
++++ macports_master/projects/openmp/runtime/cmake/LibompGetArchitecture.cmake
+@@ -39,8 +39,10 @@ function(libomp_get_architecture return_arch)
+       #error ARCHITECTURE=aarch64
+     #elif defined(__powerpc64__) && defined(__LITTLE_ENDIAN__)
+       #error ARCHITECTURE=ppc64le
+-    #elif defined(__powerpc64__)
++    #elif defined(__powerpc64__) || defined(__ppc64__)
+       #error ARCHITECTURE=ppc64
++    #elif defined(__ppc__)
++      #error ARCHITECTURE=ppc
+     #elif defined(__mips__) && defined(__mips64)
+       #error ARCHITECTURE=mips64
+     #elif defined(__mips__) && !defined(__mips64)
+diff --git a/openmp/runtime/cmake/LibompHandleFlags.cmake b/openmp/runtime/cmake/LibompHandleFlags.cmake
+index 0b8e3a35c888..2ec0c2e8afcc 100644
+--- llvm_master/projects/openmp/runtime/cmake/LibompHandleFlags.cmake
++++ macports_master/projects/openmp/runtime/cmake/LibompHandleFlags.cmake
+@@ -56,6 +56,8 @@ function(libomp_get_cxxflags cxxflags)
+     libomp_append(flags_local /arch:SSE2 LIBOMP_HAVE_ARCH_SSE2_FLAG)
+     libomp_append(flags_local -msse2 LIBOMP_HAVE_MSSE2_FLAG)
+     libomp_append(flags_local -falign-stack=maintain-16-byte LIBOMP_HAVE_FALIGN_STACK_FLAG)
++  elseif(${PPC})
++    libomp_append(flags_local -m32 LIBOMP_HAVE_M32_FLAG)
+   elseif(${MIC})
+     libomp_append(flags_local -mmic LIBOMP_HAVE_MMIC_FLAG)
+     libomp_append(flags_local -ftls-model=initial-exec LIBOMP_HAVE_FTLS_MODEL_FLAG)
+@@ -77,6 +79,8 @@ function(libomp_get_asmflags asmflags)
+     endif()
+     libomp_append(asmflags_local /safeseh LIBOMP_HAVE_SAFESEH_MASM_FLAG)
+     libomp_append(asmflags_local /coff LIBOMP_HAVE_COFF_MASM_FLAG)
++  elseif(${PPC})
++    libomp_append(flags_local -m32 LIBOMP_HAVE_M32_FLAG)
+   elseif(${MIC})
+     libomp_append(asmflags_local -mmic LIBOMP_HAVE_MMIC_FLAG)
+   endif()
+@@ -108,6 +112,8 @@ function(libomp_get_ldflags ldflags)
+       libomp_append(ldflags_local -m32 LIBOMP_HAVE_M32_FLAG)
+     endif()
+     libomp_append(ldflags_local -msse2 LIBOMP_HAVE_MSSE2_FLAG)
++  elseif(${PPC})
++    libomp_append(flags_local -m32 LIBOMP_HAVE_M32_FLAG)
+   elseif(${MIC})
+     libomp_append(ldflags_local -mmic LIBOMP_HAVE_MMIC_FLAG)
+     libomp_append(ldflags_local -Wl,-x LIBOMP_HAVE_X_FLAG)
+@@ -131,6 +137,8 @@ function(libomp_get_libflags libflags)
+     libomp_append(libflags_local "-Wl,--as-needed" LIBOMP_HAVE_AS_NEEDED_FLAG)
+   elseif(${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
+     libomp_append(libflags_local -lm)
++  elseif(APPLE AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
++    libomp_append(libflags_local -latomic LIBOMP_HAVE_GCC_ATOMIC_FLAG)
+   endif()
+   set(libflags_local ${libflags_local} ${LIBOMP_LIBFLAGS})
+   libomp_setup_flags(libflags_local)
+diff --git a/openmp/runtime/cmake/LibompMicroTests.cmake b/openmp/runtime/cmake/LibompMicroTests.cmake
+index 1ca3412edc8e..b2b1844bd52c 100644
+--- llvm_master/projects/openmp/runtime/cmake/LibompMicroTests.cmake
++++ macports_master/projects/openmp/runtime/cmake/LibompMicroTests.cmake
+@@ -77,7 +77,7 @@ else() # (Unix based systems, Intel(R) MIC Architecture, and Mac)
+   endif()
+   # test-touch compilation flags
+   libomp_append(libomp_test_touch_libs "${CMAKE_THREAD_LIBS_INIT}")
+-  if(${IA32})
++  if(${IA32} OR ${PPC})
+     libomp_append(libomp_test_touch_cflags -m32 LIBOMP_HAVE_M32_FLAG)
+   endif()
+   libomp_append(libomp_test_touch_libs ${LIBOMP_OUTPUT_DIRECTORY}/${LIBOMP_LIB_FILE})
+@@ -180,6 +180,12 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "DragonFly")
+   libomp_append(libomp_expected_library_deps libhwloc.so.5 LIBOMP_USE_HWLOC)
+ elseif(APPLE)
+   set(libomp_expected_library_deps /usr/lib/libSystem.B.dylib)
++    # TODO: verify these:
++    if(${PPC} OR ${PPC64})
++      libomp_append(libomp_expected_library_deps libgcc_s.1.dylib)
++      libomp_append(libomp_expected_library_deps libgcc_s.1.1.dylib)
++      libomp_append(libomp_expected_library_deps libatomic.dylib)
++    endif()
+ elseif(WIN32)
+   set(libomp_expected_library_deps kernel32.dll)
+   libomp_append(libomp_expected_library_deps psapi.dll LIBOMP_OMPT_SUPPORT)
+diff --git a/openmp/runtime/cmake/LibompUtils.cmake b/openmp/runtime/cmake/LibompUtils.cmake
+index 44d236373146..d1225ab24572 100644
+--- llvm_master/projects/openmp/runtime/cmake/LibompUtils.cmake
++++ macports_master/projects/openmp/runtime/cmake/LibompUtils.cmake
+@@ -99,6 +99,8 @@ function(libomp_get_legal_arch return_arch_string)
+     set(${return_arch_string} "PPC64BE" PARENT_SCOPE)
+   elseif(${PPC64LE})
+     set(${return_arch_string} "PPC64LE" PARENT_SCOPE)
++  elseif(${PPC})
++     set(${return_arch_string} "PPC" PARENT_SCOPE)
+   elseif(${AARCH64})
+     set(${return_arch_string} "AARCH64" PARENT_SCOPE)
+   elseif(${MIPS})
+diff --git a/openmp/runtime/cmake/config-ix.cmake b/openmp/runtime/cmake/config-ix.cmake
+index 3419dd8cd788..1ccc33a443c4 100644
+--- llvm_master/projects/openmp/runtime/cmake/config-ix.cmake
++++ macports_master/projects/openmp/runtime/cmake/config-ix.cmake
+@@ -162,7 +162,7 @@ endif()
+ libomp_check_version_symbols(LIBOMP_HAVE_VERSION_SYMBOLS)
+ 
+ # Check if quad precision types are available
+-if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
++if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT ${PPC})
+   set(LIBOMP_HAVE_QUAD_PRECISION TRUE)
+ elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
+   if(LIBOMP_HAVE_EXTENDED_FLOAT_TYPES_FLAG)
+@@ -235,6 +235,7 @@ else()
+       (LIBOMP_ARCH STREQUAL aarch64) OR
+       (LIBOMP_ARCH STREQUAL ppc64le) OR
+       (LIBOMP_ARCH STREQUAL ppc64) OR
++#      (LIBOMP_ARCH STREQUAL ppc) OR
+       (LIBOMP_ARCH STREQUAL riscv64))
+      AND # OS supported?
+      ((WIN32 AND LIBOMP_HAVE_PSAPI) OR APPLE OR (NOT WIN32 AND LIBOMP_HAVE_WEAK_ATTRIBUTE)))
+diff --git a/openmp/runtime/src/kmp.h b/openmp/runtime/src/kmp.h
+index 5f9b7c895619..3455d1d6cd2d 100644
+--- llvm_master/projects/openmp/runtime/src/kmp.h
++++ macports_master/projects/openmp/runtime/src/kmp.h
+@@ -1239,7 +1239,26 @@ static inline void __kmp_x86_pause(void) { _mm_delay_32(300); }
+ static inline void __kmp_x86_pause(void) { _mm_pause(); }
+ #endif
+ #define KMP_CPU_PAUSE() __kmp_x86_pause()
++#elif KMP_ARCH_PPC
++#define KMP_PPC_PRI_LOW() __asm__ volatile("or r1, r1, r1")
++#define KMP_PPC_PRI_MED() __asm__ volatile("or r2, r2, r2")
++#define KMP_PPC_PRI_LOC_MB() __asm__ volatile("" : : : "memory")
++#define KMP_CPU_PAUSE()                                                        \
++  do {                                                                         \
++    KMP_PPC64_PRI_LOW();                                                       \
++    KMP_PPC64_PRI_MED();                                                       \
++    KMP_PPC64_PRI_LOC_MB();                                                    \
++  } while (0)
+ #elif KMP_ARCH_PPC64
++#if KMP_OS_DARWIN
++#define KMP_PPC64_PRI_LOW() __asm__ volatile("or r1, r1, r1")
++#define KMP_PPC64_PRI_MED() __asm__ volatile("or r2, r2, r2")
++#define KMP_PPC64_PRI_LOC_MB() __asm__ volatile("" : : : "memory")
++#else
++#define KMP_PPC64_PRI_LOW() __asm__ volatile("or 1, 1, 1")
++#define KMP_PPC64_PRI_MED() __asm__ volatile("or 2, 2, 2")
++#define KMP_PPC64_PRI_LOC_MB() __asm__ volatile("" : : : "memory")
++#endif // KMP_OS_DARWIN
+ #define KMP_PPC64_PRI_LOW() __asm__ volatile("or 1, 1, 1")
+ #define KMP_PPC64_PRI_MED() __asm__ volatile("or 2, 2, 2")
+ #define KMP_PPC64_PRI_LOC_MB() __asm__ volatile("" : : : "memory")
+diff --git a/openmp/runtime/src/kmp_csupport.cpp b/openmp/runtime/src/kmp_csupport.cpp
+index 9cfa64d6ff9e..5bea0a2aff64 100644
+--- llvm_master/projects/openmp/runtime/src/kmp_csupport.cpp
++++ macports_master/projects/openmp/runtime/src/kmp_csupport.cpp
+@@ -677,7 +677,7 @@ void __kmpc_flush(ident_t *loc) {
+ #elif (KMP_ARCH_ARM || KMP_ARCH_AARCH64 || KMP_ARCH_MIPS || KMP_ARCH_MIPS64 || \
+        KMP_ARCH_RISCV64)
+ // Nothing to see here move along
+-#elif KMP_ARCH_PPC64
++#elif (KMP_ARCH_PPC || KMP_ARCH_PPC64)
+ // Nothing needed here (we have a real MB above).
+ #if KMP_OS_CNK
+   // The flushing thread needs to yield here; this prevents a
+diff --git a/openmp/runtime/src/kmp_dispatch.h b/openmp/runtime/src/kmp_dispatch.h
+index 1f98e4b80a79..a81139d011a2 100644
+--- llvm_master/projects/openmp/runtime/src/kmp_dispatch.h
++++ macports_master/projects/openmp/runtime/src/kmp_dispatch.h
+@@ -22,7 +22,7 @@
+ #include "kmp_itt.h"
+ #include "kmp_stats.h"
+ #include "kmp_str.h"
+-#if KMP_OS_WINDOWS && KMP_ARCH_X86
++#if (KMP_OS_WINDOWS && KMP_ARCH_X86) || (KMP_OS_DARWIN && KMP_ARCH_PPC)
+ #include <float.h>
+ #endif
+ 
+diff --git a/openmp/runtime/src/kmp_gsupport.cpp b/openmp/runtime/src/kmp_gsupport.cpp
+index ab4f27bfc067..826bbd079f39 100644
+--- llvm_master/projects/openmp/runtime/src/kmp_gsupport.cpp
++++ macports_master/projects/openmp/runtime/src/kmp_gsupport.cpp
+@@ -261,7 +261,7 @@ void KMP_EXPAND_NAME(KMP_API_NAME_GOMP_ORDERED_END)(void) {
+ // They come in two flavors: 64-bit unsigned, and either 32-bit signed
+ // (IA-32 architecture) or 64-bit signed (Intel(R) 64).
+ 
+-#if KMP_ARCH_X86 || KMP_ARCH_ARM || KMP_ARCH_MIPS
++#if KMP_ARCH_X86 || KMP_ARCH_ARM || KMP_ARCH_MIPS || KMP_ARCH_PPC
+ #define KMP_DISPATCH_INIT __kmp_aux_dispatch_init_4
+ #define KMP_DISPATCH_FINI_CHUNK __kmp_aux_dispatch_fini_chunk_4
+ #define KMP_DISPATCH_NEXT __kmpc_dispatch_next_4
+@@ -269,7 +269,7 @@ void KMP_EXPAND_NAME(KMP_API_NAME_GOMP_ORDERED_END)(void) {
+ #define KMP_DISPATCH_INIT __kmp_aux_dispatch_init_8
+ #define KMP_DISPATCH_FINI_CHUNK __kmp_aux_dispatch_fini_chunk_8
+ #define KMP_DISPATCH_NEXT __kmpc_dispatch_next_8
+-#endif /* KMP_ARCH_X86 */
++#endif /* KMP_ARCH_X86 || KMP_ARCH_ARM || KMP_ARCH_MIPS || KMP_ARCH_PPC */
+ 
+ #define KMP_DISPATCH_INIT_ULL __kmp_aux_dispatch_init_8u
+ #define KMP_DISPATCH_FINI_CHUNK_ULL __kmp_aux_dispatch_fini_chunk_8u
+diff --git a/openmp/runtime/src/kmp_os.h b/openmp/runtime/src/kmp_os.h
+index d1511904e94b..dddea447bf6d 100644
+--- llvm_master/projects/openmp/runtime/src/kmp_os.h
++++ macports_master/projects/openmp/runtime/src/kmp_os.h
+@@ -163,7 +163,7 @@ typedef unsigned long long kmp_uint64;
+ #define KMP_UINT64_SPEC "llu"
+ #endif /* KMP_OS_UNIX */
+ 
+-#if KMP_ARCH_X86 || KMP_ARCH_ARM || KMP_ARCH_MIPS
++#if KMP_ARCH_X86 || KMP_ARCH_ARM || KMP_ARCH_MIPS || KMP_ARCH_PPC
+ #define KMP_SIZE_T_SPEC KMP_UINT32_SPEC
+ #elif KMP_ARCH_X86_64 || KMP_ARCH_PPC64 || KMP_ARCH_AARCH64 ||                 \
+     KMP_ARCH_MIPS64 || KMP_ARCH_RISCV64
+@@ -172,7 +172,7 @@ typedef unsigned long long kmp_uint64;
+ #error "Can't determine size_t printf format specifier."
+ #endif
+ 
+-#if KMP_ARCH_X86
++#if KMP_ARCH_X86 /* TODO: what about other 32-bit archs? */
+ #define KMP_SIZE_T_MAX (0xFFFFFFFF)
+ #else
+ #define KMP_SIZE_T_MAX (0xFFFFFFFFFFFFFFFF)
+@@ -846,8 +846,8 @@ extern kmp_real64 __kmp_xchg_real64(volatile kmp_real64 *p, kmp_real64 v);
+ #endif
+ #endif /* KMP_OS_WINDOWS */
+ 
+-#if KMP_ARCH_PPC64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64 || KMP_ARCH_MIPS ||     \
+-    KMP_ARCH_MIPS64 || KMP_ARCH_RISCV64
++#if KMP_ARCH_PPC || KMP_ARCH_PPC64 || KMP_ARCH_ARM || KMP_ARCH_AARCH64 ||     \
++    KMP_ARCH_MIPS || KMP_ARCH_MIPS64 || KMP_ARCH_RISCV64
+ #define KMP_MB() __sync_synchronize()
+ #endif
+ 
+@@ -908,7 +908,7 @@ extern kmp_real64 __kmp_xchg_real64(volatile kmp_real64 *p, kmp_real64 v);
+   KMP_COMPARE_AND_STORE_REL64((volatile kmp_int64 *)(volatile void *)&(a),     \
+                               (kmp_int64)(b), (kmp_int64)(c))
+ 
+-#if KMP_ARCH_X86 || KMP_ARCH_MIPS
++#if KMP_ARCH_X86 || KMP_ARCH_MIPS || KMP_ARCH_PPC
+ // What about ARM?
+ #define TCR_PTR(a) ((void *)TCR_4(a))
+ #define TCW_PTR(a, b) TCW_4((a), (b))
+diff --git a/openmp/runtime/src/kmp_platform.h b/openmp/runtime/src/kmp_platform.h
+index 779c08e9771d..b65d2d58e903 100644
+--- llvm_master/projects/openmp/runtime/src/kmp_platform.h
++++ macports_master/projects/openmp/runtime/src/kmp_platform.h
+@@ -95,7 +95,9 @@
+ #define KMP_ARCH_AARCH64 0
+ #define KMP_ARCH_PPC64_ELFv1 0
+ #define KMP_ARCH_PPC64_ELFv2 0
+-#define KMP_ARCH_PPC64 (KMP_ARCH_PPC64_ELFv2 || KMP_ARCH_PPC64_ELFv1)
++#define KMP_ARCH_PPC64_Darwin 0
++#define KMP_ARCH_PPC64 (KMP_ARCH_PPC64_ELFv2 || KMP_ARCH_PPC64_ELFv1 || KMP_ARCH_PPC64_Darwin)
++#define KMP_ARCH_PPC 0
+ #define KMP_ARCH_MIPS 0
+ #define KMP_ARCH_MIPS64 0
+ #define KMP_ARCH_RISCV64 0
+@@ -117,14 +119,20 @@
+ #elif defined __i386
+ #undef KMP_ARCH_X86
+ #define KMP_ARCH_X86 1
+-#elif defined __powerpc64__
+-#if defined(_CALL_ELF) && _CALL_ELF == 2
++#elif defined __powerpc64__ || defined __ppc64__
++#if defined(__APPLE__)
++#undef KMP_ARCH_PPC64_Darwin
++#define KMP_ARCH_PPC64_Darwin 1
++#elif defined(_CALL_ELF) && _CALL_ELF == 2
+ #undef KMP_ARCH_PPC64_ELFv2
+ #define KMP_ARCH_PPC64_ELFv2 1
+ #else
+ #undef KMP_ARCH_PPC64_ELFv1
+ #define KMP_ARCH_PPC64_ELFv1 1
+ #endif
++#elif defined __ppc__
++#undef KMP_ARCH_PPC
++#define KMP_ARCH_PPC 1
+ #elif defined __aarch64__
+ #undef KMP_ARCH_AARCH64
+ #define KMP_ARCH_AARCH64 1
+@@ -194,7 +202,7 @@
+ #endif
+ 
+ /* Specify 32 bit architectures here */
+-#define KMP_32_BIT_ARCH (KMP_ARCH_X86 || KMP_ARCH_ARM || KMP_ARCH_MIPS)
++#define KMP_32_BIT_ARCH (KMP_ARCH_X86 || KMP_ARCH_ARM || KMP_ARCH_MIPS || KMP_ARCH_PPC)
+ 
+ // Platforms which support Intel(R) Many Integrated Core Architecture
+ #define KMP_MIC_SUPPORTED                                                      \
+@@ -202,8 +210,8 @@
+ 
+ // TODO: Fixme - This is clever, but really fugly
+ #if (1 !=                                                                      \
+-     KMP_ARCH_X86 + KMP_ARCH_X86_64 + KMP_ARCH_ARM + KMP_ARCH_PPC64 +          \
+-     KMP_ARCH_AARCH64 + KMP_ARCH_MIPS + KMP_ARCH_MIPS64 + KMP_ARCH_RISCV64)
++     KMP_ARCH_X86 + KMP_ARCH_X86_64 + KMP_ARCH_PPC + KMP_ARCH_PPC64 +          \
++     KMP_ARCH_ARM + KMP_ARCH_AARCH64 + KMP_ARCH_MIPS + KMP_ARCH_MIPS64 + KMP_ARCH_RISCV64)
+ #error Unknown or unsupported architecture
+ #endif
+ 
+diff --git a/openmp/runtime/src/kmp_runtime.cpp b/openmp/runtime/src/kmp_runtime.cpp
+index e0c8cf241044..fb94d9fb5471 100644
+--- llvm_master/projects/openmp/runtime/src/kmp_runtime.cpp
++++ macports_master/projects/openmp/runtime/src/kmp_runtime.cpp
+@@ -8134,7 +8134,7 @@ __kmp_determine_reduction_method(
+ #endif // KMP_OS_LINUX || KMP_OS_DRAGONFLY || KMP_OS_FREEBSD || KMP_OS_NETBSD ||
+        // KMP_OS_OPENBSD || KMP_OS_WINDOWS || KMP_OS_DARWIN || KMP_OS_HURD
+ 
+-#elif KMP_ARCH_X86 || KMP_ARCH_ARM || KMP_ARCH_AARCH || KMP_ARCH_MIPS
++#elif KMP_ARCH_X86 || KMP_ARCH_ARM || KMP_ARCH_AARCH || KMP_ARCH_MIPS || KMP_ARCH_PPC
+ 
+ #if KMP_OS_LINUX || KMP_OS_FREEBSD || KMP_OS_WINDOWS || KMP_OS_HURD
+ 
+diff --git a/openmp/runtime/src/kmp_wrapper_getpid.h b/openmp/runtime/src/kmp_wrapper_getpid.h
+index 257772ad92bc..6a7789331dca 100644
+--- llvm_master/projects/openmp/runtime/src/kmp_wrapper_getpid.h
++++ macports_master/projects/openmp/runtime/src/kmp_wrapper_getpid.h
+@@ -22,7 +22,12 @@
+ #include <unistd.h>
+ #if KMP_OS_DARWIN
+ // OS X
+-#define __kmp_gettid() syscall(SYS_thread_selfid)
++#include <AvailabilityMacros.h>
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
++#define __kmp_gettid() pthread_mach_thread_np(pthread_self())
++#else
++#define __kmp_gettid() syscall(SYS_gettid)
++#endif
+ #elif KMP_OS_FREEBSD
+ #include <pthread_np.h>
+ #define __kmp_gettid() pthread_getthreadid_np()
+diff --git a/openmp/runtime/src/thirdparty/ittnotify/ittnotify_config.h b/openmp/runtime/src/thirdparty/ittnotify/ittnotify_config.h
+index f231e70d181f..42f40e40de3b 100644
+--- llvm_master/projects/openmp/runtime/src/thirdparty/ittnotify/ittnotify_config.h
++++ macports_master/projects/openmp/runtime/src/thirdparty/ittnotify/ittnotify_config.h
+@@ -149,6 +149,10 @@
+ #  define ITT_ARCH_ARM  4
+ #endif /* ITT_ARCH_ARM */
+ 
++#ifndef ITT_ARCH_PPC
++#  define ITT_ARCH_PPC  5
++#endif /* ITT_ARCH_PPC */
++
+ #ifndef ITT_ARCH_PPC64
+ #  define ITT_ARCH_PPC64  5
+ #endif /* ITT_ARCH_PPC64 */
+@@ -174,8 +178,10 @@
+ #    define ITT_ARCH ITT_ARCH_IA64
+ #  elif defined _M_ARM || defined __arm__
+ #    define ITT_ARCH ITT_ARCH_ARM
+-#  elif defined __powerpc64__
++#  elif defined __powerpc64__ || defined __ppc64__
+ #    define ITT_ARCH ITT_ARCH_PPC64
++#  elif defined __ppc__
++#    define ITT_ARCH ITT_ARCH_PPC
+ #  elif defined __aarch64__
+ #    define ITT_ARCH ITT_ARCH_AARCH64
+ #  elif defined __mips__ && !defined __mips64
+diff --git a/openmp/runtime/src/thirdparty/ittnotify/ittnotify_static.cpp b/openmp/runtime/src/thirdparty/ittnotify/ittnotify_static.cpp
+index 4936b9baaf80..a655a9815857 100644
+--- llvm_master/projects/openmp/runtime/src/thirdparty/ittnotify/ittnotify_static.cpp
++++ macports_master/projects/openmp/runtime/src/thirdparty/ittnotify/ittnotify_static.cpp
+@@ -76,7 +76,7 @@ static const char* ittnotify_lib_name = "libittnotify.dylib";
+ #define ANDROID_ITTNOTIFY_DEFAULT_PATH_MASK(x)  "/data/data/com.intel.vtune/perfrun/lib" \
+                                                 #x "/runtime/libittnotify.so"
+ 
+-#if ITT_ARCH==ITT_ARCH_IA32 || ITT_ARCH==ITT_ARCH_ARM
++#if ITT_ARCH==ITT_ARCH_IA32 || ITT_ARCH==ITT_ARCH_ARM || ITT_ARCH == ITT_ARCH_PPC
+ #define ANDROID_ITTNOTIFY_DEFAULT_PATH  ANDROID_ITTNOTIFY_DEFAULT_PATH_MASK(32)
+ #else
+ #define ANDROID_ITTNOTIFY_DEFAULT_PATH  ANDROID_ITTNOTIFY_DEFAULT_PATH_MASK(64)
+@@ -90,7 +90,7 @@ static const char* ittnotify_lib_name = "libittnotify.dylib";
+ 
+ 
+ #ifndef LIB_VAR_NAME
+-#if ITT_ARCH==ITT_ARCH_IA32 || ITT_ARCH==ITT_ARCH_ARM || ITT_ARCH==ITT_ARCH_MIPS
++#if ITT_ARCH==ITT_ARCH_IA32 || ITT_ARCH==ITT_ARCH_ARM || ITT_ARCH==ITT_ARCH_MIPS || ITT_ARCH == ITT_ARCH_PPC
+ #define LIB_VAR_NAME INTEL_LIBITTNOTIFY32
+ #else
+ #define LIB_VAR_NAME INTEL_LIBITTNOTIFY64
+diff --git a/openmp/runtime/src/z_Linux_asm.S b/openmp/runtime/src/z_Linux_asm.S
+index 8090ff759fe1..8aadc2de39d0 100644
+--- llvm_master/projects/openmp/runtime/src/z_Linux_asm.S
++++ macports_master/projects/openmp/runtime/src/z_Linux_asm.S
+@@ -68,7 +68,7 @@
+ KMP_PREFIX_UNDERSCORE($0):
+ .endmacro
+ # else // KMP_OS_DARWIN
+-#  define KMP_PREFIX_UNDERSCORE(x) x //no extra underscore for Linux* OS symbols
++#  define KMP_PREFIX_UNDERSCORE(x) x // no extra underscore for Linux* OS symbols
+ // Format labels so that they don't override function names in gdb's backtraces
+ // MIC assembler doesn't accept .L syntax, the L works fine there (as well as
+ // on OS X*)
+@@ -209,6 +209,24 @@ __kmp_unnamed_critical_addr:
+ #  endif /* KMP_OS_DARWIN */
+ # endif /* KMP_ARCH_X86_64 */
+ 
++# if KMP_OS_DARWIN && (KMP_ARCH_PPC || KMP_ARCH_PPC64)
++#  if KMP_ARCH_PPC
++        .data
++        .comm .gomp_critical_user_,32
++        .data
++        .globl ___kmp_unnamed_critical_addr
++___kmp_unnamed_critical_addr:
++        .long .gomp_critical_user_
++#  else // Darwin ppc64
++        .data
++        .comm .gomp_critical_user_,32
++        .data
++        .globl ___kmp_unnamed_critical_addr
++___kmp_unnamed_critical_addr:
++        .quad .gomp_critical_user_
++#  endif /* KMP_ARCH_* */
++# endif /* KMP_OS_DARWIN && (KMP_ARCH_PPC || KMP_ARCH_PPC64) */
++
+ #endif /* KMP_GOMP_COMPAT */
+ 
+ 
+@@ -1203,7 +1221,7 @@ KMP_LABEL(kmp_1_exit):
+ // -----------------------------------------------------------------------
+ #endif /* KMP_ARCH_X86_64 */
+ 
+-// '
++
+ #if (KMP_OS_LINUX || KMP_OS_DARWIN) && KMP_ARCH_AARCH64
+ 
+ //------------------------------------------------------------------------
+@@ -1330,7 +1348,8 @@ KMP_LABEL(kmp_1):
+ 
+ #endif /* (KMP_OS_LINUX || KMP_OS_DARWIN) && KMP_ARCH_AARCH64 */
+ 
+-#if KMP_ARCH_PPC64
++#if (KMP_ARCH_PPC || KMP_ARCH_PPC64) && !KMP_OS_DARWIN
++// TODO: Darwin is not yet implemented below
+ 
+ //------------------------------------------------------------------------
+ // int
+@@ -1426,7 +1445,7 @@ __kmp_invoke_microtask:
+ // Compute the size necessary for the local stack frame.
+ # if KMP_ARCH_PPC64_ELFv2
+ 	li 12, 72
+-# else
++# elseif KMP_ARCH_PPC64_ELFv1
+ 	li 12, 88
+ # endif
+ 	sldi 0, 6, 3
+@@ -1504,7 +1523,7 @@ __kmp_invoke_microtask:
+ 	addi 4, 4, 40
+ # if KMP_ARCH_PPC64_ELFv2
+ 	addi 12, 1, 88
+-# else
++# elseif KMP_ARCH_PPC64_ELFv1
+ 	addi 12, 1, 104
+ # endif
+ 
+@@ -1517,7 +1536,7 @@ __kmp_invoke_microtask:
+ # if KMP_ARCH_PPC64_ELFv2
+ 	std 2, 24(1)
+ 	mr 12, 3
+-#else
++# elseif KMP_ARCH_PPC64_ELFv1
+ 	std 2, 40(1)
+ // For ELFv1, we need to load the actual function address from the function descriptor.
+ 	ld 12, 0(3)
+@@ -1532,7 +1551,7 @@ __kmp_invoke_microtask:
+ 	bctrl
+ # if KMP_ARCH_PPC64_ELFv2
+ 	ld 2, 24(1)
+-# else
++# elseif KMP_ARCH_PPC64_ELFv1
+ 	ld 2, 40(1)
+ # endif
+ 
+@@ -1561,7 +1580,7 @@ __kmp_invoke_microtask:
+ 
+ // -- End  __kmp_invoke_microtask
+ 
+-#endif /* KMP_ARCH_PPC64 */
++#endif /* KMP_ARCH_PPC || KMP_ARCH_PPC64 */
+ 
+ #if KMP_ARCH_RISCV64
+ 
+@@ -1730,6 +1749,8 @@ __kmp_invoke_microtask:
+ 
+ #endif /* KMP_ARCH_RISCV64 */
+ 
++// For Darwin see above in KMP_GOMP_COMPAT section
++
+ #if KMP_ARCH_ARM || KMP_ARCH_MIPS
+     .data
+     .comm .gomp_critical_user_,32,8
+@@ -1739,7 +1760,7 @@ __kmp_invoke_microtask:
+ __kmp_unnamed_critical_addr:
+     .4byte .gomp_critical_user_
+     .size __kmp_unnamed_critical_addr,4
+-#endif /* KMP_ARCH_ARM */
++#endif /* KMP_ARCH_ARM || KMP_ARCH_MIPS */
+ 
+ #if KMP_ARCH_PPC64 || KMP_ARCH_AARCH64 || KMP_ARCH_MIPS64 || KMP_ARCH_RISCV64
+     .data
+@@ -1749,9 +1770,10 @@ __kmp_unnamed_critical_addr:
+     .global __kmp_unnamed_critical_addr
+ __kmp_unnamed_critical_addr:
+     .8byte .gomp_critical_user_
++#ifdef __ELF__
+     .size __kmp_unnamed_critical_addr,8
+-#endif /* KMP_ARCH_PPC64 || KMP_ARCH_AARCH64 || KMP_ARCH_MIPS64 ||
+-          KMP_ARCH_RISCV64 */
++#endif
++#endif /* KMP_ARCH_PPC64 || KMP_ARCH_AARCH64 || KMP_ARCH_MIPS64 || KMP_ARCH_RISCV64 */
+ 
+ #if KMP_OS_LINUX
+ # if KMP_ARCH_ARM
+diff --git a/openmp/runtime/test/ompt/callback.h b/openmp/runtime/test/ompt/callback.h
+index 6b756b8a75a1..e4ff6257dd47 100644
+--- llvm_master/projects/openmp/runtime/test/ompt/callback.h
++++ macports_master/projects/openmp/runtime/test/ompt/callback.h
+@@ -175,6 +175,11 @@ ompt_label_##id:
+ // inserts a second NOP instruction (another 4 bytes). For non-void runtime
+ // functions Clang inserts a STW instruction (but only if compiling under
+ // -fno-PIC which will be the default with Clang 8.0, another 4 bytes).
++#define print_possible_return_addresses(addr) \
++  printf("%" PRIu64 ": current_address=%p or %p\n", ompt_get_thread_data()->value, \
++         ((char *)addr) - 8, ((char *)addr) - 12)
++#elif KMP_ARCH_PPC
++// TODO: is this gonna work on Darwin?
+ #define print_possible_return_addresses(addr) \
+   printf("%" PRIu64 ": current_address=%p or %p\n", ompt_get_thread_data()->value, \
+          ((char *)addr) - 8, ((char *)addr) - 12)
+diff --git a/openmp/runtime/tools/lib/Platform.pm b/openmp/runtime/tools/lib/Platform.pm
+index a6b158d90753..730ece72492e 100644
+--- llvm_master/projects/openmp/runtime/tools/lib/Platform.pm
++++ macports_master/projects/openmp/runtime/tools/lib/Platform.pm
+@@ -53,6 +53,8 @@ sub canon_arch($) {
+ 			$arch = "ppc64le";
+         } elsif ( $arch =~ m{\Appc64} ) {
+         	$arch = "ppc64";
++        } elsif ( $arch =~ m{\Appc} ) {
++        	$arch = "ppc";
+         } elsif ( $arch =~ m{\Aaarch64} ) {
+                 $arch = "aarch64";
+         } elsif ( $arch =~ m{\Amic} ) {
+@@ -217,6 +219,8 @@ sub target_options() {
+         $_host_arch = "ppc64le";
+     } elsif ( $hardware_platform eq "ppc64" ) {
+         $_host_arch = "ppc64";
++    } elsif ( $hardware_platform eq "ppc" ) {
++        $_host_arch = "ppc";
+     } elsif ( $hardware_platform eq "aarch64" ) {
+         $_host_arch = "aarch64";
+     } elsif ( $hardware_platform eq "mips64" ) {
+@@ -414,7 +418,7 @@ the script assumes host architecture is target one.
+ 
+ Input string is an architecture name to canonize. The function recognizes many variants, for example:
+ C<32e>, C<Intel64>, C<Intel(R) 64>, etc. Returned string is a canonized architecture name,
+-one of: C<32>, C<32e>, C<64>, C<arm>, C<ppc64le>, C<ppc64>, C<mic>, C<mips>, C<mips64>, C<riscv64> or C<undef> is input string is not recognized.
++one of: C<32>, C<32e>, C<64>, C<arm>, C<ppc64le>, C<ppc64>, C<ppc>, C<mic>, C<mips>, C<mips64>, C<riscv64> or C<undef> is input string is not recognized.
+ 
+ =item B<legal_arch( $arch )>
+ 
+diff --git a/openmp/runtime/tools/lib/Uname.pm b/openmp/runtime/tools/lib/Uname.pm
+index 99fe1cdbf00c..58910162aff4 100644
+--- llvm_master/projects/openmp/runtime/tools/lib/Uname.pm
++++ macports_master/projects/openmp/runtime/tools/lib/Uname.pm
+@@ -150,6 +150,8 @@ if ( 0 ) {
+         $values{ hardware_platform } = "ppc64le";
+     } elsif ( $values{ machine } =~ m{\Appc64\z} ) {
+         $values{ hardware_platform } = "ppc64";
++    } elsif ( $values{ machine } =~ m{\Appc\z} ) {
++        $values{ hardware_platform } = "ppc";
+     } elsif ( $values{ machine } =~ m{\Aaarch64\z} ) {
+         $values{ hardware_platform } = "aarch64";
+     } elsif ( $values{ machine } =~ m{\Amips64\z} ) {
+@@ -188,8 +190,12 @@ if ( 0 ) {
+                 return $platform;
+             }; # sub {
+     } elsif ( $values{ machine } eq "x86_64" ) {
+-	# Some OS X* versions report "x86_64".
+-	$values{ hardware_platform } = "x86_64";
++        # Some OS X* versions report "x86_64".
++        $values{ hardware_platform } = "x86_64";
++    } elsif ( $values{ machine } eq "ppc64" or $values{ machine } eq "powerpc64" ) {
++        $values{ hardware_platform } = "ppc64";
++    } elsif ( $values{ machine } eq "ppc" or $values{ machine } eq "powerpc" ) {
++        $values{ hardware_platform } = "ppc";
+     } else {
+         die "Unsupported machine (\"$values{ machine }\") returned by POSIX::uname(); stopped";
+     }; # if
+-- 
+2.36.1
+

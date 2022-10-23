@@ -1,0 +1,46 @@
+From 557813fad4f633708e6eda74a4075b948f105eda Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Fri, 21 Oct 2022 09:59:50 +0800
+Subject: [PATCH 17/19] libcxx: if LIBCXX_SYSROOT is given, it pre-empts the
+ use of xcrun Based on:
+ https://github.com/iains/LLVM-7-branch/commit/789f3322720c6b500660f313078153a897571eca
+
+---
+ libcxx/utils/libcxx/test/target_info.py | 18 ++++++++++++------
+ 1 file changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/libcxx/utils/libcxx/test/target_info.py b/libcxx/utils/libcxx/test/target_info.py
+index 3197276ffa5b..112a0ea0e334 100644
+--- llvm_master/projects/libcxx/utils/libcxx/test/target_info.py
++++ macports_master/projects/libcxx/utils/libcxx/test/target_info.py
+@@ -95,15 +95,21 @@ class DarwinLocalTI(DefaultTargetInfo):
+         return (True, name, version)
+ 
+     def add_cxx_compile_flags(self, flags):
+-        if self.full_config.use_deployment:
+-            _, name, _ = self.full_config.config.deployment
+-            cmd = ['xcrun', '--sdk', name, '--show-sdk-path']
++        res = 0
++        if self.full_config.get_lit_conf('sysroot') != '':
++            # Other logic will add --sysroot= with this value, don't
++            # need to replicate, and don't want to override with whatever
++            # Xcode happens to have.
++            out = ''
+         else:
+             cmd = ['xcrun', '--show-sdk-path']
+-        out, err, exit_code = executeCommand(cmd)
+-        if exit_code != 0:
++            try:
++                out = subprocess.check_output(cmd).strip()
++            except OSError:
++                res = -1
++        if res != 0:
+             self.full_config.lit_config.warning("Could not determine macOS SDK path! stderr was " + err)
+-        if exit_code == 0 and out:
++        if res == 0 and out:
+             sdk_path = out.strip()
+             self.full_config.lit_config.note('using SDKROOT: %r' % sdk_path)
+             assert isinstance(sdk_path, str)
+-- 
+2.36.1
+

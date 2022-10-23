@@ -1,0 +1,52 @@
+From 911f320f3df81a55d131d4e6f3066270e0279ab2 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sun, 23 Oct 2022 01:34:15 +0800
+Subject: [PATCH 28/30] llvm: allow quoted symbol names Forwardport of:
+ https://github.com/iains/LLVM-7-branch/commit/c601a48e24f18fea3dc548c66b1d6b22030d1b2e
+
+---
+ .../Target/PowerPC/AsmParser/PPCAsmParser.cpp |  1 +
+ .../MC/PowerPC/darwin-accept-quoted-symbols.s | 19 +++++++++++++++++++
+ 2 files changed, 20 insertions(+)
+ create mode 100644 llvm/test/MC/PowerPC/darwin-accept-quoted-symbols.s
+
+diff --git a/llvm/lib/Target/PowerPC/AsmParser/PPCAsmParser.cpp b/llvm/lib/Target/PowerPC/AsmParser/PPCAsmParser.cpp
+index 13fd7d05ab9f..510f19c028fd 100644
+--- llvm_master/lib/Target/PowerPC/AsmParser/PPCAsmParser.cpp
++++ macports_master/lib/Target/PowerPC/AsmParser/PPCAsmParser.cpp
+@@ -1485,6 +1485,7 @@ bool PPCAsmParser::ParseOperand(OperandVector &Operands) {
+   case AsmToken::Dollar:
+   case AsmToken::Exclaim:
+   case AsmToken::Tilde:
++  case AsmToken::String:
+     // Note that non-register-name identifiers from the compiler will begin
+     // with '_', 'L'/'l' or '"'.  Of course, handwritten asm could include
+     // identifiers like r31foo - so we fall through in the event that parsing
+diff --git a/llvm/test/MC/PowerPC/darwin-accept-quoted-symbols.s b/llvm/test/MC/PowerPC/darwin-accept-quoted-symbols.s
+new file mode 100644
+index 000000000000..107fdf9d0d9a
+--- /dev/null
++++ macports_master/test/MC/PowerPC/darwin-accept-quoted-symbols.s
+@@ -0,0 +1,19 @@
++# RUN: llvm-mc -triple powerpc-darwin --show-encoding %s | \
++# RUN:         FileCheck -check-prefix=CHECK %s
++# RUN: llvm-mc -triple powerpc64-darwin --show-encoding %s | \
++# RUN:         FileCheck -check-prefix=CHECK %s
++
++# Test that we can parse and produce output for quoted symbols as required.
++
++# Needed to support Objective-C
++	b "+[someObject someMethod:]"
++# CHECK: fixup A - offset: 0, value: +[someObject someMethod:], kind: fixup_ppc_br24
++
++# Needed to support assembly of .s files produced by Apple gcc-4.2.1
++	bcl 20, 31, "L000001$pb"
++# CHECK: fixup A - offset: 0, value: L000001$pb, kind: fixup_ppc_brcond14
++"L000001$pb":
++	nop
++	blr
++
++# CHECK: blr ; encoding: [0x4e,0x80,0x00,0x20]
+-- 
+2.36.1
+

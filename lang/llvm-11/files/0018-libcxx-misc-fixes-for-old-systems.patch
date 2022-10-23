@@ -1,0 +1,226 @@
+From 7570f976efc53f10199b96c6838eb857dbb69abe Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Fri, 21 Oct 2022 10:27:28 +0800
+Subject: [PATCH 18/19] libcxx: misc fixes for old systems From:
+ https://github.com/iains/LLVM-7-branch/commits/7.1.1-Darwin-WIP/libcxx
+
+---
+ .../memory/aligned_allocation_macro.pass.cpp  |  4 ++++
+ .../delete_align_val_t_replace.pass.cpp       |  4 ++++
+ .../new.delete.array/new_align_val_t.pass.cpp |  4 ++++
+ .../new_align_val_t_nothrow.pass.cpp          |  4 ++++
+ .../new_align_val_t_nothrow_replace.pass.cpp  |  4 ++++
+ .../new_align_val_t_replace.pass.cpp          |  1 +
+ .../delete_align_val_t_replace.pass.cpp       |  4 ++++
+ .../new_align_val_t.pass.cpp                  |  4 ++++
+ .../new_align_val_t_nothrow.pass.cpp          |  4 ++++
+ .../new_align_val_t_nothrow_replace.pass.cpp  |  4 ++++
+ .../new_align_val_t_replace.pass.cpp          |  1 +
+ libcxx/utils/libcxx/test/target_info.py       | 22 +++++++++++--------
+ 12 files changed, 51 insertions(+), 9 deletions(-)
+
+diff --git a/libcxx/test/libcxx/memory/aligned_allocation_macro.pass.cpp b/libcxx/test/libcxx/memory/aligned_allocation_macro.pass.cpp
+index 749c9470c306..6a16a63016f9 100644
+--- llvm_master/projects/libcxx/test/libcxx/memory/aligned_allocation_macro.pass.cpp
++++ macports_master/projects/libcxx/test/libcxx/memory/aligned_allocation_macro.pass.cpp
+@@ -20,6 +20,10 @@
+ // XFAIL: availability=macosx10.11
+ // XFAIL: availability=macosx10.10
+ // XFAIL: availability=macosx10.9
++// XFAIL: availability=macosx10.8
++// XFAIL: availability=macosx10.7
++// XFAIL: availability=macosx10.6
++// XFAIL: availability=macosx10.5
+ 
+ #include <new>
+ 
+diff --git a/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/delete_align_val_t_replace.pass.cpp b/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/delete_align_val_t_replace.pass.cpp
+index b092fa141e61..91e450292d26 100644
+--- llvm_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/delete_align_val_t_replace.pass.cpp
++++ macports_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/delete_align_val_t_replace.pass.cpp
+@@ -30,6 +30,10 @@
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.11
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.10
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.9
++// UNSUPPORTED: macosx10.8
++// UNSUPPORTED: macosx10.7
++// UNSUPPORTED: macosx10.6
++// UNSUPPORTED: macosx10.5
+ 
+ // On Windows libc++ doesn't provide its own definitions for new/delete
+ // but instead depends on the ones in VCRuntime. However VCRuntime does not
+diff --git a/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t.pass.cpp b/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t.pass.cpp
+index bfa5f155a9c5..08207774b3e6 100644
+--- llvm_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t.pass.cpp
++++ macports_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t.pass.cpp
+@@ -28,6 +28,10 @@
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.11
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.10
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.9
++// UNSUPPORTED: macosx10.8
++// UNSUPPORTED: macosx10.7
++// UNSUPPORTED: macosx10.6
++// UNSUPPORTED: macosx10.5
+ 
+ // On Windows libc++ doesn't provide its own definitions for new/delete
+ // but instead depends on the ones in VCRuntime. However VCRuntime does not
+diff --git a/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t_nothrow.pass.cpp b/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t_nothrow.pass.cpp
+index 869e29a8e87b..59d1da3236a8 100644
+--- llvm_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t_nothrow.pass.cpp
++++ macports_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t_nothrow.pass.cpp
+@@ -28,6 +28,10 @@
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.11
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.10
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.9
++// UNSUPPORTED: macosx10.8
++// UNSUPPORTED: macosx10.7
++// UNSUPPORTED: macosx10.6
++// UNSUPPORTED: macosx10.5
+ 
+ // On Windows libc++ doesn't provide its own definitions for new/delete
+ // but instead depends on the ones in VCRuntime. However VCRuntime does not
+diff --git a/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t_nothrow_replace.pass.cpp b/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t_nothrow_replace.pass.cpp
+index 6f346a72a0ae..08b466247d70 100644
+--- llvm_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t_nothrow_replace.pass.cpp
++++ macports_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t_nothrow_replace.pass.cpp
+@@ -26,6 +26,10 @@
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.11
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.10
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.9
++// UNSUPPORTED: macosx10.8
++// UNSUPPORTED: macosx10.7
++// UNSUPPORTED: macosx10.6
++// UNSUPPORTED: macosx10.5
+ 
+ // On Windows libc++ doesn't provide its own definitions for new/delete
+ // but instead depends on the ones in VCRuntime. However VCRuntime does not
+diff --git a/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t_replace.pass.cpp b/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t_replace.pass.cpp
+index 4d46712d3c82..0121f2ad1f3b 100644
+--- llvm_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t_replace.pass.cpp
++++ macports_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.array/new_align_val_t_replace.pass.cpp
+@@ -8,6 +8,7 @@
+ 
+ // UNSUPPORTED: c++03, c++11, c++14
+ // UNSUPPORTED: sanitizer-new-delete
++// UNSUPPORTED: macosx10.5
+ 
+ // test operator new replacement
+ 
+diff --git a/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/delete_align_val_t_replace.pass.cpp b/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/delete_align_val_t_replace.pass.cpp
+index f50507a815d4..291bd6e3b986 100644
+--- llvm_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/delete_align_val_t_replace.pass.cpp
++++ macports_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/delete_align_val_t_replace.pass.cpp
+@@ -30,6 +30,10 @@
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.11
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.10
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.9
++// UNSUPPORTED: macosx10.8
++// UNSUPPORTED: macosx10.7
++// UNSUPPORTED: macosx10.6
++// UNSUPPORTED: macosx10.5
+ 
+ // On Windows libc++ doesn't provide its own definitions for new/delete
+ // but instead depends on the ones in VCRuntime. However VCRuntime does not
+diff --git a/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t.pass.cpp b/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t.pass.cpp
+index 80ec88e437fe..8fe4b303a2ac 100644
+--- llvm_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t.pass.cpp
++++ macports_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t.pass.cpp
+@@ -25,6 +25,10 @@
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.11
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.10
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.9
++// UNSUPPORTED: macosx10.8
++// UNSUPPORTED: macosx10.7
++// UNSUPPORTED: macosx10.6
++// UNSUPPORTED: macosx10.5
+ 
+ // asan and msan will not call the new handler.
+ // UNSUPPORTED: sanitizer-new-delete
+diff --git a/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t_nothrow.pass.cpp b/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t_nothrow.pass.cpp
+index 0a42fbac6fd4..db1afd06881c 100644
+--- llvm_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t_nothrow.pass.cpp
++++ macports_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t_nothrow.pass.cpp
+@@ -25,6 +25,10 @@
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.11
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.10
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.9
++// UNSUPPORTED: macosx10.8
++// UNSUPPORTED: macosx10.7
++// UNSUPPORTED: macosx10.6
++// UNSUPPORTED: macosx10.5
+ 
+ // asan and msan will not call the new handler.
+ // UNSUPPORTED: sanitizer-new-delete
+diff --git a/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t_nothrow_replace.pass.cpp b/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t_nothrow_replace.pass.cpp
+index 655ec9352d68..2a4265ab5171 100644
+--- llvm_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t_nothrow_replace.pass.cpp
++++ macports_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t_nothrow_replace.pass.cpp
+@@ -26,6 +26,10 @@
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.11
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.10
+ // XFAIL: (apple-clang-9 || apple-clang-10) && with_system_cxx_lib=macosx10.9
++// UNSUPPORTED: macosx10.8
++// UNSUPPORTED: macosx10.7
++// UNSUPPORTED: macosx10.6
++// UNSUPPORTED: macosx10.5
+ 
+ // On Windows libc++ doesn't provide its own definitions for new/delete
+ // but instead depends on the ones in VCRuntime. However VCRuntime does not
+diff --git a/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t_replace.pass.cpp b/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t_replace.pass.cpp
+index 6b5f3eb44233..48607214c94b 100644
+--- llvm_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t_replace.pass.cpp
++++ macports_master/projects/libcxx/test/std/language.support/support.dynamic/new.delete/new.delete.single/new_align_val_t_replace.pass.cpp
+@@ -8,6 +8,7 @@
+ 
+ // UNSUPPORTED: c++03, c++11, c++14
+ // UNSUPPORTED: sanitizer-new-delete
++// UNSUPPORTED: macosx10.5
+ 
+ // test operator new replacement
+ 
+diff --git a/libcxx/utils/libcxx/test/target_info.py b/libcxx/utils/libcxx/test/target_info.py
+index 112a0ea0e334..daf3e711454a 100644
+--- llvm_master/projects/libcxx/utils/libcxx/test/target_info.py
++++ macports_master/projects/libcxx/utils/libcxx/test/target_info.py
+@@ -61,17 +61,21 @@ class DarwinLocalTI(DefaultTargetInfo):
+ 
+     def get_sdk_version(self, name):
+         assert self.is_host_macosx()
+-        cmd = ['xcrun', '--sdk', name, '--show-sdk-path']
+-        try:
+-            out = subprocess.check_output(cmd).strip()
+-        except OSError:
+-            pass
+-
++        res = 0
++        out = self.full_config.get_lit_conf('sysroot')
+         if not out:
++            cmd = ['xcrun', '--sdk', name, '--show-sdk-path']
++            try:
++                out = subprocess.check_output(cmd).strip()
++            except OSError:
++                res = -1
++        full_config.lit_config.note('out: %r' % out)
++        if res == 0 and out:
++            return re.sub(r'.*/[^0-9]+([0-9.]+)\.sdk', r'\1', out)
++        else:
+             self.full_config.lit_config.fatal(
+                     "cannot infer sdk version with: %r" % cmd)
+-
+-        return re.sub(r'.*/[^0-9]+([0-9.]+)\.sdk', r'\1', out)
++        return '10.4'
+ 
+     def get_platform(self):
+         platform = self.full_config.get_lit_conf('platform')
+@@ -116,7 +120,7 @@ class DarwinLocalTI(DefaultTargetInfo):
+             flags += ["-isysroot", sdk_path]
+ 
+     def add_cxx_link_flags(self, flags):
+-        flags += ['-lSystem']
++        flags += [ '-latomic', '-lgcc_s.10.5', '-lSystem']
+ 
+     def allow_cxxabi_link(self):
+         # Don't link libc++abi explicitly on OS X because the symbols
+-- 
+2.36.1
+

@@ -1,0 +1,49 @@
+From 3d1296e884e48ea293910faffbcf834a74199aeb Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sun, 23 Oct 2022 02:01:57 +0800
+Subject: [PATCH 30/30] compiler-rt: use -Os for PPC
+
+---
+ compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake | 4 ++++
+ compiler-rt/cmake/caches/Apple.cmake                  | 6 ++++++
+ 2 files changed, 10 insertions(+)
+
+diff --git a/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake b/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
+index 6a4dae3c4e2e..58baedd80a11 100644
+--- llvm_master/projects/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
++++ macports_master/projects/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
+@@ -403,7 +403,11 @@ endfunction()
+ macro(darwin_add_builtin_libraries)
+   set(DARWIN_EXCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Darwin-excludes)
+ 
++if(CMAKE_OSX_ARCHITECTURES MATCHES "ppc" OR CMAKE_OSX_ARCHITECTURES MATCHES "ppc64")
++  set(CFLAGS "-fPIC -Os -fvisibility=hidden -DVISIBILITY_HIDDEN -Wall -fomit-frame-pointer")
++else()
+   set(CFLAGS "-fPIC -O3 -fvisibility=hidden -DVISIBILITY_HIDDEN -Wall -fomit-frame-pointer")
++endif()
+   set(CMAKE_C_FLAGS "")
+   set(CMAKE_CXX_FLAGS "")
+   set(CMAKE_ASM_FLAGS "")
+diff --git a/compiler-rt/cmake/caches/Apple.cmake b/compiler-rt/cmake/caches/Apple.cmake
+index cdee3c088057..94885b98ef4c 100644
+--- llvm_master/projects/compiler-rt/cmake/caches/Apple.cmake
++++ macports_master/projects/compiler-rt/cmake/caches/Apple.cmake
+@@ -6,9 +6,15 @@ set(COMPILER_RT_HAS_SAFESTACK OFF CACHE BOOL "")
+ set(COMPILER_RT_EXTERNALIZE_DEBUGINFO ON CACHE BOOL "")
+ set(CMAKE_MACOSX_RPATH ON CACHE BOOL "")
+ 
++if(CMAKE_OSX_ARCHITECTURES MATCHES "ppc" OR CMAKE_OSX_ARCHITECTURES MATCHES "ppc64")
++set(CMAKE_C_FLAGS_RELEASE "-Os" CACHE STRING "")
++set(CMAKE_CXX_FLAGS_RELEASE "-Os" CACHE STRING "")
++set(CMAKE_ASM_FLAGS_RELEASE "-Os" CACHE STRING "")
++else()
+ set(CMAKE_C_FLAGS_RELEASE "-O3" CACHE STRING "")
+ set(CMAKE_CXX_FLAGS_RELEASE "-O3" CACHE STRING "")
+ set(CMAKE_ASM_FLAGS_RELEASE "-O3" CACHE STRING "")
++endif()
+ set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -gline-tables-only -DNDEBUG" CACHE STRING "")
+ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -gline-tables-only -DNDEBUG" CACHE STRING "")
+ set(CMAKE_ASM_FLAGS_RELWITHDEBINFO "-O3 -gline-tables-only -DNDEBUG" CACHE STRING "")
+-- 
+2.36.1
+

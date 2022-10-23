@@ -1,0 +1,24 @@
+From a190913facc3a817b395827c2878981d7c1fd94a Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sat, 22 Oct 2022 23:57:29 +0800
+Subject: [PATCH 22/24] compiler-rt: exclude PPC builtins using long double for
+ Apple
+
+---
+ compiler-rt/lib/builtins/Darwin-excludes/osx-ppc.txt | 3 +++
+ 1 file changed, 3 insertions(+)
+ create mode 100644 compiler-rt/lib/builtins/Darwin-excludes/osx-ppc.txt
+
+diff --git a/compiler-rt/lib/builtins/Darwin-excludes/osx-ppc.txt b/compiler-rt/lib/builtins/Darwin-excludes/osx-ppc.txt
+new file mode 100644
+index 000000000000..ad9bc952fb1c
+--- /dev/null
++++ macports_master/projects/compiler-rt/lib/builtins/Darwin-excludes/osx-ppc.txt
+@@ -0,0 +1,3 @@
++fixtfti
++fixunstfti
++floattitf
+\ No newline at end of file
+-- 
+2.36.1
+

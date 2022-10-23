@@ -1,0 +1,43 @@
+From 4136163a0745a8dd102e9d82aff2b386edd4a90b Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sun, 23 Oct 2022 01:18:03 +0800
+Subject: [PATCH 26/30] llvm: add ppc64 to checkThreadCommand Forwardport of:
+ https://github.com/iains/LLVM-7-branch/commit/a932ea5616507ef90164c26dbd764da958777154
+
+---
+ llvm/lib/Object/MachOObjectFile.cpp | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+
+diff --git a/llvm/lib/Object/MachOObjectFile.cpp b/llvm/lib/Object/MachOObjectFile.cpp
+index a7b50484ac62..90d2c36d7146 100644
+--- llvm_master/lib/Object/MachOObjectFile.cpp
++++ macports_master/lib/Object/MachOObjectFile.cpp
+@@ -1178,6 +1178,25 @@ static Error checkThreadCommand(const MachOObjectFile &Obj,
+                               "flavor number " + Twine(nflavor) + " in " +
+                               CmdName + " command");
+       }
++    } else if (cputype == MachO::CPU_TYPE_POWERPC64) {
++      if (flavor == MachO::PPC_THREAD_STATE64) {
++        if (count != MachO::PPC_THREAD_STATE64_COUNT)
++          return malformedError("load command " + Twine(LoadCommandIndex) +
++                                " count not PPC_THREAD_STATE_COUNT for "
++                                "flavor number " + Twine(nflavor) + " which is "
++                                "a PPC_THREAD_STATE flavor in " + CmdName +
++                                " command");
++        if (state + sizeof(MachO::ppc_thread_state64_t) > end)
++          return malformedError("load command " + Twine(LoadCommandIndex) +
++                                " PPC_THREAD_STATE extends past end of "
++                                "command in " + CmdName + " command");
++        state += sizeof(MachO::ppc_thread_state64_t);
++      } else {
++        return malformedError("load command " + Twine(LoadCommandIndex) +
++                              " unknown flavor (" + Twine(flavor) + ") for "
++                              "flavor number " + Twine(nflavor) + " in " +
++                              CmdName + " command");
++      }
+     } else {
+       return malformedError("unknown cputype (" + Twine(cputype) + ") load "
+                             "command " + Twine(LoadCommandIndex) + " for " +
+-- 
+2.36.1
+

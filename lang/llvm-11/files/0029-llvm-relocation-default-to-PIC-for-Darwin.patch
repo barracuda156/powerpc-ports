@@ -1,0 +1,332 @@
+From 076ec3c589e5d15955732f9820f35861b795c60c Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sun, 23 Oct 2022 01:47:59 +0800
+Subject: [PATCH 29/30] llvm: relocation default to PIC for Darwin Forwardport
+ of:
+ https://github.com/iains/LLVM-7-branch/commit/63651705593278925c11634856c6a89702e4b791
+
+---
+ llvm/lib/Target/PowerPC/PPCTargetMachine.cpp  |  3 +-
+ .../PowerPC/2007-02-23-lr-saved-twice.ll      | 11 +--
+ llvm/test/CodeGen/PowerPC/anon_aggr.ll        | 92 ++++++++++++++++++-
+ llvm/test/CodeGen/PowerPC/hidden-vis-2.ll     | 14 +--
+ llvm/test/CodeGen/PowerPC/private.ll          | 18 +++-
+ llvm/test/CodeGen/PowerPC/stubs.ll            |  7 +-
+ llvm/test/CodeGen/PowerPC/tailcall1-64.ll     |  1 +
+ llvm/test/CodeGen/PowerPC/tailcall1.ll        |  1 +
+ .../PowerPC/vec_buildvector_loadstore.ll      | 21 +----
+ 9 files changed, 125 insertions(+), 43 deletions(-)
+
+diff --git a/llvm/lib/Target/PowerPC/PPCTargetMachine.cpp b/llvm/lib/Target/PowerPC/PPCTargetMachine.cpp
+index f15f9c7f4942..d0c1eaee854e 100644
+--- llvm_master/lib/Target/PowerPC/PPCTargetMachine.cpp
++++ macports_master/lib/Target/PowerPC/PPCTargetMachine.cpp
+@@ -230,9 +230,8 @@ static Reloc::Model getEffectiveRelocModel(const Triple &TT,
+   if (RM.hasValue())
+     return *RM;
+ 
+-  // Darwin defaults to dynamic-no-pic.
+   if (TT.isOSDarwin())
+-    return Reloc::DynamicNoPIC;
++    return Reloc::PIC_; // Darwin defaults to PIC.
+ 
+   // Big Endian PPC and AIX default to PIC.
+   if (TT.getArch() == Triple::ppc64 || TT.isOSAIX())
+diff --git a/llvm/test/CodeGen/PowerPC/2007-02-23-lr-saved-twice.ll b/llvm/test/CodeGen/PowerPC/2007-02-23-lr-saved-twice.ll
+index 803797a7291f..0215ebb60bcb 100644
+--- llvm_master/test/CodeGen/PowerPC/2007-02-23-lr-saved-twice.ll
++++ macports_master/test/CodeGen/PowerPC/2007-02-23-lr-saved-twice.ll
+@@ -1,15 +1,12 @@
+-; RUN: llc -verify-machineinstrs < %s | FileCheck %s
++; RUN: llc -verify-machineinstrs -mtriple=powerpc-apple-darwin8 -relocation-model=dynamic-no-pic < %s | grep mflr | count 1
+ 
+-target triple = "powerpc-unknown-linux-gnu"
+-@str = internal constant [18 x i8] c"hello world!, %d\0A\00"            ; <[18 x i8]*> [#uses=1]
++target datalayout = "e-p:32:32"
++target triple = "powerpc-apple-darwin8"
+ 
++@str = internal constant [18 x i8] c"hello world!, %d\0A\00"            ; <[18 x i8]*> [#uses=1]
+ 
+ define i32 @main() {
+ entry:
+-; CHECK: main:
+-; CHECK: mflr
+-; CHECK-NOT: mflr
+-; CHECK: mtlr
+         %tmp = tail call i32 (i8*, ...) @printf( i8* getelementptr ([18 x i8], [18 x i8]* @str, i32 0, i32 0) )                ; <i32> [#uses=0]
+         ret i32 0
+ }
+diff --git a/llvm/test/CodeGen/PowerPC/anon_aggr.ll b/llvm/test/CodeGen/PowerPC/anon_aggr.ll
+index 17f4ed46697d..622edf6d8e51 100644
+--- llvm_master/test/CodeGen/PowerPC/anon_aggr.ll
++++ macports_master/test/CodeGen/PowerPC/anon_aggr.ll
+@@ -1,4 +1,6 @@
+ ; RUN: llc -verify-machineinstrs -O0 -mcpu=ppc64 -mtriple=powerpc64-unknown-linux-gnu -fast-isel=false < %s | FileCheck %s
++; RUN: llc -verify-machineinstrs -O0 -mcpu=g4 -mtriple=powerpc-apple-darwin8 -relocation-model=dynamic-no-pic < %s | FileCheck -check-prefix=DARWIN32 %s
++; RUN: llc -verify-machineinstrs -O0 -mcpu=970 -mtriple=powerpc64-apple-darwin8 -relocation-model=dynamic-no-pic < %s | FileCheck -check-prefix=DARWIN64 %s
+ 
+ ; Test case for PR 14779: anonymous aggregates are not handled correctly.
+ ; Darwin bug report PR 15821 is similar.
+@@ -25,6 +27,26 @@ unequal:
+ ; CHECK: ld 3, -[[OFFSET1]](1)
+ ; CHECK: ld 3, -[[OFFSET2]](1)
+ 
++; DARWIN32: _func1:
++; DARWIN32: mr
++; DARWIN32: mr r[[REG1:[0-9]+]], r[[REGA:[0-9]+]]
++; DARWIN32: mr r[[REG2:[0-9]+]], r[[REGB:[0-9]+]]
++; DARWIN32: cmplw {{(cr[0-9]+,)?}}r[[REGB]], r[[REGA]]
++; DARWIN32: stw r[[REG1]], -[[OFFSET1:[0-9]+]]
++; DARWIN32: stw r[[REG2]], -[[OFFSET2:[0-9]+]]
++; DARWIN32: lwz r3, -[[OFFSET2]]
++; DARWIN32: lwz r3, -[[OFFSET1]]
++
++; DARWIN64: _func1:
++; DARWIN64: mr
++; DARWIN64: mr r[[REG1:[0-9]+]], r[[REGA:[0-9]+]]
++; DARWIN64: mr r[[REG2:[0-9]+]], r[[REGB:[0-9]+]]
++; DARWIN64: cmpld {{(cr[0-9]+,)?}}r[[REGB]], r[[REGA]]
++; DARWIN64: std r[[REG1]], -[[OFFSET2:[0-9]+]]
++; DARWIN64: std r[[REG2]], -[[OFFSET1:[0-9]+]]
++; DARWIN64: ld r3, -[[OFFSET1]]
++; DARWIN64: ld r3, -[[OFFSET2]]
++
+ define i8* @func2({ i64, i8* } %array1, %tarray* byval %array2) {
+ entry:
+   %array1_ptr = extractvalue {i64, i8* } %array1, 1
+@@ -38,14 +60,36 @@ unequal:
+   ret i8* %array2_ptr
+ }
+ ; CHECK-LABEL: func2:
+-; CHECK-DAG: cmpld {{([0-9]+,)?}}4, 5
++; CHECK-DAG: cmpld {{([0-9]+,)?}}4, 6
+ ; CHECK-DAG: std 6, 72(1)
+ ; CHECK-DAG: std 5, 64(1)
+-; CHECK-DAG: std 5, -[[OFFSET1:[0-9]+]]
+-; CHECK-DAG: std 3, -[[OFFSET2:[0-9]+]]
++; CHECK-DAG: std 6, -[[OFFSET1:[0-9]+]]
++; CHECK-DAG: std 5, -[[OFFSET2:[0-9]+]]
+ ; CHECK: ld 3, -[[OFFSET2]](1)
+ ; CHECK: ld 3, -[[OFFSET1]](1)
+ 
++; DARWIN32-LABEL: _func2
++; DARWIN32: mr
++; DARWIN32: addi r[[REG8:[0-9]+]], r[[REGSP:[0-9]+]], 36
++; DARWIN32: mr r[[REG7:[0-9]+]], r5
++; DARWIN32: lwz r[[REG2:[0-9]+]], 44(r[[REGSP]])
++; DARWIN32-DAG: cmplw {{(cr[0-9]+,)?}}r5, r[[REG2]]
++; DARWIN32-DAG: stw r[[REG7]], -[[OFFSET1:[0-9]+]]
++; DARWIN32-DAG: stw r[[REG2]], -[[OFFSET2:[0-9]+]]
++; DARWIN32-DAG: lwz r3, -[[OFFSET1]]
++; DARWIN32-DAG: lwz r3, -[[OFFSET2]]
++
++
++; DARWIN64: _func2:
++; DARWIN64: mr
++; DARWIN64: mr r[[REG3:[0-9]+]], r[[REGA:[0-9]+]]
++; DARWIN64: ld r[[REG2:[0-9]+]], 72(r1)
++; DARWIN64: cmpld {{(cr[0-9]+,)?}}r[[REGA]], r[[REG2]]
++; DARWIN64: std r[[REG2]], -[[OFFSET2:[0-9]+]]
++; DARWIN64: std r[[REG3]], -[[OFFSET1:[0-9]+]]
++; DARWIN64: ld r3, -[[OFFSET1]]
++; DARWIN64: ld r3, -[[OFFSET2]]
++
+ define i8* @func3({ i64, i8* }* byval %array1, %tarray* byval %array2) {
+ entry:
+   %tmp1 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %array1, i32 0, i32 1
+@@ -67,6 +111,28 @@ unequal:
+ ; CHECK: ld 3, -[[OFFSET2]](1)
+ ; CHECK: ld 3, -[[OFFSET1]](1)
+ 
++; DARWIN32-LABEL: _func3:
++; DARWIN32-DAG: stw r[[REG8:[0-9]+]], 44(r[[REGSP:[0-9]+]])
++; DARWIN32-DAG: stw r[[REG5:[0-9]+]], 32(r[[REGSP]])
++; DARWIN32-DAG: addi r[[REG5a:[0-9]+]], r[[REGSP:[0-9]+]], 36
++; DARWIN32-DAG: addi r[[REG8a:[0-9]+]], r[[REGSP]], 24
++; DARWIN32-DAG: lwz r[[REG5a:[0-9]+]], 44(r[[REGSP]])
++; DARWIN32-DAG: lwz r[[REG8a:[0-9]+]], 32(r[[REGSP]])
++; DARWIN32-DAG: cmplw {{(cr[0-9]+,)?}}r[[REG8a]], r[[REG5a]]
++; DARWIN32-DAG: stw r[[REG5a]], -[[OFFSET1:[0-9]+]]
++; DARWIN32-DAG: stw r[[REG8a]], -[[OFFSET2:[0-9]+]]
++; DARWIN32-DAG: lwz r3, -[[OFFSET1:[0-9]+]]
++; DARWIN32-DAG: lwz r3, -[[OFFSET2:[0-9]+]]
++
++; DARWIN64: _func3:
++; DARWIN64-DAG: ld r[[REG3:[0-9]+]], 72(r1)
++; DARWIN64-DAG: ld r[[REG4:[0-9]+]], 56(r1)
++; DARWIN64: cmpld {{(cr[0-9]+,)?}}r[[REG4]], r[[REG3]]
++; DARWIN64: std r[[REG4]], -[[OFFSET1:[0-9]+]]
++; DARWIN64: std r[[REG3]], -[[OFFSET2:[0-9]+]]
++; DARWIN64: ld r3, -[[OFFSET1]]
++; DARWIN64: ld r3, -[[OFFSET2]]
++
+ define i8* @func4(i64 %p1, i64 %p2, i64 %p3, i64 %p4,
+                   i64 %p5, i64 %p6, i64 %p7, i64 %p8,
+                   { i64, i8* } %array1, %tarray* byval %array2) {
+@@ -91,3 +157,23 @@ unequal:
+ ; CHECK: ld 3, -[[OFFSET1]](1)
+ ; CHECK: ld 3, -[[OFFSET2]](1)
+ 
++; DARWIN32: _func4:
++; DARWIN32: lwz r[[REG4:[0-9]+]], 96(r1)
++; DARWIN32: addi r[[REG1:[0-9]+]], r1, 100
++; DARWIN32: mr r[[REG2:[0-9]+]], r[[REG4]]
++; DARWIN32: lwz r[[REG3:[0-9]+]], 108(r1)
++; DARWIN32: cmplw {{(cr[0-9]+,)?}}r[[REG4]], r[[REG3]]
++; DARWIN32-DAG: stw r[[REG2]], -[[OFFSET1:[0-9]+]]
++; DARWIN32-DAG: stw r[[REG3]], -[[OFFSET2:[0-9]+]]
++; DARWIN32: lwz r3, -[[OFFSET1]]
++; DARWIN32: lwz r3, -[[OFFSET2]]
++
++; DARWIN64: _func4:
++; DARWIN64: ld r[[REG2:[0-9]+]], 120(r1)
++; DARWIN64-DAG: ld r[[REG3:[0-9]+]], 136(r1)
++; DARWIN64-DAG: mr r[[REG4:[0-9]+]], r[[REG2]]
++; DARWIN64: cmpld {{(cr[0-9]+,)?}}r[[REG2]], r[[REG3]]
++; DARWIN64: std r[[REG3]], -[[OFFSET2:[0-9]+]]
++; DARWIN64: std r[[REG4]], -[[OFFSET1:[0-9]+]]
++; DARWIN64: ld r3, -[[OFFSET1]]
++; DARWIN64: ld r3, -[[OFFSET2]]
+diff --git a/llvm/test/CodeGen/PowerPC/hidden-vis-2.ll b/llvm/test/CodeGen/PowerPC/hidden-vis-2.ll
+index 841e074ff5a1..71a67f013acf 100644
+--- llvm_master/test/CodeGen/PowerPC/hidden-vis-2.ll
++++ macports_master/test/CodeGen/PowerPC/hidden-vis-2.ll
+@@ -1,11 +1,11 @@
+-; RUN: llc -verify-machineinstrs < %s -mtriple=powerpc-unknown-linux-gnu | FileCheck %s
++; RUN: llc -verify-machineinstrs < %s -mtriple=powerpc-apple-darwin9 -relocation-model=dynamic-no-pic | FileCheck %s
+ 
+-; CHECK: lis 3, x@ha
+-; CHECK: lis 4, y@ha
+-; CHECK: lwz 3, x@l(3)
+-; CHECK: lwz 4, y@l(4)
+-; CHECK: .hidden x
+-; CHECK: .hidden y
++; CHECK: lis r2, ha16(L_x$non_lazy_ptr)
++; CHECK: lis r3, ha16(L_y$non_lazy_ptr)
++; CHECK: lwz r2, lo16(L_x$non_lazy_ptr)(r2)
++; CHECK: lwz r3, lo16(L_y$non_lazy_ptr)(r3)
++; CHECK: L_x$non_lazy_ptr:
++; CHECK: L_y$non_lazy_ptr:
+ 
+ @x = external hidden global i32
+ @y = extern_weak hidden global i32
+diff --git a/llvm/test/CodeGen/PowerPC/private.ll b/llvm/test/CodeGen/PowerPC/private.ll
+index 7eb4423b7b7b..c1ea228a6723 100644
+--- llvm_master/test/CodeGen/PowerPC/private.ll
++++ macports_master/test/CodeGen/PowerPC/private.ll
+@@ -1,20 +1,28 @@
+ ; Test to make sure that the 'private' is used correctly.
+ ;
+-; RUN: llc -verify-machineinstrs < %s -mtriple=powerpc-unknown-linux-gnu | FileCheck %s
++; RUN: llc -verify-machineinstrs < %s -mtriple=powerpc-unknown-linux-gnu | \
++; RUN: FileCheck --check-prefix=LINUX %s
++;
++; RUN: llc -verify-machineinstrs < %s -mtriple=powerpc-apple-darwin -relocation-model=dynamic-no-pic | \
++; RUN: FileCheck --check-prefix=OSX %s
+ 
+-; CHECK: .Lfoo:
++; LINUX: .Lfoo:
++; OSX: l_foo:
+ define private void @foo() nounwind {
+         ret void
+ }
+ 
+ define i32 @bar() nounwind {
+-; CHECK: bl{{.*}}.Lfoo
++; LINUX: bl{{.*}}.Lfoo
++; OSX: bl{{.*}}l_foo
+         call void @foo()
+ 
+-; CHECK: lis{{.*}}.Lbaz
++; LINUX: lis{{.*}}.Lbaz
++; OSX:  lis{{.*}}l_baz
+ 	%1 = load i32, i32* @baz, align 4
+         ret i32 %1
+ }
+ 
+-; CHECK: .Lbaz:
++; LINUX: .Lbaz:
++; OSX: l_baz:
+ @baz = private global i32 4
+diff --git a/llvm/test/CodeGen/PowerPC/stubs.ll b/llvm/test/CodeGen/PowerPC/stubs.ll
+index d8772b9b7fa2..225a9c558ed8 100644
+--- llvm_master/test/CodeGen/PowerPC/stubs.ll
++++ macports_master/test/CodeGen/PowerPC/stubs.ll
+@@ -1,9 +1,10 @@
+-; RUN: llc -verify-machineinstrs %s -o - -mtriple=powerpc-unknown-linux-gnu | FileCheck %s
++; RUN: llc -verify-machineinstrs %s -o - -mtriple=powerpc-apple-darwin9 -relocation-model=dynamic-no-pic | FileCheck %s
++
+ define ppc_fp128 @test1(i64 %X) nounwind readnone {
+ entry:
+   %0 = sitofp i64 %X to ppc_fp128
+   ret ppc_fp128 %0
+ }
+ 
+-; CHECK: test1:
+-; CHECK: bl __floatditf
++; CHECK: _test1:
++; CHECK: bl ___floatditf
+diff --git a/llvm/test/CodeGen/PowerPC/tailcall1-64.ll b/llvm/test/CodeGen/PowerPC/tailcall1-64.ll
+index 58ab0bce309c..f7dd83ebe520 100644
+--- llvm_master/test/CodeGen/PowerPC/tailcall1-64.ll
++++ macports_master/test/CodeGen/PowerPC/tailcall1-64.ll
+@@ -1,5 +1,6 @@
+ ; RUN: llc -relocation-model=static -verify-machineinstrs < %s -mtriple=ppc64-- -tailcallopt | grep TC_RETURNd8
+ ; RUN: llc -relocation-model=static -verify-machineinstrs -mtriple=ppc64-- < %s | FileCheck %s
++
+ define fastcc i32 @tailcallee(i32 %a1, i32 %a2, i32 %a3, i32 %a4) {
+ entry:
+ 	ret i32 %a3
+diff --git a/llvm/test/CodeGen/PowerPC/tailcall1.ll b/llvm/test/CodeGen/PowerPC/tailcall1.ll
+index 1c71b359cdec..65d4e782a403 100644
+--- llvm_master/test/CodeGen/PowerPC/tailcall1.ll
++++ macports_master/test/CodeGen/PowerPC/tailcall1.ll
+@@ -1,4 +1,5 @@
+ ; RUN: llc -verify-machineinstrs < %s -mtriple=ppc32-- -tailcallopt | grep TC_RETURN
++
+ define fastcc i32 @tailcallee(i32 %a1, i32 %a2, i32 %a3, i32 %a4) {
+ entry:
+ 	ret i32 %a3
+diff --git a/llvm/test/CodeGen/PowerPC/vec_buildvector_loadstore.ll b/llvm/test/CodeGen/PowerPC/vec_buildvector_loadstore.ll
+index 0a00dc4477b6..5786df1ae4ff 100644
+--- llvm_master/test/CodeGen/PowerPC/vec_buildvector_loadstore.ll
++++ macports_master/test/CodeGen/PowerPC/vec_buildvector_loadstore.ll
+@@ -1,25 +1,13 @@
+-; NOTE: Assertions have been autogenerated by utils/update_llc_test_checks.py
+-; RUN: llc -verify-machineinstrs < %s -mtriple=powerpc-unknown-linux-gnu -mattr=+altivec -disable-ppc-ilp-pref  | FileCheck %s
++; RUN: llc -verify-machineinstrs < %s -mtriple=powerpc-apple-darwin -mattr=+altivec -disable-ppc-ilp-pref -relocation-model=dynamic-no-pic | FileCheck %s
++
+ ; Formerly this did byte loads and word stores.
+ @a = external global <16 x i8>
+ @b = external global <16 x i8>
+ @c = external global <16 x i8>
+ 
+ define void @foo() nounwind ssp {
+-; CHECK-LABEL: foo:
+-; CHECK:       # %bb.0: # %entry
+-; CHECK-NEXT:    li 3, a@l
+-; CHECK-NEXT:    lis 4, a@ha
+-; CHECK-NEXT:    lvx 2, 4, 3
+-; CHECK-NEXT:    li 3, .LCPI0_0@l
+-; CHECK-NEXT:    lis 4, .LCPI0_0@ha
+-; CHECK-NEXT:    lvx 3, 4, 3
+-; CHECK-NEXT:    vxor 4, 4, 4
+-; CHECK-NEXT:    li 3, c@l
+-; CHECK-NEXT:    lis 4, c@ha
+-; CHECK-NEXT:    vperm 2, 4, 2, 3
+-; CHECK-NEXT:    stvx 2, 4, 3
+-; CHECK-NEXT:    blr
++; CHECK: _foo:
++; CHECK-NOT: stw
+ entry:
+     %tmp0 = load <16 x i8>, <16 x i8>* @a, align 16
+   %tmp180.i = extractelement <16 x i8> %tmp0, i32 0 ; <i8> [#uses=1]
+@@ -46,4 +34,5 @@ entry:
+ 
+ return:		; preds = %bb2
+ 	ret void
++; CHECK: blr
+ }
+-- 
+2.36.1
+
