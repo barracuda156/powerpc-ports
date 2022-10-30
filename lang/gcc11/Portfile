@@ -80,6 +80,12 @@ if { ${os.platform} eq "darwin" && ${os.major} >= 17 } {
     patchfiles-append patch-disable-dyld_library_path.diff
 }
 
+# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=93177
+# https://github.com/iains/darwin-toolchains-start-here/discussions/39
+platform darwin powerpc {
+    patchfiles-append patch-ppc-intrinsics.diff
+}
+
 depends_build-append \
                     port:texinfo
 depends_lib-append  port:cctools \
