@@ -45,10 +45,12 @@ patchfiles      patch-gdb-headers.diff \
                 patch-macosx-nat.c.diff \
                 patch-macosx-tdep.c.diff
 
-if {${os.platform} eq "darwin" && ${os.major} < 10} {
+# Fixed for 10A190:
+if {${os.platform} eq "darwin" && ${os.major} < 11} {
     patchfiles-append \
                 patch-gdb-backtrace.diff \
-                patch-macosx-nat-threads.c.diff
+                patch-macosx-nat-threads.c.diff \
+                patch-gdb-SLPPC.diff
 
     if {${os.major} == 8} {
         depends_build-append port:libmacho-headers

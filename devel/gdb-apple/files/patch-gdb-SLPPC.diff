@@ -1,0 +1,26 @@
+# See: https://developer.apple.com/documentation/kernel/task_dyld_info_data_t/1553256-all_image_info_addr
+# https://developer.apple.com/documentation/kernel/task_dyld_info_data_t/1553195-all_image_info_size
+--- gdb/macosx/macosx-nat-dyld.c.orig
++++ gdb/macosx/macosx-nat-dyld.c
+@@ -791,7 +791,7 @@ macosx_locate_dyld_via_taskinfo (macosx_dyld_thread_status *s)
+        }
+      else
+        {
+-#if defined (NM_NEXTSTEP)
++#if defined (NM_NEXTSTEP) && (MAC_OS_X_VERSION_MIN_REQUIRED >= 1070)
+           if (macosx_status->task == TASK_NULL)
+             return 0;
+ 
+
+# See: https://github.com/PurpleI2P/i2pd/issues/1726#issuecomment-1097445241
+--- src/gdb/xcoffread.c.orig	2008-08-07 07:00:53.000000000 +0800
++++ src/gdb/xcoffread.c	2022-10-31 02:36:07.000000000 +0800
+@@ -122,8 +122,6 @@
+ /* Nonzero if within a function (so symbols should be local,
+    if nothing says specifically).  */
+ 
+-int within_function;
+-
+ /* Size of a COFF symbol.  I think it is always 18, so I'm not sure
+    there is any reason not to just use a #define, but might as well
+    ask BFD for the size and store it here, I guess.  */
