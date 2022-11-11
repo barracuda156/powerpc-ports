@@ -64,6 +64,13 @@ depends_run         port:gcc_select \
 depends_skip_archcheck-append gcc_select ld64 cctools
 license_noconflict  gmp mpfr ppl libmpc
 
+
+platform powerpc {
+    patchfiles-append patch-ppc-intrinsics.diff
+    # Fix for 10A190:
+    patchfiles-append patch-SLPPC.diff
+}
+
 # Handle OS X deployment targets correctly (GCC PR target/63810
 # <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=63810>).
 patchfiles-append   macosx-version-min.patch
@@ -84,8 +91,8 @@ post-extract {
 
 set major           [join [lrange [split ${version} .-] 0 1] .]
 
-platform darwin {
-    configure.pre_args-append --build=${build_arch}-apple-darwin${os.major}
+platform darwin 10 powerpc {
+    configure.pre_args-append --build=powerpc-apple-darwin${os.major}
 }
 
 configure.dir       ${workpath}/build
@@ -114,7 +121,8 @@ configure.args      --enable-languages=c,c++,objc,obj-c++,lto,fortran,java \
                     --with-as=${prefix}/bin/as \
                     --with-ld=${prefix}/bin/ld \
                     --with-ar=${prefix}/bin/ar \
-                    --with-bugurl=https://trac.macports.org/newticket
+                    --with-bugurl=https://trac.macports.org/newticket \
+                    --with-tune-cpu=G5
 
 # see https://lists.macports.org/pipermail/macports-dev/2017-August/036209.html
 # --disable-tls does not limit functionality
