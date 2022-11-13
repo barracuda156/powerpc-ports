@@ -1,0 +1,26 @@
+From d4c862ab057a943ac4f06e33d01e33eb1e2838c0 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <svacchanda@sergey-fedorovs-power-mac-g5.local>
+Date: Thu, 6 Oct 2022 10:21:57 +0800
+Subject: [PATCH 1/2] LockFileManager: USE_OSX_GETHOSTUUID=0 for PowerPC
+ systems
+
+---
+ src/llvm/lib/Support/LockFileManager.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/llvm/lib/Support/LockFileManager.cpp b/src/llvm/lib/Support/LockFileManager.cpp
+index c166230ba..5347d8d86 100644
+--- src/llvm/lib/Support/LockFileManager.cpp.orig
++++ src/llvm/lib/Support/LockFileManager.cpp
+@@ -31,7 +31,7 @@
+ #include <unistd.h>
+ #endif
+ 
+-#if defined(__APPLE__) && defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && (__MAC_OS_X_VERSION_MIN_REQUIRED > 1050)
++#if defined(__APPLE__) && defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && (__MAC_OS_X_VERSION_MIN_REQUIRED > 1050) && !defined(__POWERPC__)
+ #define USE_OSX_GETHOSTUUID 1
+ #else
+ #define USE_OSX_GETHOSTUUID 0
+-- 
+2.38.1
+

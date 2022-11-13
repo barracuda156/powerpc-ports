@@ -120,8 +120,10 @@ patchfiles-append       patch-0006-strnlen.diff
 # build manpages for tapi
 patchfiles-append       patch-0007-build-manpages-for-tapi.diff
 
-# don't try to call pthread_setname_np on 10.5
-patchfiles-append       optional-pthread_setname_np.diff
+platform darwin powerpc {
+    patchfiles-append   0001-LockFileManager-USE_OSX_GETHOSTUUID-0-for-PowerPC-sy.patch \
+                        0002-Threading-fix-type-error-in-pthread_setname_np-for-P.patch
+}
 
 configure.post_args     ${worksrcpath}/src/llvm
 

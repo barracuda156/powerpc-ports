@@ -1,0 +1,29 @@
+From 4f3a91126af12e437b519ce9b29b47ad36d6faee Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Thu, 6 Oct 2022 12:39:13 +0800
+Subject: [PATCH 2/2] Threading: fix type error in pthread_setname_np for PPC
+
+---
+ src/llvm/lib/Support/Unix/Threading.inc | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/llvm/lib/Support/Unix/Threading.inc b/src/llvm/lib/Support/Unix/Threading.inc
+index 2d49ce1ad..75edb33df 100644
+--- src/llvm/lib/Support/Unix/Threading.inc.orig
++++ src/llvm/lib/Support/Unix/Threading.inc
+@@ -154,8 +154,12 @@ void llvm::set_thread_name(const Twine &Name) {
+   ::pthread_setname_np(::pthread_self(), "%s",
+     const_cast<char *>(NameStr.data()));
+ #elif defined(__APPLE__)
++#if defined(__POWERPC__)
++  ::pthread_setname_np((char*) NameStr.data());
++#else
+   ::pthread_setname_np(NameStr.data());
+ #endif
++#endif
+ }
+ 
+ void llvm::get_thread_name(SmallVectorImpl<char> &Name) {
+-- 
+2.38.1
+
