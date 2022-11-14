@@ -1,0 +1,30 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim: fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           cmake 1.1
+
+github.setup        facebook infer 1.1.0 v
+revision            0
+
+categories          devel
+license             MIT
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+description         Infer is a static analysis tool for C, C++, Objective-C and Java
+long_description    Infer is a static analysis tool – if you give Infer some Java or C/C++/Objective-C code, \
+                    it produces a list of potential bugs. Anyone can use Infer to intercept critical bugs \
+                    before they have shipped to users, and help prevent crashes or poor performance.
+homepage            https://fbinfer.com
+checksums           rmd160  667fb8569644d1f31371ea09f4d322ae17e97bc9 \
+                    sha256  30eb977934aa7134125d372757314d65cec39f930472ab03054e9d52aca524a1 \
+                    size    37342562
+
+use_autoconf        yes
+
+depends_build-append \
+                    port:pkgconfig
+depends_lib-append  port:gmp \
+                    port:mpfr \
+                    port:sqlite3
+
+cmake.generator     Ninja
