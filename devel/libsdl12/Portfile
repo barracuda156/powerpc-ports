@@ -27,8 +27,6 @@ github.tarball_from archive
 checksums       rmd160 6bb9fc641b6d9ebfb053abfb697204e94b5ecbcb \
                 sha256 4d23c14190903a4403f98bcbfffb494b27aec35e2264b5ad895486658c0582d3
 
-patchfiles      patch-fix-ppc.diff
-
 platform darwin 10 powerpc {
     patchfiles-append \
                 patch-SLPPC.diff
