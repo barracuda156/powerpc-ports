@@ -1,15 +1,17 @@
-From b42b304f42134adf441c6974e75d032e07965679 Mon Sep 17 00:00:00 2001
+From 429bf7d1cf474179c917d6f856957a93dde1d84e Mon Sep 17 00:00:00 2001
 From: Sergey Fedorov <vital.had@gmail.com>
 Date: Tue, 6 Sep 2022 02:47:32 +0700
-Subject: [PATCH 7/7] Darwin ppc32: fix context Credit to @kernigh See:
+Subject: [PATCH] context: fix for Darwin ppc32 Credit to @kernigh See:
  https://github.com/boostorg/context/issues/211#issuecomment-1328154669
 
-Darwin ppc32: fix context
 ---
  src/asm/jump_ppc32_sysv_macho_gas.S  | 226 +++++++++++++--------------
- src/asm/make_ppc32_sysv_macho_gas.S  | 115 +++++++-------
+ src/asm/jump_ppc64_sysv_macho_gas.S  |  18 +--
+ src/asm/make_ppc32_sysv_macho_gas.S  | 120 +++++++-------
+ src/asm/make_ppc64_sysv_macho_gas.S  |  16 +-
  src/asm/ontop_ppc32_sysv_macho_gas.S | 226 +++++++++++++--------------
- 6 files changed, 298 insertions(+), 307 deletions(-)
+ src/asm/ontop_ppc64_sysv_macho_gas.S |   4 +-
+ 6 files changed, 303 insertions(+), 307 deletions(-)
 
 diff --git a/src/asm/jump_ppc32_sysv_macho_gas.S b/src/asm/jump_ppc32_sysv_macho_gas.S
 index c555237..f87372d 100644
@@ -273,8 +275,65 @@ index c555237..f87372d 100644
 -    # jump to context
 +    ; jump to context
      bctr
+diff --git a/src/asm/jump_ppc64_sysv_macho_gas.S b/src/asm/jump_ppc64_sysv_macho_gas.S
+index 74fcb2a..dcc6c64 100644
+--- libs/context/src/asm/jump_ppc64_sysv_macho_gas.S
++++ libs/context/src/asm/jump_ppc64_sysv_macho_gas.S
+@@ -12,7 +12,7 @@
+  *  -------------------------------------------------  *
+  *  |  0  |  4  |  8  |  12 |  16 |  20 |  24 |  28 |  *
+  *  -------------------------------------------------  *
+- *  |    TOC    |    R14    |    R15    |    R16    |  *
++ *  |    R13    |    R14    |    R15    |    R16    |  *
+  *  -------------------------------------------------  *
+  *  -------------------------------------------------  *
+  *  |  8  |  9  |  10 |  11 |  12 |  13 |  14 |  15 |  *
+@@ -61,7 +61,7 @@
+  *  -------------------------------------------------  *
+  *  | 224 | 228 | 232 | 236 | 240 | 244 | 248 | 252 |  *
+  *  -------------------------------------------------  *
+- *  | TOC saved |    FCTX   |    DATA   |           |  *
++ *  |    FCTX   |    DATA   |           |           |  *
+  *  -------------------------------------------------  *
+  *                                                     *
+  *******************************************************/
+@@ -138,27 +138,27 @@ _jump_fcontext:
+ 
+     ; load PC
+     ld  r12, 176(r1)
+-    # restore CTR
++    ; restore CTR
+     mtctr  r12
+ 
+-    # adjust stack
++    ; adjust stack
+     addi  r1, r1, 184
+ 
+-    # zero in r3 indicates first jump to context-function
++    ; zero in r3 indicates first jump to context-function
+     cmpdi r3, 0
+     beq use_entry_arg
+ 
+-    # return transfer_t
++    ; return transfer_t
+     std  r6, 0(r3)
+     std  r5, 8(r3)
+ 
+-    # jump to context
++    ; jump to context
+     bctr
+ 
+ use_entry_arg:
+-    # copy transfer_t into transfer_fn arg registers
++    ; copy transfer_t into transfer_fn arg registers
+     mr  r3, r6
+     mr  r4, r5
+ 
+-    # jump to context
++    ; jump to context
+     bctr
 diff --git a/src/asm/make_ppc32_sysv_macho_gas.S b/src/asm/make_ppc32_sysv_macho_gas.S
-index 8f35eff..5889b2b 100644
+index 8f35eff..59bfc28 100644
 --- libs/context/src/asm/make_ppc32_sysv_macho_gas.S
 +++ libs/context/src/asm/make_ppc32_sysv_macho_gas.S
 @@ -5,7 +5,7 @@
@@ -303,7 +362,7 @@ index 8f35eff..5889b2b 100644
   *                                                     *
   *******************************************************/
  
-@@ -77,61 +71,74 @@
+@@ -77,61 +71,79 @@
  .globl _make_fcontext
  .align 2
  _make_fcontext:
@@ -423,7 +482,60 @@ index 8f35eff..5889b2b 100644
 +    ; exit code is zero
 +    li      r3, 0
 +    ; exit application
-+    bl      __exit
++    bctr
++
++.const_data
++.align 2
++Lexitp:
++    .long   __exit
+diff --git a/src/asm/make_ppc64_sysv_macho_gas.S b/src/asm/make_ppc64_sysv_macho_gas.S
+index 7b947bb..fb5cada 100644
+--- libs/context/src/asm/make_ppc64_sysv_macho_gas.S
++++ libs/context/src/asm/make_ppc64_sysv_macho_gas.S
+@@ -12,7 +12,7 @@
+  *  -------------------------------------------------  *
+  *  |  0  |  4  |  8  |  12 |  16 |  20 |  24 |  28 |  *
+  *  -------------------------------------------------  *
+- *  |    TOC    |    R14    |    R15    |    R16    |  *
++ *  |    R13    |    R14    |    R15    |    R16    |  *
+  *  -------------------------------------------------  *
+  *  -------------------------------------------------  *
+  *  |  8  |  9  |  10 |  11 |  12 |  13 |  14 |  15 |  *
+@@ -61,7 +61,7 @@
+  *  -------------------------------------------------  *
+  *  | 224 | 228 | 232 | 236 | 240 | 244 | 248 | 252 |  *
+  *  -------------------------------------------------  *
+- *  | TOC saved |    FCTX   |    DATA   |           |  *
++ *  |    FCTX   |    DATA   |           |           |  *
+  *  -------------------------------------------------  *
+  *                                                     *
+ 
+@@ -77,19 +77,19 @@ _make_fcontext:
+ 
+     ; reserve space for context-data on context-stack
+     ; including 64 byte of linkage + parameter area (R1  16 == 0)
+-    subi  r3, r3, 248
++    subi  r3, r3, 240
+ 
+     ; third arg of make_fcontext() == address of context-function
+     stw  r5, 176(r3)
+ 
+     ; set back-chain to zero
+-    li   %r0, 0
+-    std  %r0, 184(%r3)
++    li   r0, 0
++    std  r0, 184(r3)
+ 
+     ; compute address of returned transfer_t
+-    addi %r0, %r3, 232
+-    mr   %r4, %r0
+-    std  %r4, 152(%r3)
++    addi r0, r3, 224
++    mr   r4, r0
++    std  r4, 152(r3)
+ 
+     ; load LR
+     mflr  r0
 diff --git a/src/asm/ontop_ppc32_sysv_macho_gas.S b/src/asm/ontop_ppc32_sysv_macho_gas.S
 index 1eb5f93..757c96f 100644
 --- libs/context/src/asm/ontop_ppc32_sysv_macho_gas.S
@@ -687,6 +799,27 @@ index 1eb5f93..757c96f 100644
 -    # jump to ontop-function
 +    ; jump to ontop-function
      bctr
+diff --git a/src/asm/ontop_ppc64_sysv_macho_gas.S b/src/asm/ontop_ppc64_sysv_macho_gas.S
+index 5de8acd..a9fe8cf 100644
+--- libs/context/src/asm/ontop_ppc64_sysv_macho_gas.S
++++ libs/context/src/asm/ontop_ppc64_sysv_macho_gas.S
+@@ -12,7 +12,7 @@
+  *  -------------------------------------------------  *
+  *  |  0  |  4  |  8  |  12 |  16 |  20 |  24 |  28 |  *
+  *  -------------------------------------------------  *
+- *  |    TOC    |    R14    |    R15    |    R16    |  *
++ *  |    R13    |    R14    |    R15    |    R16    |  *
+  *  -------------------------------------------------  *
+  *  -------------------------------------------------  *
+  *  |  8  |  9  |  10 |  11 |  12 |  13 |  14 |  15 |  *
+@@ -61,7 +61,7 @@
+  *  -------------------------------------------------  *
+  *  | 224 | 228 | 232 | 236 | 240 | 244 | 248 | 252 |  *
+  *  -------------------------------------------------  *
+- *  | TOC saved |    FCTX   |    DATA   |           |  *
++ *  |    FCTX   |    DATA   |           |           |  *
+  *  -------------------------------------------------  *
+  *                                                     *
+  *******************************************************/
 -- 
 2.38.1
-
