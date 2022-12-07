@@ -74,6 +74,12 @@ if {${os.platform} eq "darwin" && ${os.major} < 11} {
         move ${workpath}/Mac-GUI-${legacy_ver}/nl.lproj ${worksrcpath}
     }
 
+    if {${os.major} == 10 && ${build_arch} eq "ppc"} {
+        # For some reason Xcode 3.2 of 10A190 does not fix pdfkit which is wanted by Vignettes.xib.
+        # For now, throw those out.
+        patchfiles-append patch-no-vignettes.diff
+    }
+
     post-patch {
         # These are intended for 1.72 (see above). Other versions set different compatibility.
         if {${os.major} == 9} {
