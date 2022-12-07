@@ -1,0 +1,73 @@
+--- R.xcodeproj/project.pbxproj.orig	2020-03-05 10:42:59.000000000 +0800
++++ R.xcodeproj/project.pbxproj	2022-12-07 17:26:19.000000000 +0800
+@@ -148,7 +148,6 @@
+ 		68958941132FAF72007D8E7B /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 6895893F132FAF72007D8E7B /* MainMenu.xib */; };
+ 		6895894D132FAFDB007D8E7B /* RDocument.xib in Resources */ = {isa = PBXBuildFile; fileRef = 6895894B132FAFDB007D8E7B /* RDocument.xib */; };
+ 		68958951132FAFEB007D8E7B /* RQuartz.xib in Resources */ = {isa = PBXBuildFile; fileRef = 6895894F132FAFEB007D8E7B /* RQuartz.xib */; };
+-		68958955132FAFFA007D8E7B /* Vignettes.xib in Resources */ = {isa = PBXBuildFile; fileRef = 68958953132FAFFA007D8E7B /* Vignettes.xib */; };
+ 		6895895B132FB01D007D8E7B /* SyntaxColorsPrefPane.xib in Resources */ = {isa = PBXBuildFile; fileRef = 68958959132FB01D007D8E7B /* SyntaxColorsPrefPane.xib */; };
+ 		6895895F132FB02F007D8E7B /* ColorsPrefPane.xib in Resources */ = {isa = PBXBuildFile; fileRef = 6895895D132FB02F007D8E7B /* ColorsPrefPane.xib */; };
+ 		68958963132FB03D007D8E7B /* EditorPrefPane.xib in Resources */ = {isa = PBXBuildFile; fileRef = 68958961132FB03D007D8E7B /* EditorPrefPane.xib */; };
+@@ -405,7 +404,6 @@
+ 		68958946132FAFBA007D8E7B /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/RConsole.xib; sourceTree = "<group>"; };
+ 		6895894C132FAFDB007D8E7B /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/RDocument.xib; sourceTree = "<group>"; };
+ 		68958950132FAFEB007D8E7B /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/RQuartz.xib; sourceTree = "<group>"; };
+-		68958954132FAFFA007D8E7B /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/Vignettes.xib; sourceTree = "<group>"; };
+ 		6895895A132FB01D007D8E7B /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/SyntaxColorsPrefPane.xib; sourceTree = "<group>"; };
+ 		6895895E132FB02F007D8E7B /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/ColorsPrefPane.xib; sourceTree = "<group>"; };
+ 		68958962132FB03D007D8E7B /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/EditorPrefPane.xib; sourceTree = "<group>"; };
+@@ -422,8 +420,6 @@
+ 		68958981132FB215007D8E7B /* it */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = it; path = it.lproj/RDocument.xib; sourceTree = "<group>"; };
+ 		68958982132FB22D007D8E7B /* de */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = de; path = de.lproj/RDocument.xib; sourceTree = "<group>"; };
+ 		68958983132FB236007D8E7B /* fr */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = fr; path = fr.lproj/RDocument.xib; sourceTree = "<group>"; };
+-		68958984132FB273007D8E7B /* ja */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = ja; path = ja.lproj/Vignettes.xib; sourceTree = "<group>"; };
+-		68958985132FB275007D8E7B /* nl */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = nl; path = nl.lproj/Vignettes.xib; sourceTree = "<group>"; };
+ 		68958986132FB28B007D8E7B /* ja */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = ja; path = ja.lproj/ColorsPrefPane.xib; sourceTree = "<group>"; };
+ 		68958987132FB28D007D8E7B /* nl */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = nl; path = nl.lproj/ColorsPrefPane.xib; sourceTree = "<group>"; };
+ 		68958988132FB290007D8E7B /* it */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = it; path = it.lproj/ColorsPrefPane.xib; sourceTree = "<group>"; };
+@@ -488,9 +484,6 @@
+ 		BC884B6914BAD86C00DEFFE0 /* RdEditorToolbar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RdEditorToolbar.h; sourceTree = "<group>"; };
+ 		BC884B6A14BAD86C00DEFFE0 /* RdEditorToolbar.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RdEditorToolbar.m; sourceTree = "<group>"; };
+ 		BC9EF20313326D98005E61C6 /* nl */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = nl; path = nl.lproj/SelectEncodingsPanel.xib; sourceTree = "<group>"; };
+-		BCB297AD133B7EDD007899E0 /* de */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = de; path = de.lproj/Vignettes.xib; sourceTree = "<group>"; };
+-		BCB297AE133B7EE2007899E0 /* it */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = it; path = it.lproj/Vignettes.xib; sourceTree = "<group>"; };
+-		BCB297AF133B7EF3007899E0 /* fr */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = fr; path = fr.lproj/Vignettes.xib; sourceTree = "<group>"; };
+ 		BCB4FEA914F24B0E00281019 /* RWindow.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RWindow.h; sourceTree = "<group>"; };
+ 		BCB4FEAA14F24B0E00281019 /* RWindow.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RWindow.m; sourceTree = "<group>"; };
+ 		BCBA744513B089D8001B440B /* RDataEditorTableView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RDataEditorTableView.h; sourceTree = "<group>"; };
+@@ -862,7 +855,6 @@
+ 				6895897B132FB19D007D8E7B /* RConsole.xib */,
+ 				6895894B132FAFDB007D8E7B /* RDocument.xib */,
+ 				6895894F132FAFEB007D8E7B /* RQuartz.xib */,
+-				68958953132FAFFA007D8E7B /* Vignettes.xib */,
+ 				6853563B07B0285E00FDAAC3 /* PrefPanes */,
+ 				162B6A0406CD770C00C0B085 /* images */,
+ 				8D1107310486CEB800E47090 /* Info.plist */,
+@@ -1189,7 +1181,6 @@
+ 				6895897C132FB19D007D8E7B /* RConsole.xib in Resources */,
+ 				6895894D132FAFDB007D8E7B /* RDocument.xib in Resources */,
+ 				68958951132FAFEB007D8E7B /* RQuartz.xib in Resources */,
+-				68958955132FAFFA007D8E7B /* Vignettes.xib in Resources */,
+ 				6895895B132FB01D007D8E7B /* SyntaxColorsPrefPane.xib in Resources */,
+ 				6895895F132FB02F007D8E7B /* ColorsPrefPane.xib in Resources */,
+ 				68958963132FB03D007D8E7B /* EditorPrefPane.xib in Resources */,
+@@ -1423,19 +1414,6 @@
+ 			name = RQuartz.xib;
+ 			sourceTree = "<group>";
+ 		};
+-		68958953132FAFFA007D8E7B /* Vignettes.xib */ = {
+-			isa = PBXVariantGroup;
+-			children = (
+-				68958954132FAFFA007D8E7B /* English */,
+-				68958984132FB273007D8E7B /* ja */,
+-				68958985132FB275007D8E7B /* nl */,
+-				BCB297AD133B7EDD007899E0 /* de */,
+-				BCB297AE133B7EE2007899E0 /* it */,
+-				BCB297AF133B7EF3007899E0 /* fr */,
+-			);
+-			name = Vignettes.xib;
+-			sourceTree = "<group>";
+-		};
+ 		68958959132FB01D007D8E7B /* SyntaxColorsPrefPane.xib */ = {
+ 			isa = PBXVariantGroup;
+ 			children = (
