@@ -1,0 +1,33 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           cmake 1.1
+PortGroup           github 1.0
+
+github.setup        LukasBanana LLGL d98bcc8ee65d68e757ccae6770aed92f14b22617
+version             2023.01.08
+revision            0
+categories          devel graphics
+license             BSD
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+description         Low Level Graphics Library (LLGL) is a thin abstraction layer \
+                    for the modern graphics APIs OpenGL, Direct3D, Vulkan and Metal
+long_description    {*}${description}
+checksums           rmd160  b10e38d3ba5ff2439d1cb5f3f98b3f6b4d9c234a \
+                    sha256  d5e4a53f75aaf76ac9764fc64e72d785be71db0cc85da2f453c523d7886a7dcc \
+                    size    33062780
+
+depends_lib-append  port:GaussianLib
+
+compiler.cxx_standard   2011
+
+# Default settings:
+configure.args-append \
+                    -DLLGL_BUILD_RENDERER_OPENGL=ON \
+                    -DLLGL_BUILD_RENDERER_METAL=OFF \
+                    -DLLGL_BUILD_RENDERER_VULKAN=OFF \
+                    -DLLGL_BUILD_STATIC_LIB=OFF \
+                    -DLLGL_BUILD_EXAMPLES=ON \
+                    -DGaussLib_INCLUDE_DIR:STRING="${prefix}/include/Gauss"
+
+test.run            yes
