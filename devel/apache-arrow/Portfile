@@ -6,11 +6,10 @@ PortGroup           github 1.0
 PortGroup           boost 1.0
 
 github.setup        apache arrow 8.0.0 apache-arrow-
-revision            3
+revision            4
 name                ${github.author}-${github.project}
 
 categories          devel
-platforms           darwin
 license             Apache-2
 maintainers         nomaintainer
 
@@ -170,7 +169,7 @@ proc change_arrow_rpath { binname libname_re } {
 }
 
 # create Python subports
-set python_versions {37 38 39 310}
+set python_versions {38 39 310 311}
 foreach v ${python_versions} {
     subport py${v}-py${github.project} {
         PortGroup   python 1.0
@@ -200,7 +199,7 @@ if {[string match "py*" ${subport}]} {
                     port:py${python.version}-pycares \
                     port:py${python.version}-numpy \
                     path:${python.pkgd}/tensorflow:py${python.version}-tensorflow
-    if {${python.version} eq 310} {
+    if {${python.version} eq 310 || ${python.version} eq 311} {
         depends_lib-replace \
                     path:${python.pkgd}/tensorflow:py${python.version}-tensorflow \
                     path:${python.pkgd}/tensorflow:py${python.version}-tensorflow-macos
