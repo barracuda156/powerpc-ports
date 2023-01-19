@@ -85,6 +85,11 @@ configure.pre_args-replace \
                     -DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON \
                     -DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=OFF
 
+if {${build_arch} in [list i386 ppc] && [string match *gcc* ${configure.compiler}]} {
+    # ___atomic_fetch_sub_8
+    configure.ldflags-append -latomic
+}
+
 # Remove incorrect cmake dependency on SDK that cmake adds on some systems
 # See https://github.com/grpc/grpc/issues/24902
 set macos_sdk [file tail ${configure.sdkroot}]
