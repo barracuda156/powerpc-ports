@@ -2,12 +2,13 @@
 
 PortSystem          1.0
 PortGroup           cmake 1.1
+PortGroup           compiler_blacklist_versions 1.0
 PortGroup           github 1.0
 PortGroup           legacysupport 1.1
-PortGroup           compiler_blacklist_versions 1.0
+PortGroup           openssl 1.0
 
 # NOTE: Also rev-bump 'apache-arrow' when updating this port
-github.setup        grpc grpc 1.48.0 v
+github.setup        grpc grpc 1.51.1 v
 revision            0
 categories          devel
 maintainers         nomaintainer
@@ -18,11 +19,10 @@ description         A high performance, open-source universal RPC framework.
 long_description    gRPC is a modern, open source, high-performance \
                     remote procedure call (RPC) framework that can run \
                     anywhere. gRPC enables client and server \
-                    applications to communicate transparently, and \
-                    simplifies the building of connected systems.
+                    applications to communicate transparently, \
+                    and simplifies the building of connected systems.
 
 homepage            https://grpc.io/
-platforms           darwin
 
 # ignore pre releases
 github.livecheck.regex  {([0-9.]+)}
@@ -39,7 +39,6 @@ depends_build-append \
                     port:pkgconfig
 
 depends_lib-append \
-                    path:lib/libssl.dylib:openssl \
                     port:abseil \
                     port:c-ares \
                     port:gperftools \
@@ -137,7 +136,7 @@ if {${name} eq ${subport}} {
 }
 
 # create Python subports
-set python_versions {37 38 39 310}
+set python_versions {38 39 310 311}
 
 # Python modules grpcio and grpcio-tools
 foreach v ${python_versions} {
@@ -146,7 +145,6 @@ foreach v ${python_versions} {
 
         categories-prepend  devel
         maintainers {emcrisostomo @emcrisostomo} openmaintainer
-        platforms   darwin
 
         description Python bindings for gRPC HTTP/2-based RPC framework
         long_description \
@@ -163,7 +161,6 @@ foreach v ${python_versions} {
 
         categories-prepend  devel
         maintainers nomaintainer
-        platforms   darwin
 
         # https://github.com/macports/macports-ports/commit/9f4926a2ada59c0f2d54b5e923e4a7d99a7e67b6#commitcomment-53546190
         compwrap.add_compiler_flags no
@@ -248,8 +245,7 @@ if {[string match "py*${name_io}" ${subport}]} {
 
     depends_lib-append \
                     port:py${python.version}-cython \
-                    port:py${python.version}-protobuf3 \
-                    port:py${python.version}-six
+                    port:py${python.version}-protobuf3
 
     depends_test-append \
                     port:py${python.version}-twisted
