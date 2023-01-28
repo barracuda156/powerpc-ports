@@ -122,6 +122,10 @@ subport ld64-127 {
             error "unsupported platform"
         }
     }
+    # libSystem in PPCSL does not have the symbol this needs
+    if  {${os.major} == 10 && ${configure.build_arch} eq "ppc"} {
+        patchfiles-append ld64-127-no-compressed-dyldinfo-on-PPCSL.diff
+    }
 }
 
 subport ld64-236 {
