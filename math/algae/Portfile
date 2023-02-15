@@ -1,0 +1,48 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           compilers 1.0
+PortGroup           compiler_blacklist_versions 1.0
+
+name                algae
+version             4.3.6
+categories          math
+license             GPL-2+
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+description         Programming language for numerical analysis
+long_description    {*}${description}
+homepage            https://algae.sourceforge.net
+master_sites        https://sourceforge.net/projects/${name}/files/${name}/${name}-${version}
+distname            ${name}-${version}
+checksums           rmd160  0dfee737c3eccb59563fd85da8d7772937d5795c \
+                    sha256  b456e8ab32eda24a1c0dde44f75455e6b5a8a7604ce8cd7ff9419651d93c0ec1 \
+                    size    1790061
+
+# https://github.com/freebsd/freebsd-ports/tree/main/math/algae/files
+patchfiles-append   patch-configure.diff \
+                    patch-doc-Makefile.in \
+                    patch-Makefile.in \
+                    patch-src-Makefile.in \
+                    patch-tools-Makefile.in
+
+compilers.setup     require_fortran
+compiler.blacklist-append \
+                    *gcc-4.* {clang < 421}
+
+configure.args-append \
+                    --disable-dlmalloc \
+                    --without-fftw \
+                    --without-blas \
+                    --without-lapack \
+                    --without-bcslib \
+                    --without-npsol
+
+configure.fcflags-append \
+                    -std=legacy
+
+platform powerpc {
+    # checking for proper floating point exception handling... no
+    # configure: error: Cannot handle floating point exceptions.
+    configure.ldflags-append \
+                    -lm
+}
