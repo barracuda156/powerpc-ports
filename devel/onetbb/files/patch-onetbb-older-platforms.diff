@@ -447,3 +447,69 @@ index 60ec5cae..f0b3c1b4 100644
  
      // operator==
      TestAllocator<oneapi::tbb::cache_aligned_allocator<void>>(Comparison);
+
+--- a/include/oneapi/tbb/detail/_machine.h
++++ b/include/oneapi/tbb/detail/_machine.h
+@@ -313,6 +313,62 @@ struct cpu_ctl_env {
+ 
+ #include <cstring>
+ 
++#if defined __APPLE__ && defined __POWERPC__
++// fenv.h on macOS does not define these.
++
++typedef union {
++    struct {
++        unsigned int hi;
++        fenv_t       lo;
++    } i;
++    double           d;
++} hexdouble;
++
++#define HEXDOUBLE(hi, lo) {{ hi, lo }}
++#define FE_ALL_RND 0x00000003
++#define FE_NO_RND  0xFFFFFFFC
++
++static inline int fegetenv(fenv_t *envp)
++{
++	hexdouble fe;
++
++	fe.d = __builtin_mffs();
++	*envp = fe.i.lo;
++	return 0;
++}
++
++static inline int fesetenv(const fenv_t *envp)
++{
++	hexdouble fe;
++
++	fe.i.lo = *envp;
++	__builtin_mtfsf(0xFF, fe.d);
++	return 0;
++}
++
++static inline int fegetround(void)
++{
++	hexdouble fe;
++
++	fe.d = __builtin_mffs();
++	return (fe.i.lo & FE_ALL_RND);
++}
++
++static inline int fesetround(int round)
++{
++	hexdouble fe;
++
++	if (round & FE_NO_RND)
++		return (-1);
++	fe.d = __builtin_mffs();
++	fe.i.lo &= FE_NO_RND;
++	fe.i.lo |= round;
++	__builtin_mtfsf(0xFF, fe.d);
++	return 0;
++}
++
++#endif // defined __APPLE__ && defined __POWERPC__
++
+ namespace tbb {
+ namespace detail {
+ 
