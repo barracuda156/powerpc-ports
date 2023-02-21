@@ -513,3 +513,26 @@ index 60ec5cae..f0b3c1b4 100644
  namespace tbb {
  namespace detail {
  
+--- a/test/CMakeLists.txt
++++ b/test/CMakeLists.txt
+@@ -330,20 +330,6 @@ function(tbb_add_tbbbind_test)
+     endforeach()
+ endfunction()
+ 
+-# Copy libraries to test folder to make it visible during tests execution if external TBB is tested.
+-# TODO: check and update for multi-config generators.
+-if (TBB_FOUND)
+-    list(APPEND _tbb_test_components tbb tbbmalloc tbbmalloc_proxy tbbbind tbbbind_2_0 tbbbind_2_5)
+-    foreach(_component ${_tbb_test_components})
+-        if (TARGET TBB::${_component})
+-            get_property(${_component}_lib_file_location TARGET TBB::${_component} PROPERTY LOCATION)
+-            file(COPY ${${_component}_lib_file_location} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+-            unset(${_component}_lib_file_location CACHE)
+-        endif()
+-    endforeach()
+-    unset(_tbb_test_components)
+-endif()
+-
+ # Find Intel(R) Software Development Emulator to run test_mutex and conformance_mutex for coverage
+ set(_sde_find_name sde)
+ 
