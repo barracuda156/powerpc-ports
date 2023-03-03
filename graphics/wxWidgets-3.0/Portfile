@@ -88,7 +88,8 @@ depends_run         port:wxWidgets-common \
 configure.env-append \
                     GREP=/usr/bin/grep
 
-patchfiles-append   patch-configure.diff
+patchfiles-append   patch-configure.diff \
+                    patch-ppc.diff
 
 # 10.6-on-PPC hack; tested also on Rosetta:
 patchfiles-append   patch-ppc.diff
