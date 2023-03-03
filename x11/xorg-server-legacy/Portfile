@@ -56,6 +56,14 @@ depends_lib-append \
 # https://trac.macports.org/ticket/53910
 compiler.blacklist gcc-4.0 macports-clang-devel {clang >= 802 < 900}
 
+platform darwin 10 {
+    # Rosetta build fails with macosx_deployment_target 10.6
+    if {${build_arch} eq "ppc"} {
+        patchfiles-append patch-10.6-ppc.diff
+        # macosx_deployment_target 10.5
+    }
+}
+
 configure.args --with-apple-applications-dir=${applications_dir} \
         --with-bundle-id-prefix=org.macports \
         --without-dtrace \
