@@ -1,0 +1,79 @@
+--- src/posix/platform.h.orig	2022-08-01 02:48:42.000000000 +0800
++++ src/posix/platform.h	2022-11-07 16:53:46.000000000 +0800
+@@ -1,7 +1,7 @@
+ #ifndef _PTWQ_POSIX_PLATFORM_H
+ #define _PTWQ_POSIX_PLATFORM_H 1
+ 
+-#ifdef __FreeBSD__
++#if (defined(__FreeBSD__) || defined(__APPLE__))
+ /* Workaround to get visibility for _SC_NPROCESSORS_ONLN on FreeBSD */
+ #define __BSD_VISIBLE 1
+ #include <sys/types.h>
+@@ -15,6 +15,11 @@
+ #include <unistd.h>
+ #include <pthread.h>
+ 
++#if defined(__APPLE__)
++#include <libkern/OSAtomic.h>
++#include <errno.h> /* EBUSY */
++#endif
++
+ #ifdef __sun
+ # include <sys/loadavg.h>
+ #endif
+@@ -29,14 +34,14 @@
+ # define atomic_inc_nv   atomic_inc_32_nv
+ # define atomic_dec_nv   atomic_dec_32_nv
+ # define atomic_and      atomic_and_uint_nv
+-# define atomic_or      atomic_or_uint_nv
++# define atomic_or       atomic_or_uint_nv
+ #else
+ # define atomic_inc(p)   (void) __sync_add_and_fetch((p), 1)
+ # define atomic_dec(p)   (void) __sync_sub_and_fetch((p), 1)
+ # define atomic_inc_nv(p)  __sync_add_and_fetch((p), 1)
+ # define atomic_dec_nv(p)  __sync_sub_and_fetch((p), 1)
+ # define atomic_and(p,v)   __sync_and_and_fetch((p), (v))
+-# define atomic_or(p,v)   __sync_or_and_fetch((p), (v))
++# define atomic_or(p,v)    __sync_or_and_fetch((p), (v))
+ #endif
+ 
+ #ifdef MAKE_STATIC
+@@ -58,4 +63,38 @@
+ #define pthread_spin_destroy   pthread_mutex_destroy
+ #endif /* defined(__ANDROID__) */
+ 
++#if defined(__APPLE__)
++typedef OSSpinLock pthread_spinlock_t;
++
++static __inline__
++int pthread_spin_init(pthread_spinlock_t *lock, int pshared) {
++    __asm__ volatile ("" ::: "memory"); /* this does not hurt to keep it */
++    *lock = 0;
++    return 0;
++}
++
++static __inline__
++int pthread_spin_destroy(pthread_spinlock_t *lock) {
++    return 0;            /* Nothing to do, just an int */
++}
++
++static __inline__
++int pthread_spin_lock(pthread_spinlock_t *lock) {
++  OSSpinLockLock(lock);
++  return 0;
++}
++
++static __inline__
++int pthread_spin_trylock(pthread_spinlock_t *lock) {
++  if (OSSpinLockTry(lock)) return 0; /* OSSpinLockTry return true on success, and pthread_spin_trylock 0 */
++  else return EBUSY;
++}
++
++static __inline__
++int pthread_spin_unlock(pthread_spinlock_t *lock) {
++  OSSpinLockUnlock(lock);
++  return 0;
++}
++#endif
++
+ #endif  /* _PTWQ_POSIX_PLATFORM_H */

@@ -1,0 +1,390 @@
+--- src/posix/manager.c.orig	2022-08-01 02:48:42.000000000 +0800
++++ src/posix/manager.c	2022-11-07 17:54:09.000000000 +0800
+@@ -35,7 +35,14 @@
+ #include "thread_rt.h"
+ 
+ #include <sys/time.h>
+-#include <semaphore.h>
++
++#if defined(__APPLE__)
++# include <stdlib.h> /* getloadavg */
++# include <mach/task.h>
++# include <mach/semaphore.h>
++#else
++# include <semaphore.h>
++#endif
+ 
+ /* Environment setting */
+ unsigned int PWQ_RT_THREADS = 0;
+@@ -43,7 +50,6 @@
+ unsigned volatile int current_threads_spinning = 0; // The number of threads currently spinning
+ 
+ /* Tunable constants */
+-
+ #define WORKER_IDLE_SECONDS_THRESHOLD 15
+ 
+ /* Thread cleanup hook */
+@@ -83,7 +89,11 @@
+                     count,
+                     about_to_wait,
+                     idle;
++  #ifdef __APPLE__
++    semaphore_t sb_sem;
++  #else
+     sem_t sb_sem;
++  #endif
+     unsigned int sb_suspend;
+ } scoreboard;
+ 
+@@ -122,7 +132,6 @@
+         default:
+             return cpu_count / 4;
+     }
+-    
+     return 2;
+ }
+ 
+@@ -135,7 +144,7 @@
+     pthread_mutex_init(&wqlist_mtx, NULL);
+     wqlist_mask = 0;
+     pending_thread_create = 0;
+-    
++
+     pthread_cond_init(&ocwq_has_work, NULL);
+     pthread_mutex_init(&ocwq_mtx, NULL);
+     ocwq_mask = 0;
+@@ -150,17 +159,21 @@
+     pthread_attr_setdetachstate(&detached_attr, PTHREAD_CREATE_DETACHED);
+ 
+     /* Initialize the scoreboard */
+-    
++  #ifdef __APPLE__
++    if (semaphore_create(TASK_NULL, &scoreboard.sb_sem, 0, 0) != 0) {
++        dbg_perror("semaphore_create()");
++  #else
+     if (sem_init(&scoreboard.sb_sem, 0, 0) != 0) {
+         dbg_perror("sem_init()");
++  #endif
+         return (-1);
+     }
+-    
++
+     scoreboard.count = 0;
+     scoreboard.idle = 0;
+     scoreboard.sb_suspend = 0;
+     scoreboard.about_to_wait = 0;
+-    
++
+     /* Determine the initial thread pool constraints */
+     // we can start with a small amount, worker_idle_threshold will be used as new dynamic low watermark
+     if (getenv("PWQ_WMIN"))
+@@ -323,7 +336,7 @@
+                 func = witem->func;
+                 func_arg = witem->func_arg;
+                 witem_free(witem);
+-                func(func_arg);    
++                func(func_arg);
+                 pthread_mutex_lock(&ocwq_mtx);
+                 continue;
+             }
+@@ -368,20 +381,20 @@
+ {
+     unsigned int wqlist_index_bit = (0x1 << wqlist_index);
+     unsigned int new_mask;
+-    
++
+     // Remove this now empty wq from the mask, the only contention here is with threads performing the same
+     // operation on another workqueue, so we will not be long
+-    // the 'bit' for this queue is protected by the spin lock, so we will only clear a bit which we have 
++    // the 'bit' for this queue is protected by the spin lock, so we will only clear a bit which we have
+     // ownership for (see below for the corresponding part on the producer side)
+-    
++
+     new_mask = atomic_and(&wqlist_mask, ~(wqlist_index_bit));
+-    
++
+     while (slowpath(new_mask & wqlist_index_bit))
+     {
+         _hardware_pause();
+         new_mask = atomic_and(&wqlist_mask, ~(wqlist_index_bit));
+     }       
+-    
++
+     return;
+ }
+ 
+@@ -391,14 +404,14 @@
+     pthread_workqueue_t workq;
+     struct work *witem = NULL;
+     int idx;
+-    
++
+     idx = ffs(wqlist_mask);
+ 
+     if (idx == 0)
+         return (NULL);
+-    
++
+     workq = wqlist[idx - 1];
+-    
++
+     pthread_spin_lock(&workq->mtx);
+ 
+     witem = STAILQ_FIRST(&workq->item_listhead);
+@@ -408,10 +421,10 @@
+         if (!(skip_thread_exit_events && (witem->func == NULL)))
+         {
+             STAILQ_REMOVE_HEAD(&workq->item_listhead, item_entry);
+-            
++
+             if (STAILQ_EMPTY(&workq->item_listhead))
+                 reset_queue_mask(workq->wqlist_index);
+-            
++
+             *queue_priority = workq->queueprio;
+         }
+         else
+@@ -419,7 +432,7 @@
+     }
+ 
+     pthread_spin_unlock(&workq->mtx);
+-    
++
+     return (witem); // NULL if multiple threads raced for the same queue 
+ }
+ 
+@@ -431,20 +444,24 @@
+ wqlist_scan_spin(int *queue_priority)
+ {
+     struct work *witem = NULL;
+-    
++
+     // Start spinning if relevant, otherwise skip and go through
+     // the normal wqlist_scan_wait slowpath by returning the NULL witem.
+     if (atomic_inc_nv(&current_threads_spinning) <= PWQ_SPIN_THREADS)
+     {
+         while ((witem = wqlist_scan(queue_priority, 1)) == NULL)
+             _hardware_pause();
+-        
++
+         /* Force the manager thread to wakeup if we are the last idle one */
+         if (scoreboard.idle == 1)
+-            (void) sem_post(&scoreboard.sb_sem);        
++      #ifdef __APPLE__
++            (void) semaphore_signal(scoreboard.sb_sem);
++      #else
++            (void) sem_post(&scoreboard.sb_sem);
++      #endif
+     }
+-    
+-    atomic_dec(&current_threads_spinning);    
++
++    atomic_dec(&current_threads_spinning);
+ 
+     return witem;
+ }
+@@ -455,20 +472,24 @@
+ wqlist_scan_wait(int *queue_priority)
+ {
+     struct work *witem = NULL;
+-    
++
+     pthread_mutex_lock(&wqlist_mtx);
+-    
++
+     while ((witem = wqlist_scan(queue_priority, 0)) == NULL)
+         pthread_cond_wait(&wqlist_has_work, &wqlist_mtx);
+-    
++
+     pthread_mutex_unlock(&wqlist_mtx);
+ 
+     /* Force the manager thread to wakeup if we are the last idle one */
+     if (scoreboard.idle == 1)
+-        (void) sem_post(&scoreboard.sb_sem);        
++      #ifdef __APPLE__
++        (void) semaphore_signal(scoreboard.sb_sem);
++      #else
++        (void) sem_post(&scoreboard.sb_sem);
++      #endif
+ 
+     // We only process worker exists from the slow path, wqlist_scan only returns them here
+-    if (slowpath(witem->func == NULL)) 
++    if (slowpath(witem->func == NULL))
+     {
+         dbg_puts("worker exiting..");
+         atomic_dec(&scoreboard.idle);
+@@ -565,7 +586,7 @@
+         wqlist_index_bit = (0x1 << workq->wqlist_index);
+ 
+         pthread_spin_lock(&workq->mtx);
+-        
++
+         new_mask = atomic_or(&wqlist_mask, wqlist_index_bit);
+         
+         while (slowpath(!(new_mask & wqlist_index_bit)))
+@@ -577,7 +598,7 @@
+         STAILQ_INSERT_TAIL(&workq->item_listhead, witem, item_entry);
+ 
+         pthread_spin_unlock(&workq->mtx);
+-        
++
+         pthread_cond_signal(&wqlist_has_work);
+         pthread_mutex_unlock(&wqlist_mtx);
+ 
+@@ -600,7 +621,11 @@
+     unsigned int max_threads_to_stop = 0;
+     unsigned int i, idle_surplus_threads = 0;
+     int sem_timedwait_rv = 0;
++  #ifdef __APPLE__
++    mach_timespec_t   ts;
++  #else
+     struct timespec   ts;
++  #endif
+     struct timeval    tp;
+ 
+     worker_max = get_process_limit();
+@@ -627,25 +652,37 @@
+             ts.tv_sec += 1; // wake once per second and check if we have too many idle threads...
+ 
+             // We should only sleep on the condition if there are no pending signal, spurious wakeup is also ok
+-
++        #ifdef __APPLE__
++            if ((sem_timedwait_rv = semaphore_timedwait(scoreboard.sb_sem, ts)) != 0)
++        #else
+             if ((sem_timedwait_rv = sem_timedwait(&scoreboard.sb_sem, &ts)) != 0)
++        #endif
+             {
+                 sem_timedwait_rv = errno; // used for ETIMEDOUT below
+                 if (errno != ETIMEDOUT)
++        #ifdef __APPLE__
++                    dbg_perror("semaphore_timedwait()");
++        #else
+                     dbg_perror("sem_timedwait()");
++        #endif
+             }
+ 
+             dbg_puts("manager is awake");
+         } else {
+             dbg_puts("manager is suspending");
++        #ifdef __APPLE__
++            if (semaphore_wait(scoreboard.sb_sem) != 0)
++                dbg_perror("semaphore_wait()");
++        #else
+             if (sem_wait(&scoreboard.sb_sem) != 0)
+                 dbg_perror("sem_wait()");
++        #endif
+             dbg_puts("manager is resuming");
+         }
+-        
++
+         dbg_printf("idle=%u workers=%u max_workers=%u worker_min=%u worker_idle_threshold=%u",
+                    scoreboard.idle, scoreboard.count, worker_max, worker_min, worker_idle_threshold);
+-                
++
+         // If no workers available, check if we should create a new one
+         if ((scoreboard.idle == 0) && (scoreboard.count > 0) && (pending_thread_create == 0)) // last part required for an extremely unlikely race at startup
+         {
+@@ -665,17 +702,17 @@
+             else 
+             {
+                 // otherwise check if run queue length / stalled threads allows for new creation unless we hit worker_max ceiling
+-                
++
+                 if (scoreboard.count < worker_max)
+                 {
+                     if (threads_runnable(&current_thread_count, &threads_total) != 0)
+                         current_thread_count = 0;
+-                    
++
+                     // only start thread if we have less runnable threads than cpus and run queue length allows it
+-                    
++
+                     if (current_thread_count <= cpu_count) // <= discounts the manager thread
+                     {
+-                        scoreboard.runqueue_length = get_runqueue_length(); 
++                        scoreboard.runqueue_length = get_runqueue_length();
+ 
+                         if (scoreboard.runqueue_length <= runqueue_length_max) // <= discounts the manager thread
+                         {
+@@ -683,7 +720,6 @@
+                                 worker_start();
+                             else
+                                 dbg_puts("skipped thread creation as we got an idle one racing us");
+-
+                         }
+                         else
+                         {
+@@ -720,7 +756,7 @@
+                     dbg_puts("Resetting worker_idle_seconds_accumulated");
+                     worker_idle_seconds_accumulated = 0;
+                 }
+-                
++
+                 // Only consider ramp down if we have accumulated enough thread 'idle seconds'
+                 // this logic will ensure that a large number of idle threads will ramp down faster
+                 max_threads_to_stop = worker_idle_seconds_accumulated / WORKER_IDLE_SECONDS_THRESHOLD;
+@@ -729,7 +765,7 @@
+                 {
+                     worker_idle_seconds_accumulated = 0; 
+                     idle_surplus_threads = scoreboard.idle - worker_idle_threshold; 
+-                    
++
+                     if (max_threads_to_stop > idle_surplus_threads)
+                         max_threads_to_stop = idle_surplus_threads;
+ 
+@@ -788,10 +824,14 @@
+ void
+ manager_resume(void)
+ {
+-    if (scoreboard.sb_suspend) { 
++    if (scoreboard.sb_suspend) {
+         scoreboard.sb_suspend = 0;
+         __sync_synchronize();
+-        (void) sem_post(&scoreboard.sb_sem);        
++    #ifdef __APPLE__
++        (void) semaphore_signal(scoreboard.sb_sem);
++    #else
++        (void) sem_post(&scoreboard.sb_sem);
++    #endif
+     }
+ }
+ 
+@@ -801,14 +841,18 @@
+     scoreboard.sb_suspend = 0;
+     atomic_inc(&scoreboard.about_to_wait);
+     __sync_synchronize();
+-    (void) sem_post(&scoreboard.sb_sem);
++    #ifdef __APPLE__
++        (void) semaphore_signal(scoreboard.sb_sem);
++    #else
++        (void) sem_post(&scoreboard.sb_sem);
++    #endif
+ }
+ 
+ void
+ manager_workqueue_additem(struct _pthread_workqueue *workq, struct work *witem)
+ {
+     unsigned int wqlist_index_bit = (0x1 << workq->wqlist_index);
+-    
++
+     if (slowpath(workq->overcommit)) {
+         pthread_t tid;
+ 
+@@ -833,7 +877,7 @@
+         if (STAILQ_EMPTY(&workq->item_listhead))
+         {
+             unsigned int new_mask;
+-            
++
+             // The only possible contention here are with threads performing the same
+             // operation on another workqueue, so we will not be blocked long... 
+             // Threads operating on the same workqueue will be serialized by the spinlock so it is very unlikely.
+@@ -846,7 +890,7 @@
+                 new_mask = atomic_or(&wqlist_mask, wqlist_index_bit);                
+             }             
+         }
+-        
++
+         STAILQ_INSERT_TAIL(&workq->item_listhead, witem, item_entry);
+ 
+         pthread_spin_unlock(&workq->mtx);
