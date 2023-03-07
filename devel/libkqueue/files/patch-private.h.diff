@@ -1,0 +1,25 @@
+--- src/private.h.orig	2022-08-01 02:48:42.000000000 +0800
++++ src/private.h	2022-11-07 16:00:52.000000000 +0800
+@@ -113,6 +113,11 @@
+ 
+ #define _hardware_pause() __asm__("")
+ 
++/* Hopefully this works for Darwin */
++#elif defined(__POWERPC__)
++
++#define _hardware_pause() __asm__ volatile("or r27,r27,r27" ::: "memory");
++
+ #else
+ 
+ /* XXX-FIXME this is a stub, need to research what assembly to use */
+@@ -136,8 +141,8 @@
+ 
+ struct work {
+     STAILQ_ENTRY(work)   item_entry; 
+-    void               (*func)(void *);
+-    void                *func_arg;
++    void                 (*func)(void *);
++    void                 *func_arg;
+     unsigned int         flags;
+     unsigned int         gencount;
+ #if (WITEM_CACHE_TYPE == 3)

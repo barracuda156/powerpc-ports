@@ -1,0 +1,15 @@
+--- CMakeLists.txt.orig	2022-08-01 02:48:42.000000000 +0800
++++ CMakeLists.txt	2022-11-07 13:58:08.000000000 +0800
+@@ -92,6 +92,12 @@
+        src/linux/load.c
+        src/linux/thread_info.c
+        src/linux/thread_rt.c)
++elseif(CMAKE_SYSTEM_NAME MATCHES "(Apple|Darwin)")
++  list(APPEND PTHREAD_WORKQUEUE_SOURCES
++       src/posix/manager.c
++       src/posix/platform.h
++       src/posix/thread_info.c
++       src/posix/thread_rt.c)
+ elseif(CMAKE_SYSTEM_NAME STREQUAL Android)
+   list(APPEND PTHREAD_WORKQUEUE_SOURCES
+        src/posix/manager.c
