@@ -3,9 +3,8 @@
 PortSystem          1.0
 PortGroup           github 1.0
 
-github.setup        coq coq 8.13.2 V
+github.setup        coq coq 8.16.1 V
 revision            0
-platforms           darwin
 categories          lang math
 license             LGPL-2.1
 maintainers         {pmetzger @pmetzger} openmaintainer
@@ -22,9 +21,9 @@ depends_lib         port:ocaml \
 
 depends_build       port:ocaml-findlib
 
-checksums           rmd160  72217233c8861e0d4a0219e1108c6c94c38d9ebb \
-                    sha256  3ab7414ea22f31845371a5c92225ac09f74fc931b88e15106d9de3094eff535c \
-                    size    6952237
+checksums           rmd160  5970938a6e50ecce5c073b1e419a31d8a19bdb55 \
+                    sha256  830ddfbde2bd75fcd7b819dbcd0729d427055528a68f81411751690b6afac60c \
+                    size    7402743
 
 configure.pre_args  -prefix ${prefix}
 configure.args      -mandir ${prefix}/share/man \
