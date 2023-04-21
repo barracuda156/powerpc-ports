@@ -2,10 +2,15 @@
 
 PortSystem          1.0
 PortGroup           boost 1.0
-PortGroup           cargo_fetch 1.0
 PortGroup           compiler_blacklist_versions 1.0
 
+# No Rust before 10.6 or on Darwin PPC:
+if {![variant_isset no_rust]} {
+#        PortGroup   cargo_fetch 1.0
+}
+
 name                libopenraw
+conflicts           libopenraw-legacy
 version             0.3.4
 revision            0
 
@@ -63,22 +68,6 @@ autoreconf.args     -fvi
 configure.args      --with-boost=[boost::install_area] \
                     --disable-gnome
 
-# hijack CARGO_VERBOSE to include other cargo flags
-pre-build {
-    # on older systems, cargo.offline_cmd may be changed after calling cargo.crates
-    build.args-append   CARGO_VERBOSE="${cargo.offline_cmd} -v -j${build.jobs}"
-}
-# libopenraw expects cargo to build the library in CARGO_BUILD_TARGET/{debug,release}
-# however, when CARGO_BUILD_TARGET is set, its value is inserted between CARGO_TARGET_DIR and {debug,release}
-post-patch {
-    foreach subdir {release debug} {
-        xinstall -d -m 0755 ${worksrcpath}/lib/mp4/target/${subdir}
-        ln -s       ../[option triplet.${muniversal.build_arch}]/${subdir}/libmp4.a \
-                    ${worksrcpath}/lib/mp4/target/${subdir}/libmp4.a
-
-    }
-}
-
 variant gnome description {Build with GNOME/GTK+ support}  {
     depends_build-append \
                     port:gettext
@@ -106,7 +95,18 @@ livecheck.type      regex
 livecheck.url       ${homepage}
 livecheck.regex     "${name}-(\\d+(?:\\.\\d+)*)${extract.suffix}"
 
-cargo.crates \
+variant no_rust description "Avoid depending on Rust" {
+    # https://gitlab.freedesktop.org/libopenraw/libopenraw/-/issues/13
+    patchfiles-append   patch-Make-CR3-support-optional.diff
+    configure.args-append --disable-cr3
+}
+
+platform darwin powerpc {
+    default_variants-append +no_rust
+}
+
+if {![variant_isset no_rust]} {
+    cargo.crates \
     ahash                            0.7.6  fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47 \
     aho-corasick                    0.7.18  1e37cfd5e7657ada45f742d6e99ca5788580b5c529dc78faf11ece6dc702656f \
     atty                            0.2.14  d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8 \
@@ -136,3 +136,4 @@ cargo.crates \
     winapi-i686-pc-windows-gnu       0.4.0  ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6 \
     winapi-util                      0.1.5  70ec6ce85bb158151cae5e5c87f95a8e97d2c0c4b001223f33a334e3ce5de178 \
     winapi-x86_64-pc-windows-gnu     0.4.0  712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f
+}
