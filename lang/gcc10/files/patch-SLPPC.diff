@@ -1,0 +1,55 @@
+# This is only for 10.6 PPC (10A190)
+
+--- gcc/config/darwin.h.orig	2022-06-28 16:54:27.000000000 +0800
++++ gcc/config/darwin.h	2022-10-19 19:45:49.000000000 +0800
+@@ -363,7 +363,7 @@
+       %{%:sanitize(address): -lasan } \
+       %{%:sanitize(undefined): -lubsan } \
+       %(link_ssp) \
+-      %:version-compare(>< 10.6 10.7 mmacosx-version-min= -ld10-uwfef) \
++      %:version-compare(>< 10.6.1 10.7 mmacosx-version-min= -ld10-uwfef) \
+       %(link_gcc_c_sequence) \
+       %{!nodefaultexport:%{dylib|dynamiclib|bundle: \
+ 	%:version-compare(>= 10.11 asm_macosx_version_min= -U) \
+@@ -499,14 +499,13 @@
+ #undef REAL_LIBGCC_SPEC
+ #define REAL_LIBGCC_SPEC \
+ "%{static-libgcc|static:						  \
+-    %:version-compare(!> 10.6 mmacosx-version-min= -lgcc_eh)		  \
+-    %:version-compare(>= 10.6 mmacosx-version-min= -lemutls_w);		  \
++    %:version-compare(!> 10.7 mmacosx-version-min= -lgcc_eh)		  \
++    %:version-compare(>= 10.7 mmacosx-version-min= -lemutls_w);		  \
+    shared-libgcc|fexceptions|fobjc-exceptions|fgnu-runtime:		  \
+-    %:version-compare(!> 10.11 mmacosx-version-min= -lgcc_s.1.1)	  \
+-    %:version-compare(>= 10.11 mmacosx-version-min= -lemutls_w)		  \
++   " DARWIN_SHARED_LIBGCC "						  \
+     %:version-compare(!> 10.3.9 mmacosx-version-min= -lgcc_eh)		  \
+     %:version-compare(>< 10.3.9 10.5 mmacosx-version-min= -lgcc_s.10.4)   \
+-    %:version-compare(>< 10.5 10.6 mmacosx-version-min= -lgcc_s.10.5);	  \
++    %:version-compare(>< 10.5 10.7 mmacosx-version-min= -lgcc_s.10.5);	  \
+    : -lemutls_w								  \
+   } -lgcc "
+ 
+
+--- gcc/config/rs6000/darwin.h.orig	2022-06-28 16:54:27.000000000 +0800
++++ gcc/config/rs6000/darwin.h	2022-10-17 12:54:27.000000000 +0800
+@@ -98,7 +98,7 @@
+    Include libmx when targeting Darwin 7.0 and above, but before libSystem,
+    since the functions are actually in libSystem but for 7.x compatibility
+    we want them to be looked for in libmx first.
+-   Include libSystemStubs when compiling against 10.3 - 10.5 SDKs (we assume
++   Include libSystemStubs when compiling against 10.3–10.6 (10A190) SDKs (we assume
+    this is the case when targetting these) - but not for 64-bit long double.
+    Don't do either for m64, the library is either a dummy or non-existent.
+ */
+@@ -107,8 +107,8 @@
+ #define LIB_SPEC \
+ "%{!static:								\
+   %{!m64:%{!mlong-double-64:						\
+-    %{pg:%:version-compare(>< 10.3 10.5 mmacosx-version-min= -lSystemStubs_profile)} \
+-    %{!pg:%:version-compare(>< 10.3 10.5 mmacosx-version-min= -lSystemStubs)} \
++    %{pg:%:version-compare(>< 10.3 10.7 mmacosx-version-min= -lSystemStubs_profile)} \
++    %{!pg:%:version-compare(>< 10.3 10.7 mmacosx-version-min= -lSystemStubs)} \
+      %:version-compare(>< 10.3 10.4 mmacosx-version-min= -lmx)}}	\
+   -lSystem								\
+ }"
