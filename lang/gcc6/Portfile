@@ -9,7 +9,7 @@ PortGroup xcode_workaround            1.0
 name                gcc6
 epoch               3
 version             6.5.0
-revision            7
+revision            8
 subport             libgcc6 { revision 4 }
 platforms           {darwin < 15}
 categories          lang
@@ -18,7 +18,7 @@ maintainers         nomaintainer
 license             {GPL-3+ Permissive}
 description         The GNU compiler collection
 long_description    The GNU compiler collection, including front ends for \
-                    C, C++, Objective-C, Objective-C++ and Fortran.
+                    C, C++, Objective-C, Objective-C++, Fortran and Java.
 
 homepage            https://gcc.gnu.org/
 master_sites        ftp://ftp.funet.fi/pub/mirrors/sources.redhat.com/pub/gcc/releases/gcc-${version}/ \
@@ -55,6 +55,11 @@ if { ${configure.build_arch} eq "i386" && ${os.major} >= 10 } {
       "DISABLE_XCODE_AS_CLANG_SEARCH=1"
 }
 
+# fix for PPC SnowLeopard idiosyncracies
+if {${os.major} == 10 && ${configure.build_arch} eq "ppc"} {
+    patchfiles-append   patch-gcc6-darwin-config-for-PPCSL.diff
+}
+
 depends_lib         port:cctools \
                     port:gmp \
                     path:lib/pkgconfig/isl.pc:isl \
@@ -85,7 +90,13 @@ if {[vercmp ${xcodeversion} 10.2] >= 0} {
 set major           [lindex [split ${version} .-] 0]
 
 platform darwin {
-    configure.pre_args-append --build=${build_arch}-apple-darwin${os.major}
+    if {${build_arch} eq "ppc"} {
+        configure.pre_args-append --build=powerpc-apple-darwin${os.major}
+    } elseif {${build_arch} eq "ppc64"} {
+        configure.pre_args-append --build=powerpc64-apple-darwin${os.major}
+    } else {
+        configure.pre_args-append --build=${build_arch}-apple-darwin${os.major}
+    }
 
     # see https://gcc.gnu.org/ml/gcc-patches/2012-05/msg00672.html
     patchfiles-append         patch-float128.diff
@@ -98,7 +109,7 @@ platform darwin 8 i386 {
 
 configure.dir       ${workpath}/build
 configure.cmd       ${worksrcpath}/configure
-configure.args      --enable-languages=c,c++,objc,obj-c++,lto,fortran \
+configure.args      --enable-languages=c,c++,objc,obj-c++,lto,fortran,java \
                     --libdir=${prefix}/lib/${name} \
                     --includedir=${prefix}/include/${name} \
                     --infodir=${prefix}/share/info \
@@ -207,7 +218,7 @@ if {${subport} eq "libgcc6"} {
         --libdir=${prefix}/lib/libgcc
 
     configure.args-replace \
-        --enable-languages=c,c++,objc,obj-c++,lto,fortran \
+        --enable-languages=c,c++,objc,obj-c++,lto,fortran,java \
         --enable-languages=fortran
 
     # TODO: Possibly disable bootstrap with appropriate configure flags.
@@ -296,6 +307,7 @@ if {${subport} eq "libgcc6"} {
                 }
             }
         }
+        move ${destroot}${prefix}/lib/${name}/pkgconfig/libgcj-${major}.pc ${destroot}${prefix}/lib/pkgconfig/
     }
 
     select.group        gcc
