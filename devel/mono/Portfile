@@ -29,6 +29,21 @@ patchfiles-append       patch-aot-compiler.c.diff \
                         dynamic_lookup-11.patch \
                         patch-xcode_14.diff
 
+# https://github.com/mono/mono/issues/20990
+patchfiles-append       mono-6.12.0.122-gss.patch
+
+# https://github.com/mono/mono/issues/21649
+# Also see: https://github.com/mistydemeo/tigerbrew/issues/605
+patchfiles-append       0001-utils-mono-proclib.c-unbreak-build-on-10.9.patch \
+                        0002-utils-mono-threads-mach.c-fix-for-missing-pthread_th.patch \
+                        0003-utils-mono-context.h-unbreak-context-for-macOS-PPC.patch \
+                        0004-mono-config-fix-PPC.patch \
+                        0005-utils-initial-mach-support-for-PPC.patch \
+                        0006-sgen-archdep-fix-red-zone-for-ppc64.patch \
+                        0007-configure.ac-add-Darwin-PPC.patch \
+                        0008-mach-support-ppc-fix-registers.patch \
+                        0009-configure.ac-disable-gcc-atomics-on-ppc32-since-8-by.patch
+
 # autoreconf is needed just for the arm64 until upstream fixes the tooling
 use_autoreconf          yes
 autoreconf.args         -fvi
@@ -53,6 +68,13 @@ configure.args          --enable-nls \
                         --enable-dtrace=no \
                         --with-sigaltstack=no \
                         --with-libgdiplus=${prefix}/lib/libgdiplus.dylib
+
+# Temporary fix for broken configure.
+# https://trac.macports.org/ticket/67383
+platform darwin powerpc {
+    configure.args-append \
+                        --disable-gss
+}
 
 test.run                yes
 test.target             check

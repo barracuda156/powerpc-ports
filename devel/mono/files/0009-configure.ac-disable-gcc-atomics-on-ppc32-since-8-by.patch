@@ -1,0 +1,26 @@
+From 1c2ee22bae9a914f003432f7d7fb6dd8756dd01c Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Mon, 8 May 2023 11:59:31 +0800
+Subject: [PATCH 9/9] configure.ac: disable gcc atomics on ppc32, since 8-byte
+ __sync* builtins are not supported
+
+---
+ configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git configure.ac configure.ac
+index 785f0d37caa..240db104858 100644
+--- configure.ac
++++ configure.ac
+@@ -4972,7 +4972,7 @@ fi
+ dnl Use GCC atomic ops if they work on the target.
+ if test x$GCC = "xyes"; then
+ 	case $TARGET in
+-	X86 | AMD64 | ARM | ARM64 | ARM6432 | POWERPC | POWERPC64 | MIPS | S390X | SPARC | SPARC64 | RISCV32 | RISCV64)
++	X86 | AMD64 | ARM | ARM64 | ARM6432 | POWERPC64 | MIPS | S390X | SPARC | SPARC64 | RISCV32 | RISCV64)
+ 		AC_DEFINE(USE_GCC_ATOMIC_OPS, 1, [...])
+ 		;;
+ 	esac
+-- 
+2.40.1
+

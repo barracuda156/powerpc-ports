@@ -1,0 +1,251 @@
+From 20981cbd1098d4dd49ed6ff8957cb439b7ccec62 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Fri, 5 May 2023 23:02:44 +0800
+Subject: [PATCH 5/9] utils: initial mach-support for PPC
+
+---
+ mono/utils/Makefile.am          |   8 +++
+ mono/utils/mach-support-ppc.c   | 102 ++++++++++++++++++++++++++++++++
+ mono/utils/mach-support-ppc64.c | 102 ++++++++++++++++++++++++++++++++
+ 3 files changed, 212 insertions(+)
+ create mode 100644 mono/utils/mach-support-ppc.c
+ create mode 100644 mono/utils/mach-support-ppc64.c
+
+diff --git mono/utils/Makefile.am mono/utils/Makefile.am
+index f463ba2574b..b76748bfa67 100644
+--- mono/utils/Makefile.am
++++ mono/utils/Makefile.am
+@@ -260,6 +260,14 @@ if ARM64
+ arch_sources += mach-support-arm64.c
+ endif
+ 
++if POWERPC
++arch_sources += mach-support-ppc.c
++endif
++
++if POWERPC64
++arch_sources += mach-support-ppc64.c
++endif
++
+ else
+ 
+ arch_sources += mach-support-unknown.c
+diff --git mono/utils/mach-support-ppc.c mono/utils/mach-support-ppc.c
+new file mode 100644
+index 00000000000..56b183784e8
+--- /dev/null
++++ mono/utils/mach-support-ppc.c
+@@ -0,0 +1,102 @@
++/**
++ * \file
++ * mach support for PPC
++ *
++ * Authors:
++ *   Sergey Fedorov (vital.had@gmail.com)
++ *
++ * (C) 2023 Xamarin, Inc.
++ */
++
++#include <config.h>
++
++#if defined(__MACH__)
++#include <stdint.h>
++#include <glib.h>
++#include <pthread.h>
++#include "utils/mono-sigcontext.h"
++#include "utils/mono-compiler.h"
++#include "mach-support.h"
++
++int
++mono_mach_arch_get_mcontext_size ()
++{
++	return sizeof (struct __darwin_mcontext);
++}
++
++void
++mono_mach_arch_thread_states_to_mcontext (thread_state_t state, thread_state_t fpstate, void *context)
++{
++	ppc_thread_state_t *arch_state = (ppc_thread_state_t *) state;
++	ppc_float_state_t *arch_fpstate = (ppc_float_state_t *) fpstate;
++	struct __darwin_mcontext *ctx = (struct __darwin_mcontext *) context;
++
++	ctx->__ss = *arch_state;
++	ctx->__fs = *arch_fpstate;
++}
++
++void
++mono_mach_arch_mcontext_to_thread_states (void *context, thread_state_t state, thread_state_t fpstate)
++{
++	ppc_thread_state_t *arch_state = (ppc_thread_state_t *) state;
++	ppc_float_state_t *arch_fpstate = (ppc_float_state_t *) fpstate;
++	struct __darwin_mcontext *ctx = (struct __darwin_mcontext *) context;
++
++	*arch_state = ctx->__ss;
++	*arch_fpstate = ctx->__fs;
++}
++
++void
++mono_mach_arch_thread_states_to_mono_context (thread_state_t state, thread_state_t fpstate, MonoContext *context)
++{
++	int i;
++	ppc_thread_state_t *arch_state = (ppc_thread_state_t *) state;
++	for (i = 0; i < 32; ++i)
++		context->regs [i] = arch_state->__r[i];
++
++	context->pc = arch_state->__srr0;	/* Instruction address register (PC) */
++	context->lr = arch_state->__lr;	/* Link register */
++	/* Do we need the rest? */
++}
++
++int
++mono_mach_arch_get_thread_state_size ()
++{
++	return sizeof (ppc_thread_state_t);
++}
++
++int
++mono_mach_arch_get_thread_fpstate_size ()
++{
++	return sizeof (ppc_float_state_t);
++}
++
++kern_return_t
++mono_mach_arch_get_thread_states (thread_port_t thread, thread_state_t state, mach_msg_type_number_t *count, thread_state_t fpstate, mach_msg_type_number_t *fpcount)
++{
++	ppc_thread_state_t *arch_state = (ppc_thread_state_t *) state;
++	ppc_float_state_t *arch_fpstate = (ppc_float_state_t *) fpstate;
++	kern_return_t ret;
++
++	*count = PPC_THREAD_STATE_COUNT;
++	*fpcount = PPC_FLOAT_STATE_COUNT;
++
++	ret = thread_get_state (thread, PPC_THREAD_STATE, (thread_state_t) arch_state, count);
++	if (ret != KERN_SUCCESS)
++		return ret;
++	ret = thread_get_state (thread, PPC_FLOAT_STATE, (thread_state_t) arch_fpstate, fpcount);
++	return ret;
++}
++
++kern_return_t
++mono_mach_arch_set_thread_states (thread_port_t thread, thread_state_t state, mach_msg_type_number_t count, thread_state_t fpstate, mach_msg_type_number_t fpcount)
++{
++	kern_return_t ret;
++	return thread_set_state (thread, PPC_THREAD_STATE, state, count);
++		if (ret != KERN_SUCCESS)
++		return ret;
++	ret = thread_set_state (thread, PPC_FLOAT_STATE, fpstate, fpcount);
++	return ret;
++}
++
++#endif
+diff --git mono/utils/mach-support-ppc64.c mono/utils/mach-support-ppc64.c
+new file mode 100644
+index 00000000000..6a256d81a4f
+--- /dev/null
++++ mono/utils/mach-support-ppc64.c
+@@ -0,0 +1,102 @@
++/**
++ * \file
++ * mach support for PPC
++ *
++ * Authors:
++ *   Sergey Fedorov (vital.had@gmail.com)
++ *
++ * (C) 2023 Xamarin, Inc.
++ */
++
++#include <config.h>
++
++#if defined(__MACH__)
++#include <stdint.h>
++#include <glib.h>
++#include <pthread.h>
++#include "utils/mono-sigcontext.h"
++#include "utils/mono-compiler.h"
++#include "mach-support.h"
++
++int
++mono_mach_arch_get_mcontext_size ()
++{
++	return sizeof (struct __darwin_mcontext64);
++}
++
++void
++mono_mach_arch_thread_states_to_mcontext (thread_state_t state, thread_state_t fpstate, void *context)
++{
++	ppc_thread_state64_t *arch_state = (ppc_thread_state64_t *) state;
++	ppc_float_state_t *arch_fpstate = (ppc_float_state_t *) fpstate;
++	struct __darwin_mcontext64 *ctx = (struct __darwin_mcontext64 *) context;
++
++	ctx->__ss = *arch_state;
++	ctx->__fs = *arch_fpstate;
++}
++
++void
++mono_mach_arch_mcontext_to_thread_states (void *context, thread_state_t state, thread_state_t fpstate)
++{
++	ppc_thread_state64_t *arch_state = (ppc_thread_state64_t *) state;
++	ppc_float_state_t *arch_fpstate = (ppc_float_state_t *) fpstate;
++	struct __darwin_mcontext64 *ctx = (struct __darwin_mcontext64 *) context;
++
++	*arch_state = ctx->__ss;
++	*arch_fpstate = ctx->__fs;
++}
++
++void
++mono_mach_arch_thread_states_to_mono_context (thread_state_t state, thread_state_t fpstate, MonoContext *context)
++{
++	int i;
++	ppc_thread_state64_t *arch_state = (ppc_thread_state64_t *) state;
++	for (i = 0; i < 32; ++i)
++		context->regs [i] = arch_state->__r[i];
++
++	context->pc = arch_state->__srr0;	/* Instruction address register (PC) */
++	context->lr = arch_state->__lr;	/* Link register */
++	/* Do we need the rest? */
++}
++
++int
++mono_mach_arch_get_thread_state_size ()
++{
++	return sizeof (ppc_thread_state64_t);
++}
++
++int
++mono_mach_arch_get_thread_fpstate_size ()
++{
++	return sizeof (ppc_float_state_t);
++}
++
++kern_return_t
++mono_mach_arch_get_thread_states (thread_port_t thread, thread_state_t state, mach_msg_type_number_t *count, thread_state_t fpstate, mach_msg_type_number_t *fpcount)
++{
++	ppc_thread_state64_t *arch_state = (ppc_thread_state64_t *) state;
++	ppc_float_state_t *arch_fpstate = (ppc_float_state_t *) fpstate;
++	kern_return_t ret;
++
++	*count = PPC_THREAD_STATE64_COUNT;
++	*fpcount = PPC_FLOAT_STATE_COUNT;
++
++	ret = thread_get_state (thread, PPC_THREAD_STATE64, (thread_state_t) arch_state, count);
++	if (ret != KERN_SUCCESS)
++		return ret;
++	ret = thread_get_state (thread, PPC_FLOAT_STATE, (thread_state_t) arch_fpstate, fpcount);
++	return ret;
++}
++
++kern_return_t
++mono_mach_arch_set_thread_states (thread_port_t thread, thread_state_t state, mach_msg_type_number_t count, thread_state_t fpstate, mach_msg_type_number_t fpcount)
++{
++	kern_return_t ret;
++	return thread_set_state (thread, PPC_THREAD_STATE64, state, count);
++		if (ret != KERN_SUCCESS)
++		return ret;
++	ret = thread_set_state (thread, PPC_FLOAT_STATE, fpstate, fpcount);
++	return ret;
++}
++
++#endif
+-- 
+2.40.1
+
