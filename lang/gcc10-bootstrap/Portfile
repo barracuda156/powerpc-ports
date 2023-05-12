@@ -177,6 +177,10 @@ patchfiles-append       0065-Force-to-use-C-11-on-macOS-11.patch \
 # Backport preliminary Darwin 22 support to GCC 10
 patchfiles-append       0068-libstdc-Rename-__null_terminated-to-avoid-collision-.patch
 
+platform darwin 10 powerpc {
+    patchfiles-append   patch-SLPPC.diff
+}
+
 # Skip bootstrap comparison entirely
 post-patch {
     reinplace {s|^do-compare =|do-compare = /usr/bin/true|g} \
