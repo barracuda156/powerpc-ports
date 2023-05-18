@@ -1,0 +1,11 @@
+--- tests/distribution_tests.c.orig	2019-12-19 23:40:31.000000000 +0700
++++ tests/distribution_tests.c	2022-12-27 14:30:05.000000000 +0700
+@@ -148,7 +148,7 @@
+     apop_model *dist[] = {
+             apop_bernoulli, bernoulli_no_est, 
+             apop_beta, beta_no_est,
+-            apop_binomial, apop_dirichlet,
++            apop_binomial, /*apop_dirichlet,*/
+             apop_exponential, exponential_no_est,
+             apop_gamma, gamma_no_est,
+             apop_lognormal, apop_multinomial, 

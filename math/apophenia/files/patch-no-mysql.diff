@@ -1,0 +1,72 @@
+# Passing --with-mysql=no fails to have any effect: https://github.com/b-k/apophenia/issues/45
+
+--- install/configure.ac.orig	2019-12-19 23:40:31.000000000 +0700
++++ install/configure.ac	2022-12-26 17:09:15.000000000 +0700
+@@ -33,9 +33,6 @@
+ LT_LIB_M
+ ## GNU Scientific Library (GSL)
+ AX_PATH_GSL([1.12.0],[],[AC_MSG_ERROR(could not find required version of GSL)])
+-## DataBase system libraries
+-#### MySQL library
+-AX_LIB_MYSQL
+ #### SQLite3 library
+ AX_LIB_SQLITE3
+ 
+
+--- install/Makefile.am.orig	2019-12-19 23:40:31.000000000 +0700
++++ install/Makefile.am	2022-12-26 17:10:55.000000000 +0700
+@@ -9,7 +9,7 @@
+ 	--disable-maintainer-mode \
+ 	--enable-extended-tests
+ 
+-AM_CFLAGS = -g -Wall -O3
++AM_CFLAGS = -g -Wall -O3 @ARCHFLAGS@
+ 
+ ## Library versioning (C:R:A == current:revision:age)
+ ## 0.999b 0:0:0
+@@ -71,7 +71,6 @@
+ 	apop_vtables.c
+ 
+ apop_db_INCLUDES = \
+-	apop_db_mysql.c \
+ 	apop_db_sqlite.c
+ 
+ apop_db.c: $(apop_db_INCLUDES)
+@@ -79,7 +78,6 @@
+ libapopkernel_la_CFLAGS = \
+ 	$(PTHREAD_CFLAGS) \
+ 	$(OPENMP_CFLAGS) \
+-	$(MYSQL_CFLAGS) \
+ 	$(SQLITE3_CFLAGS) \
+ 	$(GSL_CFLAGS)
+ 
+@@ -89,7 +87,6 @@
+ 
+ libapophenia_la_LIBADD = \
+ 	$(SUBLIBS) \
+-	$(MYSQL_LDFLAGS) \
+ 	$(SQLITE3_LDFLAGS) \
+ 	$(GSL_LIBS) \
+ 	$(PTHREAD_LIBS) \
+
+--- install/apophenia.pc.in.orig	2019-12-19 23:40:31.000000000 +0700
++++ install/apophenia.pc.in	2022-12-27 01:23:37.000000000 +0700
+@@ -1,4 +1,4 @@
+-prefix=@prefix@
++prefix=@PREFIX@
+ exec_prefix=@exec_prefix@
+ bindir=@bindir@
+ libdir=@libdir@
+@@ -6,10 +6,9 @@
+ 
+ Name: Apophenia
+ Description: The Apophenia library
+-URL: http://apophenia.info/
++URL: http://apophenia.info
+ Requires: gsl
+ Requires.private: sqlite3
+ Version: @VERSION@
+-Cflags: @MYSQL_CFLAGS@
++Cflags: @CFLAGS@
+ Libs: -L${libdir} -lapophenia
+-Libs.private: @MYSQL_LDFLAGS@

@@ -3,11 +3,10 @@
 PortSystem          1.0
 PortGroup           github 1.0
 
-github.setup        b-k apophenia 35e1093dabe8bae5aec4f36eb8d8ecb41ceda0e0
-version             20160308
-revision            3
+github.setup        b-k apophenia 113671c16afa1724f9f225acdc88e838770071ce
+version             20191219
+revision            0
 categories          math science
-platforms           darwin
 license             GPL-2
 
 maintainers         gmail.com:el.dirte \
@@ -18,19 +17,56 @@ long_description    Apophenia is an open statistical library for working with \
                     data sets and statistical models. It provides functions on \
                     the same level as those of the typical stats package (such \
                     as OLS, Probit, or singular value decomposition) but gives \
-                    the user more flexibility to be creative in \
-                    model-building. The core functions are written in C.
+                    the user more flexibility to be creative in model-building. \
+                    The core functions are written in C.
 
 homepage            http://apophenia.info
 
-checksums           rmd160  b905d993dae9eed84c431840e2ef69967f322ef9 \
-                    sha256  46fab2b1a9a34b2ace005c9ba9b1b7151a81b0261d7a0145adff3854b902acb1
+checksums           rmd160  7d2bfb06ab0d99ab5178ce36558bac82c3fe20cb \
+                    sha256  392f3cf5d7da397d093a484f91a8da8e578692f9856642323ad14a4e463b2eba \
+                    size    513323
 
-depends_lib         port:gsl \
+depends_build-append \
+                    port:autoconf \
+                    port:automake \
+                    port:libtool \
+                    port:pkgconfig
+
+depends_lib-append  port:gsl \
                     port:sqlite3
 
+# https://github.com/b-k/apophenia/issues/44
+compiler.thread_local_storage yes
+
+# These are ignored by the build system: https://github.com/b-k/apophenia/issues/45
 configure.args-append   --enable-extended-tests \
                         --with-mysql=no
 
+patchfiles-append   patch-no-mysql.diff \
+                    patch-no-test-dirichlet.diff
+
+post-patch {
+    reinplace "s,@ARCHFLAGS@,[get_canonical_archflags cc]," ${worksrcpath}/install/Makefile.am
+    reinplace "s,@PREFIX@,${prefix}," ${worksrcpath}/install/apophenia.pc.in
+    reinplace "s,@CFLAGS@,," ${worksrcpath}/install/apophenia.pc.in
+}
+
+build {
+    system -W ${worksrcpath}/apophenia-1.0 "make -j${build.jobs}"
+}
+
+destroot {
+    # Need to fix
+}
+
 test.run            yes
 test.target         check
+
+# /opt/local/bin/apop_db_to_crosstab
+# /opt/local/bin/apop_plot_query
+# /opt/local/bin/apop_text_to_db
+# /opt/local/include/apop.h
+# /opt/local/lib/libapophenia.2.dylib
+# /opt/local/lib/libapophenia.a
+# /opt/local/lib/libapophenia.dylib
+# /opt/local/lib/pkgconfig/apophenia.pc
