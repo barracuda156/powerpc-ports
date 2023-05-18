@@ -1,0 +1,53 @@
+From 4ba116a7b4f5ab226945e6ca843888a98465f1d6 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sun, 15 Jan 2023 20:53:12 +0800
+Subject: [PATCH 2/2] Fix for aligned_alloc See:
+ https://github.com/NLAFET/StarNEig/pull/2/files
+
+---
+ test/CMakeLists.txt            | 2 ++
+ test/common/common.c           | 2 +-
+ test/starneig_test_config.h.in | 1 +
+ 3 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
+index 8edd85a..bab6c39 100644
+--- a/test/CMakeLists.txt
++++ b/test/CMakeLists.txt
+@@ -274,6 +274,8 @@ if (STARNEIG_ENABLE_BLACS AND STARNEIG_ENABLE_REFERENCE)
+     endif ()
+ endif ()
+ 
++CHECK_FUNCTION_EXISTS (aligned_alloc ALIGNED_ALLOC_FOUND)
++
+ #
+ # configuration file
+ #
+diff --git a/test/common/common.c b/test/common/common.c
+index 4867311..c176f9e 100644
+--- a/test/common/common.c
++++ b/test/common/common.c
+@@ -104,7 +104,7 @@ void * alloc_matrix(
+     else
+         ptr = aligned_alloc(64, n*(*ld)*elemsize);
+ #else
+-    ptr = aligned_alloc(64, n*(*ld)*elemsize);
++        ptr = malloc(n*(*ld)*elemsize);
+ #endif
+     return ptr;
+ }
+diff --git a/test/starneig_test_config.h.in b/test/starneig_test_config.h.in
+index 3e09c93..c69c0dc 100644
+--- a/test/starneig_test_config.h.in
++++ b/test/starneig_test_config.h.in
+@@ -40,6 +40,7 @@
+ #cmakedefine MKL_SET_NUM_THREADS_LOCAL_FOUND
+ #cmakedefine OPENBLAS_SET_NUM_THREADS_FOUND
+ #cmakedefine GOTO_SET_NUM_THREADS_FOUND
++#cmakedefine ALIGNED_ALLOC_FOUND
+ 
+ #cmakedefine PDGEHRD_FOUND
+ #cmakedefine PDORMHR_FOUND
+-- 
+2.39.0
+

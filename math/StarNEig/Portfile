@@ -1,0 +1,97 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           cmake 1.1
+PortGroup           compiler_blacklist_versions 1.0
+PortGroup           compilers 1.0
+PortGroup           github 1.0
+PortGroup           legacysupport 1.1
+PortGroup           mpi 1.0
+
+# clock_gettime
+legacysupport.newest_darwin_requires_legacy 15
+
+github.setup        NLAFET StarNEig 0.1.8 v
+categories          math
+license             BSD
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+description         Task-based library for solving dense non-symmetric eigenvalue problems
+long_description    StarNEig library aims to provide a complete task-based software stack \
+                    for solving dense non-symmetric (generalized) Eigenvalue problems. \
+                    The library is built on top of the StarPU runtime system and targets \
+                    both shared memory and distributed memory machines. Some components \
+                    of the library support GPUs.
+homepage            https://nlafet.github.io/StarNEig
+checksums           rmd160  66977acd3813a4873faf0ed6be9c2d65a8682f1f \
+                    sha256  2f863a87143b0a87166cc635318330ac19f5d7f651f20d847dd284bbd7b407b7 \
+                    size    521644
+
+depends_build-append \
+                    port:pkgconfig
+depends_lib-append  port:hwloc \
+                    port:scalapack \
+                    port:starpu
+
+compiler.openmp_version 4.0
+compiler.c_standard 1999
+compilers.choose    fc f90 f77 cc
+
+# Until mpich-defailt is enabled with gcc:
+if {${os.platform} eq "darwin" && ${os.arch} eq "powerpc"} {
+    mpi.setup       require require_fortran \
+                    -gcc44 -gcc45 -gcc46 -gcc47 -gcc48 -gcc49 \
+                    -clang -fortran
+} else {
+    mpi.setup       require require_fortran \
+                    -gcc44 -gcc45 -gcc46 -gcc47 -gcc48 -gcc49
+}
+
+patch.pre_args      -p1
+patchfiles-append   0001-Use-cblas_openblas.h.patch \
+                    0002-Fix-for-aligned_alloc.patch
+
+pre-configure {
+    configure.args-append \
+                    -DBLAS_LIBRARIES=${prefix}/lib/libopenblas.dylib \
+                    -DLAPACK_LIBRARIES=${prefix}/lib/libopenblas.dylib
+}
+
+# Please update this when starpu is updated:
+set starpu_ver      1.4
+
+post-patch {
+    reinplace "s|SUPPORTED_STARPU 1.3 1.2|SUPPORTED_STARPU $starpu_ver|" ${worksrcpath}/src/CMakeLists.txt
+}
+
+configure.args-append \
+                    -DSTARPU_INCLUDE_PATH=${prefix}/include/starpu/${starpu_ver} \
+                    -DSTARPU_LIBRARIES=${prefix}/lib/libstarpu-${starpu_ver}.dylib \
+                    -DSTARPU_MPI_LIBRARIES=${prefix}/lib/libstarpumpi-${starpu_ver}.dylib \
+                    -DSTARPU_USE_MPI=ON \
+                    -DSTARNEIG_ENABLE_TESTS=ON \
+                    -DSTARNEIG_ENABLE_DOCS=OFF \
+                    -DSTARNEIG_ENABLE_EVENT_PARSER=OFF \
+                    -DSTARNEIG_ENABLE_EXAMPLES=OFF \
+                    -DSTARNEIG_ENABLE_OPTIMIZATION=OFF \
+                    -DSTARNEIG_DISABLE_MPI=OFF \
+                    -DSTARNEIG_DISABLE_CUDA=ON \
+                    -DSTARNEIG_DISABLE_BLACS=ON \
+                    -DSTARNEIG_ENABLE_EVENTS=OFF \
+                    -DSTARNEIG_ENABLE_SANITY_CHECKS=OFF \
+                    -DSTARNEIG_ENABLE_PRUNING=OFF \
+                    -DSTARNEIG_ENABLE_MRM=OFF \
+                    -DSTARNEIG_ENABLE_CUDA_REORDER_WINDOW=OFF \
+                    -DSTARNEIG_ENABLE_INTEGER_SCALING=OFF \
+                    -DSTARNEIG_ENABLE_FULL_TESTS=ON \
+                    -DSTARNEIG_ENABLE_REFERENCE=OFF \
+                    -DSTARNEIG_ENABLE_VERBOSE=ON \
+                    -DMPIEXEC_MAX_NUMPROCS:STRING=2
+
+depends_test-append port:gsl \
+                    port:pkgconfig
+
+test.run            yes
+test.cmd            ctest
+test.cmd-prepend    DYLD_LIBRARY_PATH=${cmake.build_dir}
+test.post_args      --cores=${build.jobs}
+test.target         test

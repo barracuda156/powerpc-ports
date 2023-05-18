@@ -1,0 +1,40 @@
+From 298f8af13eb8ac481bf1478fadcd66b51b1d1b67 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sun, 15 Jan 2023 02:22:57 +0700
+Subject: [PATCH 2/2] test/common/common.c: fix for missing aligned_alloc
+
+---
+ test/common/common.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/test/common/common.c b/test/common/common.c
+index 4867311..43f14cb 100644
+--- a/test/common/common.c
++++ b/test/common/common.c
+@@ -45,6 +45,11 @@
+ #include <cuda_runtime_api.h>
+ #endif
+ 
++#ifdef __APPLE__
++#include <stdlib.h>
++#include <AvailabilityMacros.h>
++#endif
++
+ static unsigned long seed = 2019;
+ static int pinning = 1;
+ 
+@@ -104,7 +109,11 @@ void * alloc_matrix(
+     else
+         ptr = aligned_alloc(64, n*(*ld)*elemsize);
+ #else
++  #if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED < 101500
++    ptr = posix_memalign(&ptr, 16, n*(*ld)*elemsize);
++  #else
+     ptr = aligned_alloc(64, n*(*ld)*elemsize);
++  #endif
+ #endif
+     return ptr;
+ }
+-- 
+2.39.0
+
