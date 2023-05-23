@@ -1,0 +1,65 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           meson 1.0
+
+github.setup        cselab korali 129d19ee1743457661bd2814a0e4e0e157fa5bab
+version             2023.05.05
+revision            0
+categories          science
+license             MIT
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+description         High-performance framework for uncertainty quantification, optimization and reinforcement learning.
+long_description    Korali is a high-performance framework for Bayesian UQ, optimization, and reinforcement learning. \
+                    Its multi-language interface allows the execution of any type of computational model, \
+                    either sequential or distributed (MPI), C++ or Python, and even pre-compiled/legacy applications.
+checksums           rmd160  bf09043e2e117d7ffc1be5d8dc2cb5b7c6a79183 \
+                    sha256  dada365d2846ba220ed00fbe93bb68ae26795db04fd0e44d1e625c5975218bc3 \
+                    size    11324629
+
+set py_ver          3.11
+set py_ver_nodot    [string map {. ""} $py_ver]
+
+depends_build-append \
+                    port:pkgconfig
+depends_lib-append  path:include/eigen3:eigen3 \
+                    port:gsl \
+                    port:pybind11 \
+                    port:python${py_ver_nodot} \
+                    port:py${py_ver_nodot}-cycler \
+                    port:py${py_ver_nodot}-dateutil \
+                    port:py${py_ver_nodot}-kiwisolver \
+                    port:py${py_ver_nodot}-matplotlib \
+                    port:py${py_ver_nodot}-numpy \
+                    port:py${py_ver_nodot}-Pillow \
+                    port:py${py_ver_nodot}-pybind11 \
+                    port:py${py_ver_nodot}-parsing \
+                    port:py${py_ver_nodot}-scipy \
+                    port:py${py_ver_nodot}-seaborn \
+                    port:py${py_ver_nodot}-six
+
+patch.pre_args      -p1
+patchfiles          0001-Fix-python.patch
+
+configure.python    ${prefix}/bin/python${py_ver}
+post-patch {
+    reinplace "s,@PYTHON3@,${configure.python}," ${worksrcpath}/meson.build
+	fs-traverse file ${worksrcpath} {
+		if {[file isfile ${file}] && [file tail ${file}] eq ".py"} {
+			reinplace -n -q "s,@PYTHON3@,${configure.python}," ${file}
+		}
+	}
+}
+
+compiler.cxx_standard 2017
+
+configure.args-append \
+                    -Dcudnn=false \
+                    -Dmpi=false \
+                    -Dmpi4py=false \
+                    -Donednn=false \
+                    -Dopenmp=false \
+                    -Dtest=true
+
+test.run            yes

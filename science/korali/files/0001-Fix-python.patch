@@ -1,0 +1,3034 @@
+From 400bd6e54831d7968376c63393a25e346c1216a0 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Wed, 18 Jan 2023 18:49:26 +0800
+Subject: [PATCH] Fix python
+
+---
+ docs/source/builders/buildExamples.py                         | 2 +-
+ docs/source/builders/buildFeatures.py                         | 2 +-
+ docs/source/builders/buildModules.py                          | 2 +-
+ docs/source/builders/buildTools.py                            | 2 +-
+ examples/bayesian.inference/reference/.test-run-cmaes.py      | 2 +-
+ examples/bayesian.inference/reference/.test-run-mcmc.py       | 2 +-
+ examples/bayesian.inference/reference/.test-run-mtmcmc.py     | 3 ++-
+ examples/bayesian.inference/reference/.test-run-multinest.py  | 2 +-
+ examples/bayesian.inference/reference/.test-run-nested.py     | 2 +-
+ examples/bayesian.inference/reference/.test-run-tmcmc.py      | 3 ++-
+ examples/bayesian.inference/reference/README.rst              | 2 +-
+ examples/bayesian.inference/reference/run-cmaes.py            | 2 +-
+ examples/bayesian.inference/reference/run-hmc.py              | 2 +-
+ examples/bayesian.inference/reference/run-mcmc.py             | 2 +-
+ examples/bayesian.inference/reference/run-mtmcmc.py           | 2 +-
+ examples/bayesian.inference/reference/run-multinest.py        | 2 +-
+ examples/bayesian.inference/reference/run-nested.py           | 2 +-
+ examples/bayesian.inference/reference/run-tmcmc.py            | 2 +-
+ examples/design/.test-run.py                                  | 3 ++-
+ examples/design/run-design.py                                 | 3 ++-
+ examples/features/checkpoint.resume/.test-run.py              | 3 ++-
+ examples/features/checkpoint.resume/run-cmaes.py              | 2 +-
+ examples/features/checkpoint.resume/run-dvracer.py            | 3 ++-
+ examples/features/checkpoint.resume/run-sin.py                | 3 ++-
+ examples/features/checkpoint.resume/run-vracer.py             | 3 ++-
+ examples/features/composite.korali/.test-run-cmaes.py         | 3 ++-
+ examples/features/composite.korali/run-cmaes.py               | 2 +-
+ examples/features/concurrent.execution/.test-run.py           | 3 ++-
+ examples/features/concurrent.execution/_model/model.py        | 3 ++-
+ examples/features/concurrent.execution/_model/runModel.py     | 3 ++-
+ examples/features/concurrent.execution/run.py                 | 2 +-
+ examples/features/dry.runs/.test-run.py                       | 3 ++-
+ examples/features/dry.runs/run-cmaes.py                       | 2 +-
+ examples/features/multiple.experiments/.test-run.py           | 2 +-
+ examples/features/multiple.experiments/run-cmaes.py           | 2 +-
+ examples/features/partial.runs/.test-run.py                   | 2 +-
+ examples/features/partial.runs/run-cmaes.py                   | 2 +-
+ examples/features/partial.runs/run-dea.py                     | 2 +-
+ examples/features/partial.runs/run-mcmc.py                    | 2 +-
+ examples/features/partial.runs/run-multiple.py                | 2 +-
+ examples/features/partial.runs/run-propagation.py             | 2 +-
+ examples/features/partial.runs/run-rprop.py                   | 2 +-
+ examples/features/partial.runs/run-tmcmc.py                   | 2 +-
+ examples/features/running.cxx/.test-run.py                    | 2 +-
+ examples/features/running.mpi.cxx/.test-run.py                | 2 +-
+ examples/features/running.mpi.python/.test-run.py             | 2 +-
+ examples/features/running.mpi.python/run-cmaes.py             | 2 +-
+ examples/features/save.results/.test-run.py                   | 2 +-
+ examples/features/save.results/_model/model.py                | 2 +-
+ examples/features/save.results/run-mcmc.py                    | 2 +-
+ examples/hierarchical.bayesian/basic/.test-run.py             | 2 +-
+ examples/hierarchical.bayesian/basic/_setup/model/model.py    | 2 +-
+ examples/hierarchical.bayesian/basic/_setup/plot_data.py      | 2 +-
+ examples/hierarchical.bayesian/basic/run-phase0.py            | 2 +-
+ examples/hierarchical.bayesian/basic/run-phase1.py            | 2 +-
+ examples/hierarchical.bayesian/basic/run-phase2.py            | 2 +-
+ examples/hierarchical.bayesian/basic/run-phase3a.py           | 2 +-
+ examples/hierarchical.bayesian/basic/run-phase3b.py           | 2 +-
+ examples/hierarchical.bayesian/extended/.test-run.py          | 2 +-
+ examples/hierarchical.bayesian/extended/_setup/model/model.py | 2 +-
+ examples/hierarchical.bayesian/extended/_setup/plot_data.py   | 2 +-
+ examples/hierarchical.bayesian/extended/run-phase0.py         | 2 +-
+ examples/hierarchical.bayesian/extended/run-phase1.py         | 3 ++-
+ examples/hierarchical.bayesian/extended/run-phase2.py         | 2 +-
+ examples/hierarchical.bayesian/extended/run-phase3a.py        | 2 +-
+ examples/hierarchical.bayesian/extended/run-phase3b.py        | 2 +-
+ examples/integration/.test-run.py                             | 2 +-
+ examples/integration/_model/integrands.py                     | 3 ++-
+ examples/integration/run-mc-integration.py                    | 2 +-
+ examples/integration/run-quadrature-integration.py            | 2 +-
+ examples/optimization/constrained/.test-run.py                | 2 +-
+ examples/optimization/constrained/README.rst                  | 2 +-
+ examples/optimization/constrained/run-ccmaes.py               | 2 +-
+ examples/optimization/discrete/.test-run.py                   | 2 +-
+ examples/optimization/discrete/run-cmaes.py                   | 2 +-
+ examples/optimization/discrete/run-gridsearch.py              | 2 +-
+ examples/optimization/gradient/.test-run.py                   | 2 +-
+ examples/optimization/gradient/run-adabelief.py               | 2 +-
+ examples/optimization/gradient/run-adam.py                    | 2 +-
+ examples/optimization/gradient/run-madgrad.py                 | 2 +-
+ examples/optimization/gradient/run-rprop.py                   | 2 +-
+ examples/optimization/multiobjective/.test-run.py             | 2 +-
+ examples/optimization/multiobjective/run-mocmaes.py           | 2 +-
+ examples/optimization/stochastic/.test-run.py                 | 2 +-
+ examples/optimization/stochastic/README.rst                   | 2 +-
+ examples/optimization/stochastic/run-cmaes-gradient.py        | 2 +-
+ examples/optimization/stochastic/run-cmaes.py                 | 2 +-
+ examples/optimization/stochastic/run-dea.py                   | 2 +-
+ examples/propagation/.test-run.py                             | 2 +-
+ examples/propagation/_model/plots.py                          | 2 +-
+ examples/propagation/_model/work.py                           | 2 +-
+ examples/propagation/run-execution.py                         | 2 +-
+ examples/propagation/run-uncertainty-propagation.py           | 2 +-
+ examples/reaction/.test-run.py                                | 2 +-
+ examples/reaction/run-brusselator-ssa.py                      | 2 +-
+ examples/reaction/run-laczlacy-tauLeaping.py                  | 2 +-
+ examples/reaction/run-sir-ssa.py                              | 2 +-
+ examples/reaction/run-sir-tauLeaping.py                       | 2 +-
+ examples/reinforcement.learning/ABF2D/.test-run.py            | 2 +-
+ examples/reinforcement.learning/ABF2D/_model/abf.py           | 2 +-
+ examples/reinforcement.learning/ABF2D/_model/env.py           | 2 +-
+ examples/reinforcement.learning/ABF2D/run-vracer.py           | 2 +-
+ examples/reinforcement.learning/cartpole/.test-run.py         | 2 +-
+ examples/reinforcement.learning/cartpole/_model/cartpole.py   | 2 +-
+ examples/reinforcement.learning/cartpole/_model/env.py        | 2 +-
+ examples/reinforcement.learning/cartpole/run-dvracer.py       | 2 +-
+ .../reinforcement.learning/cartpole/run-vracer-multienv.py    | 2 +-
+ examples/reinforcement.learning/cartpole/run-vracer.py        | 2 +-
+ examples/reinforcement.learning/mountaincart/.test-run.py     | 2 +-
+ examples/reinforcement.learning/mountaincart/_model/env.py    | 2 +-
+ .../mountaincart/_model/mountaincart.py                       | 2 +-
+ examples/reinforcement.learning/mountaincart/run-vracer.py    | 2 +-
+ examples/reinforcement.learning/upswing/.test-run.py          | 2 +-
+ examples/reinforcement.learning/upswing/_model/double_env.py  | 2 +-
+ examples/reinforcement.learning/upswing/_model/single_env.py  | 2 +-
+ examples/reinforcement.learning/upswing/run-vracer-double.py  | 2 +-
+ examples/reinforcement.learning/upswing/run-vracer-single.py  | 2 +-
+ examples/sampling/.test-run.py                                | 2 +-
+ examples/sampling/README.rst                                  | 2 +-
+ examples/sampling/run-hmc.py                                  | 2 +-
+ examples/sampling/run-mcmc.py                                 | 2 +-
+ examples/supervised.learning/mnist/.test-run.py               | 2 +-
+ examples/supervised.learning/mnist/run-mnist-autoencoder.py   | 2 +-
+ examples/supervised.learning/mnist/run-mnist-classifier.py    | 2 +-
+ examples/supervised.learning/sineWave/.test-run.py            | 2 +-
+ examples/supervised.learning/sineWave/plot-loss.py            | 3 ++-
+ examples/supervised.learning/sineWave/run-ffn.py              | 3 ++-
+ examples/supervised.learning/sineWave/run-rnn.py              | 3 ++-
+ meson.build                                                   | 4 ++--
+ python/korali/cxx/__main__.py                                 | 3 ++-
+ python/korali/plot/CMAES.py                                   | 2 +-
+ python/korali/plot/DEA.py                                     | 2 +-
+ python/korali/plot/HMC.py                                     | 2 +-
+ python/korali/plot/LMCMAES.py                                 | 2 +-
+ python/korali/plot/MCMC.py                                    | 2 +-
+ python/korali/plot/MOCMAES.py                                 | 2 +-
+ python/korali/plot/Nested.py                                  | 2 +-
+ python/korali/plot/SSM.py                                     | 2 +-
+ python/korali/plot/TMCMC.py                                   | 2 +-
+ python/korali/plot/__main__.py                                | 3 ++-
+ python/korali/profiler/__main__.py                            | 2 +-
+ python/korali/rlview/__main__.py                              | 2 +-
+ study.cases/CUP2D/sgs/_model/environment.py                   | 2 +-
+ study.cases/CUP2D/sgs/run-kolmogorov-flow.py                  | 2 +-
+ study.cases/CUP2D/sgs/run-vracer.py                           | 2 +-
+ study.cases/CUP2D/swimmers/postprocessing/plot.py             | 2 +-
+ study.cases/LAMMPS/run-cmaes.py                               | 2 +-
+ study.cases/LAMMPS/run-tmcmc.py                               | 2 +-
+ study.cases/LAMMPS/setup/runLAMMPS.py                         | 2 +-
+ study.cases/RBCRelax/hierarchical/phase2.py                   | 2 +-
+ study.cases/RBCRelax/hierarchical/phase2_surrogate.py         | 2 +-
+ study.cases/RBCRelax/hierarchical/phase2_surrogate_inputs.py  | 2 +-
+ study.cases/RBCRelax/hierarchical/phase3a.py                  | 2 +-
+ study.cases/RBCRelax/hierarchical/phase3a_surrogate.py        | 2 +-
+ study.cases/RBCRelax/hierarchical/phase3b.py                  | 2 +-
+ study.cases/RBCRelax/hierarchical/phase3b_surrogate.py        | 2 +-
+ study.cases/RBCRelax/run-cmaes-multiple.py                    | 2 +-
+ study.cases/RBCRelax/run-cmaes.py                             | 2 +-
+ study.cases/RBCRelax/run-tmcmc-multiple.py                    | 3 ++-
+ study.cases/RBCRelax/run-tmcmc-surrogate-multiple.py          | 2 +-
+ study.cases/RBCRelax/run-tmcmc-surrogate.py                   | 2 +-
+ study.cases/RBCRelax/run-tmcmc.py                             | 2 +-
+ study.cases/RBCStretch/run-cmaes.py                           | 2 +-
+ study.cases/RBCStretch/run-tmcmc.py                           | 2 +-
+ study.cases/bubblePipe/_model/model.py                        | 2 +-
+ study.cases/bubblePipe/run-korali.py                          | 2 +-
+ study.cases/covid19/main.py                                   | 2 +-
+ study.cases/covid19/plot_intervals.py                         | 2 +-
+ study.cases/covid19/plot_intervals_infected.py                | 2 +-
+ study.cases/covid19/src/model/sir/intervals.py                | 2 +-
+ study.cases/covid19/src/model/sir/propagate.py                | 2 +-
+ study.cases/covid19/src/model/sir/sample.py                   | 2 +-
+ study.cases/covid19/src/model/sir/sir.py                      | 2 +-
+ study.cases/covid19/src/tools/tools.py                        | 2 +-
+ study.cases/lighthouse/.test-run.py                           | 2 +-
+ study.cases/lighthouse/run-example1.py                        | 2 +-
+ study.cases/lighthouse/run-example2.py                        | 2 +-
+ study.cases/openAIGym/_model/agent.py                         | 2 +-
+ study.cases/openAIGym/genMovie.py                             | 2 +-
+ study.cases/openAIGym/run-cmaes.py                            | 2 +-
+ study.cases/openAIGym/run-vracer.py                           | 3 ++-
+ study.cases/pettingZoo/_model/agent.py                        | 2 +-
+ study.cases/pettingZoo/genMovie.py                            | 3 ++-
+ study.cases/pettingZoo/run-dvracer.py                         | 2 +-
+ study.cases/pettingZoo/run-vracer.py                          | 2 +-
+ tests/python/cxx/test-run.py                                  | 2 +-
+ tests/python/plot/test-run.py                                 | 3 ++-
+ tests/python/rlview/test-run.py                               | 3 ++-
+ tests/statistical/bayesian/run-bayesian-1.py                  | 2 +-
+ tests/statistical/bayesian/run-bayesian-2.py                  | 2 +-
+ tests/statistical/bayesian/run-bayesian-3.py                  | 2 +-
+ tests/statistical/bayesian/run-bayesian-4.py                  | 2 +-
+ tests/statistical/bayesian/run-bayesian-5.py                  | 2 +-
+ tests/statistical/bayesian/run-bayesian-6.py                  | 2 +-
+ tests/statistical/bayesian/run-bayesian-7.py                  | 2 +-
+ tests/statistical/design/model/model.py                       | 2 +-
+ tests/statistical/design/run-design-1.py                      | 2 +-
+ tests/statistical/design/run-design-2.py                      | 2 +-
+ tests/statistical/design/run-design-3.py                      | 2 +-
+ tests/statistical/executor/model/model.py                     | 2 +-
+ tests/statistical/executor/run-executor-1.py                  | 2 +-
+ tests/statistical/executor/run-executor-2.py                  | 2 +-
+ tests/statistical/integrator/model/model.py                   | 2 +-
+ tests/statistical/integrator/run-integrator-1.py              | 2 +-
+ tests/statistical/integrator/run-integrator-2.py              | 2 +-
+ tests/statistical/integrator/run-integrator-3.py              | 2 +-
+ tests/statistical/integrator/run-integrator-4.py              | 2 +-
+ tests/statistical/optimizers/correctness/.test-run.py         | 2 +-
+ tests/statistical/optimizers/correctness/helpers/helpers.py   | 2 +-
+ tests/statistical/optimizers/correctness/run-cmaes.py         | 2 +-
+ tests/statistical/optimizers/correctness/run-dea.py           | 2 +-
+ tests/statistical/optimizers/correctness/run-gridSearch.py    | 2 +-
+ tests/statistical/optimizers/detailed/ccmaes/.test-run.py     | 2 +-
+ .../statistical/optimizers/detailed/ccmaes/helpers/helpers.py | 2 +-
+ tests/statistical/optimizers/detailed/cmaes/.test-run.py      | 2 +-
+ tests/statistical/optimizers/detailed/cmaes/run-maxcmaes1.py  | 2 +-
+ tests/statistical/optimizers/detailed/cmaes/run-maxcmaes2.py  | 2 +-
+ tests/statistical/optimizers/detailed/cmaes/run-mincmaes1.py  | 2 +-
+ tests/statistical/optimizers/detailed/cmaes/run-mincmaes2.py  | 2 +-
+ tests/statistical/optimizers/termination/.test-run.py         | 2 +-
+ tests/statistical/optimizers/termination/cmaes_termination.py | 2 +-
+ tests/statistical/optimizers/termination/dea_termination.py   | 2 +-
+ tests/statistical/optimizers/termination/helpers/helpers.py   | 2 +-
+ tests/statistical/samplers/configuration/run-nested.py        | 2 +-
+ tests/statistical/samplers/configuration/run-tmcmc.py         | 2 +-
+ tests/statistical/samplers/correctness/helpers/helpers.py     | 2 +-
+ tests/statistical/samplers/correctness/run-dram.py            | 2 +-
+ tests/statistical/samplers/correctness/run-hmc-bayesian.py    | 2 +-
+ tests/statistical/samplers/correctness/run-hmc-nuts-1.py      | 2 +-
+ tests/statistical/samplers/correctness/run-hmc-nuts-2.py      | 2 +-
+ tests/statistical/samplers/correctness/run-hmc-nuts-3.py      | 2 +-
+ tests/statistical/samplers/correctness/run-hmc-nuts-4.py      | 2 +-
+ tests/statistical/samplers/correctness/run-hmc.py             | 2 +-
+ tests/statistical/samplers/correctness/run-mcmc.py            | 2 +-
+ tests/statistical/samplers/correctness/run-tmcmc-1.py         | 2 +-
+ tests/statistical/samplers/correctness/run-tmcmc-2.py         | 2 +-
+ tests/statistical/samplers/correctness/run-tmcmc-3.py         | 2 +-
+ tests/statistical/samplers/detailed/mcmc/.test-run.py         | 2 +-
+ tests/statistical/samplers/detailed/mcmc/run-mcmc.py          | 2 +-
+ tests/statistical/samplers/detailed/tmcmc/.test-run.py        | 2 +-
+ tests/statistical/samplers/detailed/tmcmc/helpers/helpers.py  | 2 +-
+ tests/statistical/samplers/detailed/tmcmc/tmcmc-specifics.py  | 2 +-
+ tests/statistical/samplers/mean/run-hmc-gaussian.py           | 2 +-
+ tests/statistical/samplers/mean/run-hmc-laplace.py            | 2 +-
+ tests/statistical/samplers/mean/run-hmc-nuts-gaussian.py      | 2 +-
+ tests/statistical/samplers/mean/run-hmc-nuts-laplace.py       | 2 +-
+ tests/statistical/samplers/mean/run-hmc-riemannian-laplace.py | 2 +-
+ tests/statistical/samplers/mean/run-mcmc-exponential.py       | 2 +-
+ tests/statistical/samplers/mean/run-mcmc-gaussian.py          | 2 +-
+ tests/statistical/samplers/mean/run-mcmc-gaussian5d.py        | 2 +-
+ tests/statistical/samplers/mean/run-mcmc-laplace.py           | 2 +-
+ tests/statistical/samplers/mean/run-multinest-gaussian5d.py   | 2 +-
+ tests/statistical/samplers/mean/run-nested-exponential.py     | 2 +-
+ tests/statistical/samplers/mean/run-nested-gaussian.py        | 2 +-
+ tests/statistical/samplers/mean/run-nested-gaussian5d.py      | 2 +-
+ tests/statistical/samplers/mean/run-nested-laplace.py         | 2 +-
+ tests/statistical/samplers/mean/run-rchmc-gaussian.py         | 2 +-
+ tests/statistical/samplers/mean/run-rchmc-laplace.py          | 2 +-
+ tests/statistical/samplers/mean/run-tmcmc-exponential.py      | 2 +-
+ tests/statistical/samplers/mean/run-tmcmc-gaussian.py         | 2 +-
+ tests/statistical/samplers/mean/run-tmcmc-gaussian5d.py       | 2 +-
+ tests/statistical/samplers/mean/run-tmcmc-laplace.py          | 2 +-
+ tests/statistical/samplers/termination/.test-run.py           | 2 +-
+ tests/statistical/samplers/termination/helpers/helpers.py     | 2 +-
+ tests/statistical/samplers/termination/nested_termination.py  | 2 +-
+ tests/statistical/samplers/termination/tmcmc_termination.py   | 2 +-
+ tests/statistical/supervised/run-deep-supervisor.py           | 2 +-
+ tools/build/build.py                                          | 2 +-
+ tools/build/build_variables_header.py                         | 2 +-
+ tools/build/generate_dependencies.py                          | 2 +-
+ tools/build/get_header_directory.py                           | 2 +-
+ 271 files changed, 297 insertions(+), 272 deletions(-)
+
+diff --git a/docs/source/builders/buildExamples.py b/docs/source/builders/buildExamples.py
+index 3bfd5c13a..bf5543c5a 100755
+--- a/docs/source/builders/buildExamples.py
++++ b/docs/source/builders/buildExamples.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ import os
+ import json
+diff --git a/docs/source/builders/buildFeatures.py b/docs/source/builders/buildFeatures.py
+index b71f8f849..c0884d74b 100755
+--- a/docs/source/builders/buildFeatures.py
++++ b/docs/source/builders/buildFeatures.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ import os
+ import json
+diff --git a/docs/source/builders/buildModules.py b/docs/source/builders/buildModules.py
+index 46e05198e..a5390e404 100755
+--- a/docs/source/builders/buildModules.py
++++ b/docs/source/builders/buildModules.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ import os
+ import json
+diff --git a/docs/source/builders/buildTools.py b/docs/source/builders/buildTools.py
+index 20af11132..98b770fde 100755
+--- a/docs/source/builders/buildTools.py
++++ b/docs/source/builders/buildTools.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ import os
+ import json
+diff --git a/examples/bayesian.inference/reference/.test-run-cmaes.py b/examples/bayesian.inference/reference/.test-run-cmaes.py
+index b912a4ff6..245e4d6ce 100755
+--- a/examples/bayesian.inference/reference/.test-run-cmaes.py
++++ b/examples/bayesian.inference/reference/.test-run-cmaes.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ from korali.plot.__main__ import main
+ 
+diff --git a/examples/bayesian.inference/reference/.test-run-mcmc.py b/examples/bayesian.inference/reference/.test-run-mcmc.py
+index 28e4859f3..08494e877 100755
+--- a/examples/bayesian.inference/reference/.test-run-mcmc.py
++++ b/examples/bayesian.inference/reference/.test-run-mcmc.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ from korali.plot.__main__ import main
+ 
+diff --git a/examples/bayesian.inference/reference/.test-run-mtmcmc.py b/examples/bayesian.inference/reference/.test-run-mtmcmc.py
+index 69c330f8c..b6d4b417f 100755
+--- a/examples/bayesian.inference/reference/.test-run-mtmcmc.py
++++ b/examples/bayesian.inference/reference/.test-run-mtmcmc.py
+@@ -1,4 +1,5 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
++
+ from subprocess import call
+ from korali.plot.__main__ import main
+ 
+diff --git a/examples/bayesian.inference/reference/.test-run-multinest.py b/examples/bayesian.inference/reference/.test-run-multinest.py
+index 9b77c5846..99edffb57 100755
+--- a/examples/bayesian.inference/reference/.test-run-multinest.py
++++ b/examples/bayesian.inference/reference/.test-run-multinest.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ from korali.plot.__main__ import main
+ 
+diff --git a/examples/bayesian.inference/reference/.test-run-nested.py b/examples/bayesian.inference/reference/.test-run-nested.py
+index a610b6109..dedca528a 100755
+--- a/examples/bayesian.inference/reference/.test-run-nested.py
++++ b/examples/bayesian.inference/reference/.test-run-nested.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ from korali.plot.__main__ import main
+ 
+diff --git a/examples/bayesian.inference/reference/.test-run-tmcmc.py b/examples/bayesian.inference/reference/.test-run-tmcmc.py
+index d7ff40695..02046f171 100755
+--- a/examples/bayesian.inference/reference/.test-run-tmcmc.py
++++ b/examples/bayesian.inference/reference/.test-run-tmcmc.py
+@@ -1,4 +1,5 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
++
+ from subprocess import call
+ from korali.plot.__main__ import main
+ 
+diff --git a/examples/bayesian.inference/reference/README.rst b/examples/bayesian.inference/reference/README.rst
+index 3993d6e4d..fc65b859a 100644
+--- a/examples/bayesian.inference/reference/README.rst
++++ b/examples/bayesian.inference/reference/README.rst
+@@ -107,7 +107,7 @@ First, open a file and import the korali module
+ 
+ .. code-block:: python
+ 
+-    #!/usr/bin/env python3
++    #! @PYTHON3@
+     import korali
+ 
+ Import the computational model,
+diff --git a/examples/bayesian.inference/reference/run-cmaes.py b/examples/bayesian.inference/reference/run-cmaes.py
+index 7c805f604..1d40043e9 100755
+--- a/examples/bayesian.inference/reference/run-cmaes.py
++++ b/examples/bayesian.inference/reference/run-cmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali find the variable values
+ # that maximize the posterior in a bayesian problem where the likelihood
+diff --git a/examples/bayesian.inference/reference/run-hmc.py b/examples/bayesian.inference/reference/run-hmc.py
+index 3a80ed6cb..46456c7aa 100644
+--- a/examples/bayesian.inference/reference/run-hmc.py
++++ b/examples/bayesian.inference/reference/run-hmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior distribution
+ # in a bayesian problem where the likelihood is calculated by providing
+diff --git a/examples/bayesian.inference/reference/run-mcmc.py b/examples/bayesian.inference/reference/run-mcmc.py
+index e8bbd4aee..f36470550 100755
+--- a/examples/bayesian.inference/reference/run-mcmc.py
++++ b/examples/bayesian.inference/reference/run-mcmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior distribution
+ # in a bayesian problem where the likelihood is calculated by providing
+diff --git a/examples/bayesian.inference/reference/run-mtmcmc.py b/examples/bayesian.inference/reference/run-mtmcmc.py
+index c1337487a..8937df9b1 100755
+--- a/examples/bayesian.inference/reference/run-mtmcmc.py
++++ b/examples/bayesian.inference/reference/run-mtmcmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior distribution
+ # in a bayesian problem where the likelihood is calculated by providing
+diff --git a/examples/bayesian.inference/reference/run-multinest.py b/examples/bayesian.inference/reference/run-multinest.py
+index 91e3d2f20..2bea1fa95 100755
+--- a/examples/bayesian.inference/reference/run-multinest.py
++++ b/examples/bayesian.inference/reference/run-multinest.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior distribution
+ # in a bayesian problem where the likelihood is calculated by providing
+diff --git a/examples/bayesian.inference/reference/run-nested.py b/examples/bayesian.inference/reference/run-nested.py
+index 3aac659f6..f6c7b081a 100755
+--- a/examples/bayesian.inference/reference/run-nested.py
++++ b/examples/bayesian.inference/reference/run-nested.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior distribution
+ # in a bayesian problem where the likelihood is calculated by providing
+diff --git a/examples/bayesian.inference/reference/run-tmcmc.py b/examples/bayesian.inference/reference/run-tmcmc.py
+index cdc425859..8874039ba 100755
+--- a/examples/bayesian.inference/reference/run-tmcmc.py
++++ b/examples/bayesian.inference/reference/run-tmcmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior distribution
+ # in a bayesian problem where the likelihood is calculated by providing
+diff --git a/examples/design/.test-run.py b/examples/design/.test-run.py
+index d0a39bee7..3b4c7864b 100755
+--- a/examples/design/.test-run.py
++++ b/examples/design/.test-run.py
+@@ -1,4 +1,5 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
++
+ from subprocess import call
+ 
+ r = call(["python3", "run-design.py"])
+diff --git a/examples/design/run-design.py b/examples/design/run-design.py
+index 1e2ab1316..7ae7b6954 100644
+--- a/examples/design/run-design.py
++++ b/examples/design/run-design.py
+@@ -1,4 +1,5 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
++
+ import math
+ import sys
+ sys.path.append('./_model/')
+diff --git a/examples/features/checkpoint.resume/.test-run.py b/examples/features/checkpoint.resume/.test-run.py
+index 2bbd26632..7c1915d71 100755
+--- a/examples/features/checkpoint.resume/.test-run.py
++++ b/examples/features/checkpoint.resume/.test-run.py
+@@ -1,4 +1,5 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
++
+ from subprocess import call
+ 
+ r = call(["python3", "run-sin.py"])
+diff --git a/examples/features/checkpoint.resume/run-cmaes.py b/examples/features/checkpoint.resume/run-cmaes.py
+index db358c202..5facc2725 100755
+--- a/examples/features/checkpoint.resume/run-cmaes.py
++++ b/examples/features/checkpoint.resume/run-cmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how a Korali experiment can
+ # be resumed from previous file-saved results. This is a useful feature
+diff --git a/examples/features/checkpoint.resume/run-dvracer.py b/examples/features/checkpoint.resume/run-dvracer.py
+index c2ee70b4f..88fc18547 100755
+--- a/examples/features/checkpoint.resume/run-dvracer.py
++++ b/examples/features/checkpoint.resume/run-dvracer.py
+@@ -1,4 +1,5 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
++
+ import os
+ import sys
+ sys.path.append('../../reinforcement.learning/cartpole/_model')
+diff --git a/examples/features/checkpoint.resume/run-sin.py b/examples/features/checkpoint.resume/run-sin.py
+index fb79c699e..68b31d7db 100755
+--- a/examples/features/checkpoint.resume/run-sin.py
++++ b/examples/features/checkpoint.resume/run-sin.py
+@@ -1,4 +1,5 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
++
+ import os
+ import sys
+ import numpy as np
+diff --git a/examples/features/checkpoint.resume/run-vracer.py b/examples/features/checkpoint.resume/run-vracer.py
+index bfb590f2d..12855f34f 100755
+--- a/examples/features/checkpoint.resume/run-vracer.py
++++ b/examples/features/checkpoint.resume/run-vracer.py
+@@ -1,4 +1,5 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
++
+ import os
+ import sys
+ sys.path.append('../../reinforcement.learning/cartpole/_model')
+diff --git a/examples/features/composite.korali/.test-run-cmaes.py b/examples/features/composite.korali/.test-run-cmaes.py
+index 2d997384f..ceeeb337f 100755
+--- a/examples/features/composite.korali/.test-run-cmaes.py
++++ b/examples/features/composite.korali/.test-run-cmaes.py
+@@ -1,4 +1,5 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
++
+ from subprocess import call
+ 
+ r = call(["python3", "run-cmaes.py"])
+diff --git a/examples/features/composite.korali/run-cmaes.py b/examples/features/composite.korali/run-cmaes.py
+index a780fb8be..c92b4f447 100755
+--- a/examples/features/composite.korali/run-cmaes.py
++++ b/examples/features/composite.korali/run-cmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali finds values for the
+ ## variables that maximize the objective function, given by a
+diff --git a/examples/features/concurrent.execution/.test-run.py b/examples/features/concurrent.execution/.test-run.py
+index a7b609130..2ed5ed21c 100755
+--- a/examples/features/concurrent.execution/.test-run.py
++++ b/examples/features/concurrent.execution/.test-run.py
+@@ -1,4 +1,5 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
++
+ from subprocess import call
+ 
+ for k in [1, 2, 4, 8]:
+diff --git a/examples/features/concurrent.execution/_model/model.py b/examples/features/concurrent.execution/_model/model.py
+index 62c64c4c2..5e0f7bf29 100755
+--- a/examples/features/concurrent.execution/_model/model.py
++++ b/examples/features/concurrent.execution/_model/model.py
+@@ -1,4 +1,5 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
++
+ import math
+ import sys
+ 
+diff --git a/examples/features/concurrent.execution/_model/runModel.py b/examples/features/concurrent.execution/_model/runModel.py
+index 666772f36..839c13113 100755
+--- a/examples/features/concurrent.execution/_model/runModel.py
++++ b/examples/features/concurrent.execution/_model/runModel.py
+@@ -1,4 +1,5 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
++
+ import sys
+ import subprocess
+ 
+diff --git a/examples/features/concurrent.execution/run.py b/examples/features/concurrent.execution/run.py
+index 1225fadb8..156b33bc5 100755
+--- a/examples/features/concurrent.execution/run.py
++++ b/examples/features/concurrent.execution/run.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import korali
+ import sys
+ sys.path.append("_model")
+diff --git a/examples/features/dry.runs/.test-run.py b/examples/features/dry.runs/.test-run.py
+index 2d997384f..ceeeb337f 100755
+--- a/examples/features/dry.runs/.test-run.py
++++ b/examples/features/dry.runs/.test-run.py
+@@ -1,4 +1,5 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
++
+ from subprocess import call
+ 
+ r = call(["python3", "run-cmaes.py"])
+diff --git a/examples/features/dry.runs/run-cmaes.py b/examples/features/dry.runs/run-cmaes.py
+index 785b58d4e..3739481f2 100755
+--- a/examples/features/dry.runs/run-cmaes.py
++++ b/examples/features/dry.runs/run-cmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ import sys
+ sys.path.append('_model')
+diff --git a/examples/features/multiple.experiments/.test-run.py b/examples/features/multiple.experiments/.test-run.py
+index 2d997384f..dc647b4d8 100755
+--- a/examples/features/multiple.experiments/.test-run.py
++++ b/examples/features/multiple.experiments/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-cmaes.py"])
+diff --git a/examples/features/multiple.experiments/run-cmaes.py b/examples/features/multiple.experiments/run-cmaes.py
+index 9a1b9a132..66b444074 100755
+--- a/examples/features/multiple.experiments/run-cmaes.py
++++ b/examples/features/multiple.experiments/run-cmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali finds values for the
+ ## variables that maximize the objective function, given by a
+diff --git a/examples/features/partial.runs/.test-run.py b/examples/features/partial.runs/.test-run.py
+index 2d734dea2..e69219793 100755
+--- a/examples/features/partial.runs/.test-run.py
++++ b/examples/features/partial.runs/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-cmaes.py"])
+diff --git a/examples/features/partial.runs/run-cmaes.py b/examples/features/partial.runs/run-cmaes.py
+index 3edf53fcc..7fb1d3489 100755
+--- a/examples/features/partial.runs/run-cmaes.py
++++ b/examples/features/partial.runs/run-cmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how a Korali experiment can
+ # be resumed from any point (generation). This is a useful feature
+diff --git a/examples/features/partial.runs/run-dea.py b/examples/features/partial.runs/run-dea.py
+index c4411811f..489779334 100755
+--- a/examples/features/partial.runs/run-dea.py
++++ b/examples/features/partial.runs/run-dea.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how a Korali experiment can
+ ## be resumed from any point (generation). This is a useful feature
+diff --git a/examples/features/partial.runs/run-mcmc.py b/examples/features/partial.runs/run-mcmc.py
+index 5d65ccb91..c2773da89 100755
+--- a/examples/features/partial.runs/run-mcmc.py
++++ b/examples/features/partial.runs/run-mcmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how a Korali experiment can
+ # be resumed from any point (generation). This is a useful feature
+diff --git a/examples/features/partial.runs/run-multiple.py b/examples/features/partial.runs/run-multiple.py
+index c8ff551b7..ec274784f 100755
+--- a/examples/features/partial.runs/run-multiple.py
++++ b/examples/features/partial.runs/run-multiple.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how a Korali experiment can
+ # be resumed from any point (generation). This is a useful feature
+diff --git a/examples/features/partial.runs/run-propagation.py b/examples/features/partial.runs/run-propagation.py
+index f1c4858a9..96c54cb7a 100755
+--- a/examples/features/partial.runs/run-propagation.py
++++ b/examples/features/partial.runs/run-propagation.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ sys.path.append('./_model/')
+diff --git a/examples/features/partial.runs/run-rprop.py b/examples/features/partial.runs/run-rprop.py
+index eb076db52..5a8268115 100755
+--- a/examples/features/partial.runs/run-rprop.py
++++ b/examples/features/partial.runs/run-rprop.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how a Korali experiment can
+ # be resumed from any point (generation). This is a useful feature
+diff --git a/examples/features/partial.runs/run-tmcmc.py b/examples/features/partial.runs/run-tmcmc.py
+index 1a4007e1e..bf9b5538a 100755
+--- a/examples/features/partial.runs/run-tmcmc.py
++++ b/examples/features/partial.runs/run-tmcmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how a Korali experiment can
+ # be resumed from any point (generation). This is a useful feature
+diff --git a/examples/features/running.cxx/.test-run.py b/examples/features/running.cxx/.test-run.py
+index 6616f66cd..b955d09e7 100755
+--- a/examples/features/running.cxx/.test-run.py
++++ b/examples/features/running.cxx/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["make", "-j4"])
+diff --git a/examples/features/running.mpi.cxx/.test-run.py b/examples/features/running.mpi.cxx/.test-run.py
+index c76166b68..e854a75f4 100755
+--- a/examples/features/running.mpi.cxx/.test-run.py
++++ b/examples/features/running.mpi.cxx/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["make", "-j4"])
+diff --git a/examples/features/running.mpi.python/.test-run.py b/examples/features/running.mpi.python/.test-run.py
+index ae963d888..24d3d12d1 100755
+--- a/examples/features/running.mpi.python/.test-run.py
++++ b/examples/features/running.mpi.python/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["mpirun", "-n", "9", "python3", "./run-cmaes.py"])
+diff --git a/examples/features/running.mpi.python/run-cmaes.py b/examples/features/running.mpi.python/run-cmaes.py
+index cbb9c5a1b..2ba7d5584 100755
+--- a/examples/features/running.mpi.python/run-cmaes.py
++++ b/examples/features/running.mpi.python/run-cmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali finds values for the
+ ## variables that maximize the objective function, given by a
+diff --git a/examples/features/save.results/.test-run.py b/examples/features/save.results/.test-run.py
+index 9e75a86a2..235ffa533 100755
+--- a/examples/features/save.results/.test-run.py
++++ b/examples/features/save.results/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-mcmc.py"])
+diff --git a/examples/features/save.results/_model/model.py b/examples/features/save.results/_model/model.py
+index 88b40eb9f..cf532c438 100644
+--- a/examples/features/save.results/_model/model.py
++++ b/examples/features/save.results/_model/model.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import math
+ 
+ # Allocating storage for Quantities of Interest
+diff --git a/examples/features/save.results/run-mcmc.py b/examples/features/save.results/run-mcmc.py
+index a2ac0edaf..24d928ade 100755
+--- a/examples/features/save.results/run-mcmc.py
++++ b/examples/features/save.results/run-mcmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how to use Korali to sample
+ ## a computational model, while saving important quantities of
+diff --git a/examples/hierarchical.bayesian/basic/.test-run.py b/examples/hierarchical.bayesian/basic/.test-run.py
+index d4b2e3bc6..3fee7f82b 100755
+--- a/examples/hierarchical.bayesian/basic/.test-run.py
++++ b/examples/hierarchical.bayesian/basic/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-phase0.py"])
+diff --git a/examples/hierarchical.bayesian/basic/_setup/model/model.py b/examples/hierarchical.bayesian/basic/_setup/model/model.py
+index 646c9dbb3..588de281d 100644
+--- a/examples/hierarchical.bayesian/basic/_setup/model/model.py
++++ b/examples/hierarchical.bayesian/basic/_setup/model/model.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ import os
+ import numpy as np
+diff --git a/examples/hierarchical.bayesian/basic/_setup/plot_data.py b/examples/hierarchical.bayesian/basic/_setup/plot_data.py
+index 6413bc972..bd2a82f36 100644
+--- a/examples/hierarchical.bayesian/basic/_setup/plot_data.py
++++ b/examples/hierarchical.bayesian/basic/_setup/plot_data.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import numpy as np
+ import matplotlib.pyplot as plt
+ 
+diff --git a/examples/hierarchical.bayesian/basic/run-phase0.py b/examples/hierarchical.bayesian/basic/run-phase0.py
+index f9fdb0768..a82bdeeab 100755
+--- a/examples/hierarchical.bayesian/basic/run-phase0.py
++++ b/examples/hierarchical.bayesian/basic/run-phase0.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ sys.path.append('_setup/model')
+ from model import *
+diff --git a/examples/hierarchical.bayesian/basic/run-phase1.py b/examples/hierarchical.bayesian/basic/run-phase1.py
+index 7a0c2f988..d91b2673e 100755
+--- a/examples/hierarchical.bayesian/basic/run-phase1.py
++++ b/examples/hierarchical.bayesian/basic/run-phase1.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ import os
+ import shutil
+diff --git a/examples/hierarchical.bayesian/basic/run-phase2.py b/examples/hierarchical.bayesian/basic/run-phase2.py
+index 55c8eb92b..95d059e49 100755
+--- a/examples/hierarchical.bayesian/basic/run-phase2.py
++++ b/examples/hierarchical.bayesian/basic/run-phase2.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/examples/hierarchical.bayesian/basic/run-phase3a.py b/examples/hierarchical.bayesian/basic/run-phase3a.py
+index d13122639..9005c8b53 100755
+--- a/examples/hierarchical.bayesian/basic/run-phase3a.py
++++ b/examples/hierarchical.bayesian/basic/run-phase3a.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import korali
+diff --git a/examples/hierarchical.bayesian/basic/run-phase3b.py b/examples/hierarchical.bayesian/basic/run-phase3b.py
+index 05b8e0a6f..417ac6e3d 100755
+--- a/examples/hierarchical.bayesian/basic/run-phase3b.py
++++ b/examples/hierarchical.bayesian/basic/run-phase3b.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/examples/hierarchical.bayesian/extended/.test-run.py b/examples/hierarchical.bayesian/extended/.test-run.py
+index d4b2e3bc6..3fee7f82b 100755
+--- a/examples/hierarchical.bayesian/extended/.test-run.py
++++ b/examples/hierarchical.bayesian/extended/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-phase0.py"])
+diff --git a/examples/hierarchical.bayesian/extended/_setup/model/model.py b/examples/hierarchical.bayesian/extended/_setup/model/model.py
+index 1cc318bae..2b823d0dd 100644
+--- a/examples/hierarchical.bayesian/extended/_setup/model/model.py
++++ b/examples/hierarchical.bayesian/extended/_setup/model/model.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ import os
+ import numpy as np
+diff --git a/examples/hierarchical.bayesian/extended/_setup/plot_data.py b/examples/hierarchical.bayesian/extended/_setup/plot_data.py
+index 1a5c5ba3a..312c431bc 100644
+--- a/examples/hierarchical.bayesian/extended/_setup/plot_data.py
++++ b/examples/hierarchical.bayesian/extended/_setup/plot_data.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import numpy as np
+ import matplotlib.pyplot as plt
+ 
+diff --git a/examples/hierarchical.bayesian/extended/run-phase0.py b/examples/hierarchical.bayesian/extended/run-phase0.py
+index 24c352151..bd6a0f6a4 100755
+--- a/examples/hierarchical.bayesian/extended/run-phase0.py
++++ b/examples/hierarchical.bayesian/extended/run-phase0.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ import numpy as np
+ sys.path.append('_setup/model')
+diff --git a/examples/hierarchical.bayesian/extended/run-phase1.py b/examples/hierarchical.bayesian/extended/run-phase1.py
+index ecffae14b..420fcd186 100755
+--- a/examples/hierarchical.bayesian/extended/run-phase1.py
++++ b/examples/hierarchical.bayesian/extended/run-phase1.py
+@@ -1,4 +1,5 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
++
+ import sys
+ import os
+ import shutil
+diff --git a/examples/hierarchical.bayesian/extended/run-phase2.py b/examples/hierarchical.bayesian/extended/run-phase2.py
+index 6347c801d..5499f90bf 100755
+--- a/examples/hierarchical.bayesian/extended/run-phase2.py
++++ b/examples/hierarchical.bayesian/extended/run-phase2.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/examples/hierarchical.bayesian/extended/run-phase3a.py b/examples/hierarchical.bayesian/extended/run-phase3a.py
+index 1c739f74f..69c9cb40e 100755
+--- a/examples/hierarchical.bayesian/extended/run-phase3a.py
++++ b/examples/hierarchical.bayesian/extended/run-phase3a.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import korali
+diff --git a/examples/hierarchical.bayesian/extended/run-phase3b.py b/examples/hierarchical.bayesian/extended/run-phase3b.py
+index 81fa7e725..d44744a18 100755
+--- a/examples/hierarchical.bayesian/extended/run-phase3b.py
++++ b/examples/hierarchical.bayesian/extended/run-phase3b.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/examples/integration/.test-run.py b/examples/integration/.test-run.py
+index be9f1b712..c45e1dacc 100755
+--- a/examples/integration/.test-run.py
++++ b/examples/integration/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-mc-integration.py"])
+diff --git a/examples/integration/_model/integrands.py b/examples/integration/_model/integrands.py
+index 561a3cd9c..e08892b5e 100644
+--- a/examples/integration/_model/integrands.py
++++ b/examples/integration/_model/integrands.py
+@@ -1,4 +1,5 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
++
+ import os
+ import sys
+ import numpy as np
+diff --git a/examples/integration/run-mc-integration.py b/examples/integration/run-mc-integration.py
+index 8571d5b62..8d3b86213 100644
+--- a/examples/integration/run-mc-integration.py
++++ b/examples/integration/run-mc-integration.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ sys.path.append('./_model/')
+ from integrands import *
+diff --git a/examples/integration/run-quadrature-integration.py b/examples/integration/run-quadrature-integration.py
+index 0f297095c..acee72ca7 100644
+--- a/examples/integration/run-quadrature-integration.py
++++ b/examples/integration/run-quadrature-integration.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ sys.path.append('./_model/')
+ from integrands import *
+diff --git a/examples/optimization/constrained/.test-run.py b/examples/optimization/constrained/.test-run.py
+index 1e8c40ae5..4f6d24767 100755
+--- a/examples/optimization/constrained/.test-run.py
++++ b/examples/optimization/constrained/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-ccmaes.py"])
+diff --git a/examples/optimization/constrained/README.rst b/examples/optimization/constrained/README.rst
+index 4c7b04d17..a2c78e0d0 100644
+--- a/examples/optimization/constrained/README.rst
++++ b/examples/optimization/constrained/README.rst
+@@ -69,7 +69,7 @@ First, open a file and import the korali module
+ 
+ .. code-block:: python
+ 
+-    #!/usr/bin/env python3
++    #! @PYTHON3@
+     import korali
+ 
+ Import the computational model,
+diff --git a/examples/optimization/constrained/run-ccmaes.py b/examples/optimization/constrained/run-ccmaes.py
+index 11b1367a2..f31bad681 100755
+--- a/examples/optimization/constrained/run-ccmaes.py
++++ b/examples/optimization/constrained/run-ccmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali finds values for the
+ # variables that maximize the objective function, given by a
+diff --git a/examples/optimization/discrete/.test-run.py b/examples/optimization/discrete/.test-run.py
+index 06f95e104..6e1e694e7 100755
+--- a/examples/optimization/discrete/.test-run.py
++++ b/examples/optimization/discrete/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-cmaes.py"])
+diff --git a/examples/optimization/discrete/run-cmaes.py b/examples/optimization/discrete/run-cmaes.py
+index 25b2df0e8..74f8754d3 100755
+--- a/examples/optimization/discrete/run-cmaes.py
++++ b/examples/optimization/discrete/run-cmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali finds values for the
+ # variables that maximize the objective function, given by a
+diff --git a/examples/optimization/discrete/run-gridsearch.py b/examples/optimization/discrete/run-gridsearch.py
+index 99d033735..e2f190bd7 100755
+--- a/examples/optimization/discrete/run-gridsearch.py
++++ b/examples/optimization/discrete/run-gridsearch.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/examples/optimization/gradient/.test-run.py b/examples/optimization/gradient/.test-run.py
+index 03e885aba..dc83fcd7e 100755
+--- a/examples/optimization/gradient/.test-run.py
++++ b/examples/optimization/gradient/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-adam.py"])
+diff --git a/examples/optimization/gradient/run-adabelief.py b/examples/optimization/gradient/run-adabelief.py
+index 73998bd34..74e73c593 100755
+--- a/examples/optimization/gradient/run-adabelief.py
++++ b/examples/optimization/gradient/run-adabelief.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali finds values for the
+ ## variables that maximize the objective function, given by a
+diff --git a/examples/optimization/gradient/run-adam.py b/examples/optimization/gradient/run-adam.py
+index f89d4b634..2793b5054 100755
+--- a/examples/optimization/gradient/run-adam.py
++++ b/examples/optimization/gradient/run-adam.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali finds values for the
+ ## variables that maximize the objective function, given by a
+diff --git a/examples/optimization/gradient/run-madgrad.py b/examples/optimization/gradient/run-madgrad.py
+index 1e3e88dcb..7c0b5670a 100755
+--- a/examples/optimization/gradient/run-madgrad.py
++++ b/examples/optimization/gradient/run-madgrad.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali finds values for the
+ ## variables that maximize the objective function, given by a
+diff --git a/examples/optimization/gradient/run-rprop.py b/examples/optimization/gradient/run-rprop.py
+index b956881d0..191a6479c 100755
+--- a/examples/optimization/gradient/run-rprop.py
++++ b/examples/optimization/gradient/run-rprop.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali finds values for the
+ ## variables that maximize the objective function, given by a
+diff --git a/examples/optimization/multiobjective/.test-run.py b/examples/optimization/multiobjective/.test-run.py
+index e1e175343..38a130659 100755
+--- a/examples/optimization/multiobjective/.test-run.py
++++ b/examples/optimization/multiobjective/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ # FIXME test takes too long
+diff --git a/examples/optimization/multiobjective/run-mocmaes.py b/examples/optimization/multiobjective/run-mocmaes.py
+index ae36cdb8d..a2ca37e6f 100755
+--- a/examples/optimization/multiobjective/run-mocmaes.py
++++ b/examples/optimization/multiobjective/run-mocmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali finds values for the
+ ## variables that maximize the objective functions, given by a
+diff --git a/examples/optimization/stochastic/.test-run.py b/examples/optimization/stochastic/.test-run.py
+index b82bb90d5..1893304ad 100755
+--- a/examples/optimization/stochastic/.test-run.py
++++ b/examples/optimization/stochastic/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-cmaes.py"])
+diff --git a/examples/optimization/stochastic/README.rst b/examples/optimization/stochastic/README.rst
+index c999709d3..8ada89969 100644
+--- a/examples/optimization/stochastic/README.rst
++++ b/examples/optimization/stochastic/README.rst
+@@ -32,7 +32,7 @@ First, open a file (you could name it 'run-cmaes.py') and import the korali modu
+ 
+ .. code-block:: python
+ 
+-    #!/usr/bin/env python3
++    #! @PYTHON3@
+     import korali
+ 
+ Import the computational model,
+diff --git a/examples/optimization/stochastic/run-cmaes-gradient.py b/examples/optimization/stochastic/run-cmaes-gradient.py
+index 8201b6f20..4028134e3 100755
+--- a/examples/optimization/stochastic/run-cmaes-gradient.py
++++ b/examples/optimization/stochastic/run-cmaes-gradient.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali finds values for the
+ ## variables that maximize the objective function, given by a
+diff --git a/examples/optimization/stochastic/run-cmaes.py b/examples/optimization/stochastic/run-cmaes.py
+index 77efc8a03..b83296363 100755
+--- a/examples/optimization/stochastic/run-cmaes.py
++++ b/examples/optimization/stochastic/run-cmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali finds values for the
+ ## variables that maximize the objective function, given by a
+diff --git a/examples/optimization/stochastic/run-dea.py b/examples/optimization/stochastic/run-dea.py
+index 4a4e7db94..0c220d222 100755
+--- a/examples/optimization/stochastic/run-dea.py
++++ b/examples/optimization/stochastic/run-dea.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali finds values for the
+ # variables that maximize the objective function, given by a
+diff --git a/examples/propagation/.test-run.py b/examples/propagation/.test-run.py
+index d1af2285e..65eed5aee 100755
+--- a/examples/propagation/.test-run.py
++++ b/examples/propagation/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-execution.py"])
+diff --git a/examples/propagation/_model/plots.py b/examples/propagation/_model/plots.py
+index aae300262..cd8f8810f 100644
+--- a/examples/propagation/_model/plots.py
++++ b/examples/propagation/_model/plots.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ 
+ import json
+ import numpy as np
+diff --git a/examples/propagation/_model/work.py b/examples/propagation/_model/work.py
+index 93ddbceaa..221251f7a 100644
+--- a/examples/propagation/_model/work.py
++++ b/examples/propagation/_model/work.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import numpy as np
+diff --git a/examples/propagation/run-execution.py b/examples/propagation/run-execution.py
+index 3d8ae179a..f6345ae43 100755
+--- a/examples/propagation/run-execution.py
++++ b/examples/propagation/run-execution.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ sys.path.append('./_model/')
+diff --git a/examples/propagation/run-uncertainty-propagation.py b/examples/propagation/run-uncertainty-propagation.py
+index 120c61223..d46c83fa8 100755
+--- a/examples/propagation/run-uncertainty-propagation.py
++++ b/examples/propagation/run-uncertainty-propagation.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we sample the posterior of the parameters in a linear model.
+ # Next we evaluate the model for all the parameters in the sample database and
+diff --git a/examples/reaction/.test-run.py b/examples/reaction/.test-run.py
+index 5a2de9062..128f278e1 100755
+--- a/examples/reaction/.test-run.py
++++ b/examples/reaction/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-sir-ssa.py"])
+diff --git a/examples/reaction/run-brusselator-ssa.py b/examples/reaction/run-brusselator-ssa.py
+index d9439daab..3ac750c06 100755
+--- a/examples/reaction/run-brusselator-ssa.py
++++ b/examples/reaction/run-brusselator-ssa.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali simulates a reaction.
+ 
+diff --git a/examples/reaction/run-laczlacy-tauLeaping.py b/examples/reaction/run-laczlacy-tauLeaping.py
+index 8c0ae8ff4..9811a0ee6 100755
+--- a/examples/reaction/run-laczlacy-tauLeaping.py
++++ b/examples/reaction/run-laczlacy-tauLeaping.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali simulates a reaction.
+ 
+diff --git a/examples/reaction/run-sir-ssa.py b/examples/reaction/run-sir-ssa.py
+index c69d97a1a..52028488d 100755
+--- a/examples/reaction/run-sir-ssa.py
++++ b/examples/reaction/run-sir-ssa.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali simulates a reaction.
+ 
+diff --git a/examples/reaction/run-sir-tauLeaping.py b/examples/reaction/run-sir-tauLeaping.py
+index 40b72991b..42d073c06 100755
+--- a/examples/reaction/run-sir-tauLeaping.py
++++ b/examples/reaction/run-sir-tauLeaping.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali simulates a reaction.
+ 
+diff --git a/examples/reinforcement.learning/ABF2D/.test-run.py b/examples/reinforcement.learning/ABF2D/.test-run.py
+index 9d78bd5fa..4ce65f174 100755
+--- a/examples/reinforcement.learning/ABF2D/.test-run.py
++++ b/examples/reinforcement.learning/ABF2D/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ import os
+ 
+diff --git a/examples/reinforcement.learning/ABF2D/_model/abf.py b/examples/reinforcement.learning/ABF2D/_model/abf.py
+index b6672f34d..4caf29f7b 100755
+--- a/examples/reinforcement.learning/ABF2D/_model/abf.py
++++ b/examples/reinforcement.learning/ABF2D/_model/abf.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ##  Copyright (c) 2020 CSE-Lab, ETH Zurich, Switzerland. All rights reserved.
+ ##  Distributed under the terms of the MIT license.
+diff --git a/examples/reinforcement.learning/ABF2D/_model/env.py b/examples/reinforcement.learning/ABF2D/_model/env.py
+index cbee4c76e..27866f6e8 100644
+--- a/examples/reinforcement.learning/ABF2D/_model/env.py
++++ b/examples/reinforcement.learning/ABF2D/_model/env.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ from abf import *
+ import os
+ 
+diff --git a/examples/reinforcement.learning/ABF2D/run-vracer.py b/examples/reinforcement.learning/ABF2D/run-vracer.py
+index a9e9a37d8..2669a6087 100644
+--- a/examples/reinforcement.learning/ABF2D/run-vracer.py
++++ b/examples/reinforcement.learning/ABF2D/run-vracer.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import argparse
+diff --git a/examples/reinforcement.learning/cartpole/.test-run.py b/examples/reinforcement.learning/cartpole/.test-run.py
+index 081eb3604..384889073 100755
+--- a/examples/reinforcement.learning/cartpole/.test-run.py
++++ b/examples/reinforcement.learning/cartpole/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ import os
+ 
+diff --git a/examples/reinforcement.learning/cartpole/_model/cartpole.py b/examples/reinforcement.learning/cartpole/_model/cartpole.py
+index b1062a5d0..61e3aadae 100644
+--- a/examples/reinforcement.learning/cartpole/_model/cartpole.py
++++ b/examples/reinforcement.learning/cartpole/_model/cartpole.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ##  This code was inspired by the OpenAI Gym CartPole v0 environment
+ 
+diff --git a/examples/reinforcement.learning/cartpole/_model/env.py b/examples/reinforcement.learning/cartpole/_model/env.py
+index 126aa444d..00a5286c7 100644
+--- a/examples/reinforcement.learning/cartpole/_model/env.py
++++ b/examples/reinforcement.learning/cartpole/_model/env.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ from cartpole import *
+ import pdb
+ import numpy as np
+diff --git a/examples/reinforcement.learning/cartpole/run-dvracer.py b/examples/reinforcement.learning/cartpole/run-dvracer.py
+index 7f6baee1c..b46ab2d7d 100644
+--- a/examples/reinforcement.learning/cartpole/run-dvracer.py
++++ b/examples/reinforcement.learning/cartpole/run-dvracer.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ sys.path.append('./_model')
+diff --git a/examples/reinforcement.learning/cartpole/run-vracer-multienv.py b/examples/reinforcement.learning/cartpole/run-vracer-multienv.py
+index 344cd5a3f..d24972d47 100644
+--- a/examples/reinforcement.learning/cartpole/run-vracer-multienv.py
++++ b/examples/reinforcement.learning/cartpole/run-vracer-multienv.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ sys.path.append('./_model')
+diff --git a/examples/reinforcement.learning/cartpole/run-vracer.py b/examples/reinforcement.learning/cartpole/run-vracer.py
+index db91fd17b..689bb2d6b 100644
+--- a/examples/reinforcement.learning/cartpole/run-vracer.py
++++ b/examples/reinforcement.learning/cartpole/run-vracer.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ sys.path.append('./_model')
+diff --git a/examples/reinforcement.learning/mountaincart/.test-run.py b/examples/reinforcement.learning/mountaincart/.test-run.py
+index 91657e2b3..dd2eba618 100755
+--- a/examples/reinforcement.learning/mountaincart/.test-run.py
++++ b/examples/reinforcement.learning/mountaincart/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ import os
+ 
+diff --git a/examples/reinforcement.learning/mountaincart/_model/env.py b/examples/reinforcement.learning/mountaincart/_model/env.py
+index 2e2eecdbc..9794da51c 100644
+--- a/examples/reinforcement.learning/mountaincart/_model/env.py
++++ b/examples/reinforcement.learning/mountaincart/_model/env.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ from mountaincart import *
+ 
+ import pickle
+diff --git a/examples/reinforcement.learning/mountaincart/_model/mountaincart.py b/examples/reinforcement.learning/mountaincart/_model/mountaincart.py
+index 31252da0f..528cd09d9 100644
+--- a/examples/reinforcement.learning/mountaincart/_model/mountaincart.py
++++ b/examples/reinforcement.learning/mountaincart/_model/mountaincart.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ##  This code was inspired by the OpenAI Gym Mountaincar-v0 environment
+ 
+diff --git a/examples/reinforcement.learning/mountaincart/run-vracer.py b/examples/reinforcement.learning/mountaincart/run-vracer.py
+index 44b56a0f6..6762879dc 100644
+--- a/examples/reinforcement.learning/mountaincart/run-vracer.py
++++ b/examples/reinforcement.learning/mountaincart/run-vracer.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ sys.path.append('./_model')
+diff --git a/examples/reinforcement.learning/upswing/.test-run.py b/examples/reinforcement.learning/upswing/.test-run.py
+index 8e7381b48..0f520c586 100755
+--- a/examples/reinforcement.learning/upswing/.test-run.py
++++ b/examples/reinforcement.learning/upswing/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ import os
+ 
+diff --git a/examples/reinforcement.learning/upswing/_model/double_env.py b/examples/reinforcement.learning/upswing/_model/double_env.py
+index 8703ea5f9..4e007f6ce 100644
+--- a/examples/reinforcement.learning/upswing/_model/double_env.py
++++ b/examples/reinforcement.learning/upswing/_model/double_env.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ from double_pendulum import *
+ 
+ ######## Defining Environment Storage
+diff --git a/examples/reinforcement.learning/upswing/_model/single_env.py b/examples/reinforcement.learning/upswing/_model/single_env.py
+index 771c19042..ccaada069 100644
+--- a/examples/reinforcement.learning/upswing/_model/single_env.py
++++ b/examples/reinforcement.learning/upswing/_model/single_env.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ from single_pendulum import *
+ 
+ ######## Defining Environment Storage
+diff --git a/examples/reinforcement.learning/upswing/run-vracer-double.py b/examples/reinforcement.learning/upswing/run-vracer-double.py
+index e92bfa8be..b74ca2751 100644
+--- a/examples/reinforcement.learning/upswing/run-vracer-double.py
++++ b/examples/reinforcement.learning/upswing/run-vracer-double.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ sys.path.append('./_model')
+diff --git a/examples/reinforcement.learning/upswing/run-vracer-single.py b/examples/reinforcement.learning/upswing/run-vracer-single.py
+index dc121829e..c4f692321 100644
+--- a/examples/reinforcement.learning/upswing/run-vracer-single.py
++++ b/examples/reinforcement.learning/upswing/run-vracer-single.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ sys.path.append('./_model')
+diff --git a/examples/sampling/.test-run.py b/examples/sampling/.test-run.py
+index 1247ed27f..671b880aa 100755
+--- a/examples/sampling/.test-run.py
++++ b/examples/sampling/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-mcmc.py"])
+diff --git a/examples/sampling/README.rst b/examples/sampling/README.rst
+index 66a8fb238..d69246258 100644
+--- a/examples/sampling/README.rst
++++ b/examples/sampling/README.rst
+@@ -38,7 +38,7 @@ First, open a file and import the korali module
+ 
+ .. code-block:: python
+ 
+-    #!/usr/bin/env python3
++    #! @PYTHON3@
+     import korali
+ 
+ Import the computational model,
+diff --git a/examples/sampling/run-hmc.py b/examples/sampling/run-hmc.py
+index f18b2a10d..4ad590ae5 100644
+--- a/examples/sampling/run-hmc.py
++++ b/examples/sampling/run-hmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior
+ # distribution in a bayesian problem where the likelihood
+diff --git a/examples/sampling/run-mcmc.py b/examples/sampling/run-mcmc.py
+index f0885deb9..ffa98e714 100755
+--- a/examples/sampling/run-mcmc.py
++++ b/examples/sampling/run-mcmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior
+ # distribution in a bayesian problem where the likelihood
+diff --git a/examples/supervised.learning/mnist/.test-run.py b/examples/supervised.learning/mnist/.test-run.py
+index 8c03bbe8b..bed2246b1 100755
+--- a/examples/supervised.learning/mnist/.test-run.py
++++ b/examples/supervised.learning/mnist/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["bash", "get_mnist.sh"])
+diff --git a/examples/supervised.learning/mnist/run-mnist-autoencoder.py b/examples/supervised.learning/mnist/run-mnist-autoencoder.py
+index b40956106..1d11db6d2 100644
+--- a/examples/supervised.learning/mnist/run-mnist-autoencoder.py
++++ b/examples/supervised.learning/mnist/run-mnist-autoencoder.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import shutil as sh
+diff --git a/examples/supervised.learning/mnist/run-mnist-classifier.py b/examples/supervised.learning/mnist/run-mnist-classifier.py
+index d8a7c712f..b9c00392c 100644
+--- a/examples/supervised.learning/mnist/run-mnist-classifier.py
++++ b/examples/supervised.learning/mnist/run-mnist-classifier.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import shutil as sh
+diff --git a/examples/supervised.learning/sineWave/.test-run.py b/examples/supervised.learning/sineWave/.test-run.py
+index 4f8425119..e66eaecdd 100755
+--- a/examples/supervised.learning/sineWave/.test-run.py
++++ b/examples/supervised.learning/sineWave/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ import os
+ 
+diff --git a/examples/supervised.learning/sineWave/plot-loss.py b/examples/supervised.learning/sineWave/plot-loss.py
+index 5a7ae3699..18bb5f00a 100755
+--- a/examples/supervised.learning/sineWave/plot-loss.py
++++ b/examples/supervised.learning/sineWave/plot-loss.py
+@@ -1,4 +1,5 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
++
+ import os
+ import json
+ import matplotlib.pyplot as plt
+diff --git a/examples/supervised.learning/sineWave/run-ffn.py b/examples/supervised.learning/sineWave/run-ffn.py
+index f32ca5da5..83af07a1e 100755
+--- a/examples/supervised.learning/sineWave/run-ffn.py
++++ b/examples/supervised.learning/sineWave/run-ffn.py
+@@ -1,4 +1,5 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
++
+ import os
+ import sys
+ import shutil as sh
+diff --git a/examples/supervised.learning/sineWave/run-rnn.py b/examples/supervised.learning/sineWave/run-rnn.py
+index 008b25481..24b5b0fc5 100755
+--- a/examples/supervised.learning/sineWave/run-rnn.py
++++ b/examples/supervised.learning/sineWave/run-rnn.py
+@@ -1,4 +1,5 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
++
+ import os
+ import sys
+ import numpy as np
+diff --git a/meson.build b/meson.build
+index 19d0826b9..761b0bb4b 100644
+--- a/meson.build
++++ b/meson.build
+@@ -20,8 +20,8 @@ cpp = meson.get_compiler('cpp')
+ korali_conf = configuration_data()
+ 
+ # python installation
+-pymodule = import('python')
+-python = pymodule.find_installation('python3', required: true)
++pymod = import('python')
++python = pymod.find_installation('@PYTHON3@')
+ 
+ korali = 'korali' # python package name
+ korali_install_base = python.get_install_dir() / korali
+diff --git a/python/korali/cxx/__main__.py b/python/korali/cxx/__main__.py
+index f651b3bed..3c2beb81c 100644
+--- a/python/korali/cxx/__main__.py
++++ b/python/korali/cxx/__main__.py
+@@ -1,4 +1,5 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
++
+ import os
+ import sys
+ import sysconfig
+diff --git a/python/korali/plot/CMAES.py b/python/korali/plot/CMAES.py
+index 9ffca8fef..10dbaa0ab 100644
+--- a/python/korali/plot/CMAES.py
++++ b/python/korali/plot/CMAES.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ 
+ import json
+ import numpy as np
+diff --git a/python/korali/plot/DEA.py b/python/korali/plot/DEA.py
+index c4ab58ce0..bc7418ce7 100644
+--- a/python/korali/plot/DEA.py
++++ b/python/korali/plot/DEA.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ 
+ import numpy as np
+ import matplotlib.pyplot as plt
+diff --git a/python/korali/plot/HMC.py b/python/korali/plot/HMC.py
+index 599c6b5e4..b088c70a7 100644
+--- a/python/korali/plot/HMC.py
++++ b/python/korali/plot/HMC.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ 
+ import json
+ import numpy as np
+diff --git a/python/korali/plot/LMCMAES.py b/python/korali/plot/LMCMAES.py
+index fe78c02b6..3742cf8c4 100644
+--- a/python/korali/plot/LMCMAES.py
++++ b/python/korali/plot/LMCMAES.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ 
+ import json
+ import numpy as np
+diff --git a/python/korali/plot/MCMC.py b/python/korali/plot/MCMC.py
+index 01349b306..19b2d6e16 100644
+--- a/python/korali/plot/MCMC.py
++++ b/python/korali/plot/MCMC.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ 
+ import json
+ import numpy as np
+diff --git a/python/korali/plot/MOCMAES.py b/python/korali/plot/MOCMAES.py
+index ac21248be..6498300f7 100644
+--- a/python/korali/plot/MOCMAES.py
++++ b/python/korali/plot/MOCMAES.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ 
+ import json
+ import numpy as np
+diff --git a/python/korali/plot/Nested.py b/python/korali/plot/Nested.py
+index 816aef2f4..616f3812c 100644
+--- a/python/korali/plot/Nested.py
++++ b/python/korali/plot/Nested.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ 
+ import json
+ import numpy as np
+diff --git a/python/korali/plot/SSM.py b/python/korali/plot/SSM.py
+index 8788de0db..31a699aec 100644
+--- a/python/korali/plot/SSM.py
++++ b/python/korali/plot/SSM.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ 
+ import numpy as np
+ import matplotlib.pyplot as plt
+diff --git a/python/korali/plot/TMCMC.py b/python/korali/plot/TMCMC.py
+index d1488f325..80beb0360 100644
+--- a/python/korali/plot/TMCMC.py
++++ b/python/korali/plot/TMCMC.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ 
+ import json
+ import numpy as np
+diff --git a/python/korali/plot/__main__.py b/python/korali/plot/__main__.py
+index 655e2385e..fd4baac09 100644
+--- a/python/korali/plot/__main__.py
++++ b/python/korali/plot/__main__.py
+@@ -1,4 +1,5 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
++
+ import os
+ import sys
+ import signal
+diff --git a/python/korali/profiler/__main__.py b/python/korali/profiler/__main__.py
+index 50debaa88..a5ab95d98 100644
+--- a/python/korali/profiler/__main__.py
++++ b/python/korali/profiler/__main__.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ import os
+ import sys
+diff --git a/python/korali/rlview/__main__.py b/python/korali/rlview/__main__.py
+index f6f6bf97b..59d96122a 100644
+--- a/python/korali/rlview/__main__.py
++++ b/python/korali/rlview/__main__.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import signal
+diff --git a/study.cases/CUP2D/sgs/_model/environment.py b/study.cases/CUP2D/sgs/_model/environment.py
+index 596917315..4e7c2ffa7 100755
+--- a/study.cases/CUP2D/sgs/_model/environment.py
++++ b/study.cases/CUP2D/sgs/_model/environment.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ import cubismup2d as cup2d
+ import numpy as np
+diff --git a/study.cases/CUP2D/sgs/run-kolmogorov-flow.py b/study.cases/CUP2D/sgs/run-kolmogorov-flow.py
+index 369d07a75..8fa7a535e 100755
+--- a/study.cases/CUP2D/sgs/run-kolmogorov-flow.py
++++ b/study.cases/CUP2D/sgs/run-kolmogorov-flow.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ """Kolmogorov Flow with a custom operator to compute the energy spectrum.
+ Output files are stored in output/."""
+diff --git a/study.cases/CUP2D/sgs/run-vracer.py b/study.cases/CUP2D/sgs/run-vracer.py
+index b8e1ba0ec..b3b39209b 100644
+--- a/study.cases/CUP2D/sgs/run-vracer.py
++++ b/study.cases/CUP2D/sgs/run-vracer.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import argparse
+diff --git a/study.cases/CUP2D/swimmers/postprocessing/plot.py b/study.cases/CUP2D/swimmers/postprocessing/plot.py
+index 1529da70a..dfda4ff5c 100755
+--- a/study.cases/CUP2D/swimmers/postprocessing/plot.py
++++ b/study.cases/CUP2D/swimmers/postprocessing/plot.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ 
+ import os
+ import json
+diff --git a/study.cases/LAMMPS/run-cmaes.py b/study.cases/LAMMPS/run-cmaes.py
+index 9ed3388e0..a4adc1c31 100755
+--- a/study.cases/LAMMPS/run-cmaes.py
++++ b/study.cases/LAMMPS/run-cmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import korali
+ import sys
+ 
+diff --git a/study.cases/LAMMPS/run-tmcmc.py b/study.cases/LAMMPS/run-tmcmc.py
+index 6896d04f9..479701600 100755
+--- a/study.cases/LAMMPS/run-tmcmc.py
++++ b/study.cases/LAMMPS/run-tmcmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import korali
+ import sys
+ 
+diff --git a/study.cases/LAMMPS/setup/runLAMMPS.py b/study.cases/LAMMPS/setup/runLAMMPS.py
+index 62a56a905..be1596d3b 100755
+--- a/study.cases/LAMMPS/setup/runLAMMPS.py
++++ b/study.cases/LAMMPS/setup/runLAMMPS.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import subprocess
+diff --git a/study.cases/RBCRelax/hierarchical/phase2.py b/study.cases/RBCRelax/hierarchical/phase2.py
+index dd45120ec..4a564b440 100755
+--- a/study.cases/RBCRelax/hierarchical/phase2.py
++++ b/study.cases/RBCRelax/hierarchical/phase2.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/study.cases/RBCRelax/hierarchical/phase2_surrogate.py b/study.cases/RBCRelax/hierarchical/phase2_surrogate.py
+index 32d9b3e39..b614e6010 100755
+--- a/study.cases/RBCRelax/hierarchical/phase2_surrogate.py
++++ b/study.cases/RBCRelax/hierarchical/phase2_surrogate.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/study.cases/RBCRelax/hierarchical/phase2_surrogate_inputs.py b/study.cases/RBCRelax/hierarchical/phase2_surrogate_inputs.py
+index 0ce8648b9..9383d0029 100755
+--- a/study.cases/RBCRelax/hierarchical/phase2_surrogate_inputs.py
++++ b/study.cases/RBCRelax/hierarchical/phase2_surrogate_inputs.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/study.cases/RBCRelax/hierarchical/phase3a.py b/study.cases/RBCRelax/hierarchical/phase3a.py
+index d632b42e4..08bdad2dc 100755
+--- a/study.cases/RBCRelax/hierarchical/phase3a.py
++++ b/study.cases/RBCRelax/hierarchical/phase3a.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import korali
+diff --git a/study.cases/RBCRelax/hierarchical/phase3a_surrogate.py b/study.cases/RBCRelax/hierarchical/phase3a_surrogate.py
+index f9abb83e1..b07a386a1 100755
+--- a/study.cases/RBCRelax/hierarchical/phase3a_surrogate.py
++++ b/study.cases/RBCRelax/hierarchical/phase3a_surrogate.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import korali
+diff --git a/study.cases/RBCRelax/hierarchical/phase3b.py b/study.cases/RBCRelax/hierarchical/phase3b.py
+index 30cd89f9e..30d50ce38 100755
+--- a/study.cases/RBCRelax/hierarchical/phase3b.py
++++ b/study.cases/RBCRelax/hierarchical/phase3b.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/study.cases/RBCRelax/hierarchical/phase3b_surrogate.py b/study.cases/RBCRelax/hierarchical/phase3b_surrogate.py
+index a820340b5..614b6a695 100755
+--- a/study.cases/RBCRelax/hierarchical/phase3b_surrogate.py
++++ b/study.cases/RBCRelax/hierarchical/phase3b_surrogate.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/study.cases/RBCRelax/run-cmaes-multiple.py b/study.cases/RBCRelax/run-cmaes-multiple.py
+index 40ba510ca..9c3f0f7d8 100755
+--- a/study.cases/RBCRelax/run-cmaes-multiple.py
++++ b/study.cases/RBCRelax/run-cmaes-multiple.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ import argparse
+ 
+diff --git a/study.cases/RBCRelax/run-cmaes.py b/study.cases/RBCRelax/run-cmaes.py
+index d74f24122..c662f57e8 100755
+--- a/study.cases/RBCRelax/run-cmaes.py
++++ b/study.cases/RBCRelax/run-cmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ import argparse
+ 
+diff --git a/study.cases/RBCRelax/run-tmcmc-multiple.py b/study.cases/RBCRelax/run-tmcmc-multiple.py
+index 9e190b895..2fff1d225 100755
+--- a/study.cases/RBCRelax/run-tmcmc-multiple.py
++++ b/study.cases/RBCRelax/run-tmcmc-multiple.py
+@@ -1,4 +1,5 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
++
+ import sys
+ import argparse
+ 
+diff --git a/study.cases/RBCRelax/run-tmcmc-surrogate-multiple.py b/study.cases/RBCRelax/run-tmcmc-surrogate-multiple.py
+index 5061f8f7f..b5130026a 100755
+--- a/study.cases/RBCRelax/run-tmcmc-surrogate-multiple.py
++++ b/study.cases/RBCRelax/run-tmcmc-surrogate-multiple.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ import argparse
+ 
+diff --git a/study.cases/RBCRelax/run-tmcmc-surrogate.py b/study.cases/RBCRelax/run-tmcmc-surrogate.py
+index 2ea67e9ad..1711aebe0 100755
+--- a/study.cases/RBCRelax/run-tmcmc-surrogate.py
++++ b/study.cases/RBCRelax/run-tmcmc-surrogate.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ import argparse
+ 
+diff --git a/study.cases/RBCRelax/run-tmcmc.py b/study.cases/RBCRelax/run-tmcmc.py
+index d488bb50e..4ae0102eb 100755
+--- a/study.cases/RBCRelax/run-tmcmc.py
++++ b/study.cases/RBCRelax/run-tmcmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ import argparse
+ 
+diff --git a/study.cases/RBCStretch/run-cmaes.py b/study.cases/RBCStretch/run-cmaes.py
+index 43bd62102..4ce196023 100755
+--- a/study.cases/RBCStretch/run-cmaes.py
++++ b/study.cases/RBCStretch/run-cmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ sys.path.append("model")
+ import data
+diff --git a/study.cases/RBCStretch/run-tmcmc.py b/study.cases/RBCStretch/run-tmcmc.py
+index 5a76244b2..968446689 100755
+--- a/study.cases/RBCStretch/run-tmcmc.py
++++ b/study.cases/RBCStretch/run-tmcmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ sys.path.append("model")
+ import data
+diff --git a/study.cases/bubblePipe/_model/model.py b/study.cases/bubblePipe/_model/model.py
+index 74dab096d..c5fee2df8 100755
+--- a/study.cases/bubblePipe/_model/model.py
++++ b/study.cases/bubblePipe/_model/model.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import subprocess
+diff --git a/study.cases/bubblePipe/run-korali.py b/study.cases/bubblePipe/run-korali.py
+index a08c20178..94263b9c8 100755
+--- a/study.cases/bubblePipe/run-korali.py
++++ b/study.cases/bubblePipe/run-korali.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import korali
+ import sys
+ import argparse
+diff --git a/study.cases/covid19/main.py b/study.cases/covid19/main.py
+index 33af81ba5..23a96d7cd 100755
+--- a/study.cases/covid19/main.py
++++ b/study.cases/covid19/main.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ # Author: George Arampatzis
+ # Date:   22/3/2020
+ # Email:  garampat@ethz.ch
+diff --git a/study.cases/covid19/plot_intervals.py b/study.cases/covid19/plot_intervals.py
+index 4857ca2dc..83da870e1 100755
+--- a/study.cases/covid19/plot_intervals.py
++++ b/study.cases/covid19/plot_intervals.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ # Author: George Arampatzis
+ # Date:   16/3/2020
+ # Email:  garampat@ethz.ch
+diff --git a/study.cases/covid19/plot_intervals_infected.py b/study.cases/covid19/plot_intervals_infected.py
+index 3a7cf42f1..a999455f6 100755
+--- a/study.cases/covid19/plot_intervals_infected.py
++++ b/study.cases/covid19/plot_intervals_infected.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ # Author: Petr Karnakov
+ # Date:   11/5/2020
+ # Email:  kpetr@ethz.ch
+diff --git a/study.cases/covid19/src/model/sir/intervals.py b/study.cases/covid19/src/model/sir/intervals.py
+index 466cb7556..e692b554e 100755
+--- a/study.cases/covid19/src/model/sir/intervals.py
++++ b/study.cases/covid19/src/model/sir/intervals.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ # Author: George Arampatzis
+ # Date:   16/3/2020
+ # Email:  garampat@ethz.ch
+diff --git a/study.cases/covid19/src/model/sir/propagate.py b/study.cases/covid19/src/model/sir/propagate.py
+index 7f49f9ef8..7e94c69ff 100755
+--- a/study.cases/covid19/src/model/sir/propagate.py
++++ b/study.cases/covid19/src/model/sir/propagate.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ # Author: George Arampatzis
+ # Date:   22/3/2020
+ # Email:  garampat@ethz.ch
+diff --git a/study.cases/covid19/src/model/sir/sample.py b/study.cases/covid19/src/model/sir/sample.py
+index a714a2759..ea3edc707 100755
+--- a/study.cases/covid19/src/model/sir/sample.py
++++ b/study.cases/covid19/src/model/sir/sample.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ # Author: George Arampatzis
+ # Date:   22/3/2020
+ # Email:  garampat@ethz.ch
+diff --git a/study.cases/covid19/src/model/sir/sir.py b/study.cases/covid19/src/model/sir/sir.py
+index 44410dffb..d913aef11 100755
+--- a/study.cases/covid19/src/model/sir/sir.py
++++ b/study.cases/covid19/src/model/sir/sir.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ # Author: George Arampatzis
+ # Date:   16/3/2020
+ # Email:  garampat@ethz.ch
+diff --git a/study.cases/covid19/src/tools/tools.py b/study.cases/covid19/src/tools/tools.py
+index 3b54073ce..1b6c83c00 100644
+--- a/study.cases/covid19/src/tools/tools.py
++++ b/study.cases/covid19/src/tools/tools.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ # Author: George Arampatzis
+ # Date:   16/3/2020
+ # Email:  garampat@ethz.ch
+diff --git a/study.cases/lighthouse/.test-run.py b/study.cases/lighthouse/.test-run.py
+index 3524767ef..7f2de609a 100755
+--- a/study.cases/lighthouse/.test-run.py
++++ b/study.cases/lighthouse/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-example1.py"])
+diff --git a/study.cases/lighthouse/run-example1.py b/study.cases/lighthouse/run-example1.py
+index c03fd8087..288efbc98 100755
+--- a/study.cases/lighthouse/run-example1.py
++++ b/study.cases/lighthouse/run-example1.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior
+ # distribution of the estimated coastline distance 'alpha' of the lighthouse 
+diff --git a/study.cases/lighthouse/run-example2.py b/study.cases/lighthouse/run-example2.py
+index 0c19a6269..5810cebc0 100755
+--- a/study.cases/lighthouse/run-example2.py
++++ b/study.cases/lighthouse/run-example2.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior
+ # distribution of the coastline distance 'alpha' and distance from shore 'beta'
+diff --git a/study.cases/openAIGym/_model/agent.py b/study.cases/openAIGym/_model/agent.py
+index 9fcfdc7c1..bbb58c480 100644
+--- a/study.cases/openAIGym/_model/agent.py
++++ b/study.cases/openAIGym/_model/agent.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ import gym
+ from packaging.version import parse as parse_version
+diff --git a/study.cases/openAIGym/genMovie.py b/study.cases/openAIGym/genMovie.py
+index dd3db7393..d8cc17591 100644
+--- a/study.cases/openAIGym/genMovie.py
++++ b/study.cases/openAIGym/genMovie.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import argparse
+diff --git a/study.cases/openAIGym/run-cmaes.py b/study.cases/openAIGym/run-cmaes.py
+index bc5892c1a..9cbb6485b 100755
+--- a/study.cases/openAIGym/run-cmaes.py
++++ b/study.cases/openAIGym/run-cmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ ## In this example, we demonstrate how Korali finds values for the
+ ## variables that maximize the objective function, given by a
+diff --git a/study.cases/openAIGym/run-vracer.py b/study.cases/openAIGym/run-vracer.py
+index 061ce2acd..ade4192fb 100644
+--- a/study.cases/openAIGym/run-vracer.py
++++ b/study.cases/openAIGym/run-vracer.py
+@@ -1,4 +1,5 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
++
+ import os
+ import sys
+ import argparse
+diff --git a/study.cases/pettingZoo/_model/agent.py b/study.cases/pettingZoo/_model/agent.py
+index 9c712b6cf..a31820d2b 100644
+--- a/study.cases/pettingZoo/_model/agent.py
++++ b/study.cases/pettingZoo/_model/agent.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ import math
+ import pdb
+diff --git a/study.cases/pettingZoo/genMovie.py b/study.cases/pettingZoo/genMovie.py
+index 8d8a8d4fe..70c7f188f 100644
+--- a/study.cases/pettingZoo/genMovie.py
++++ b/study.cases/pettingZoo/genMovie.py
+@@ -1,4 +1,5 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
++
+ import os
+ import sys
+ import argparse
+diff --git a/study.cases/pettingZoo/run-dvracer.py b/study.cases/pettingZoo/run-dvracer.py
+index b17bb3095..26f334067 100644
+--- a/study.cases/pettingZoo/run-dvracer.py
++++ b/study.cases/pettingZoo/run-dvracer.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import argparse
+diff --git a/study.cases/pettingZoo/run-vracer.py b/study.cases/pettingZoo/run-vracer.py
+index 9c3f0bf81..45b507eb1 100644
+--- a/study.cases/pettingZoo/run-vracer.py
++++ b/study.cases/pettingZoo/run-vracer.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import argparse
+diff --git a/tests/python/cxx/test-run.py b/tests/python/cxx/test-run.py
+index adbb2f002..0c2f6eaf5 100755
+--- a/tests/python/cxx/test-run.py
++++ b/tests/python/cxx/test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "-m", "korali.cxx"])
+diff --git a/tests/python/plot/test-run.py b/tests/python/plot/test-run.py
+index 17028759e..4823cd600 100755
+--- a/tests/python/plot/test-run.py
++++ b/tests/python/plot/test-run.py
+@@ -1,4 +1,5 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
++
+ from subprocess import call
+ 
+ r = call(["python3", "-m", "korali.plot", "--dir", "cmaes", "--test"])
+diff --git a/tests/python/rlview/test-run.py b/tests/python/rlview/test-run.py
+index 00eca62c0..e9b3b0584 100755
+--- a/tests/python/rlview/test-run.py
++++ b/tests/python/rlview/test-run.py
+@@ -1,4 +1,5 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
++
+ from subprocess import call
+ 
+ r = call(["python3", "-m", "korali.rlview", "--dir", "abf2d_vracer1", "--test"])
+diff --git a/tests/statistical/bayesian/run-bayesian-1.py b/tests/statistical/bayesian/run-bayesian-1.py
+index a4dd14dfc..419cc2f5e 100755
+--- a/tests/statistical/bayesian/run-bayesian-1.py
++++ b/tests/statistical/bayesian/run-bayesian-1.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior distribution
+ # in a bayesian problem where the likelihood is calculated by providing
+diff --git a/tests/statistical/bayesian/run-bayesian-2.py b/tests/statistical/bayesian/run-bayesian-2.py
+index 1e47a57e2..8ae91732b 100755
+--- a/tests/statistical/bayesian/run-bayesian-2.py
++++ b/tests/statistical/bayesian/run-bayesian-2.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior distribution
+ # in a bayesian problem where the likelihood is calculated by providing
+diff --git a/tests/statistical/bayesian/run-bayesian-3.py b/tests/statistical/bayesian/run-bayesian-3.py
+index 26392e2d0..56137b0ad 100755
+--- a/tests/statistical/bayesian/run-bayesian-3.py
++++ b/tests/statistical/bayesian/run-bayesian-3.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior distribution
+ # in a bayesian problem where the likelihood is calculated by providing
+diff --git a/tests/statistical/bayesian/run-bayesian-4.py b/tests/statistical/bayesian/run-bayesian-4.py
+index 64dd143ea..3a3dc60b0 100755
+--- a/tests/statistical/bayesian/run-bayesian-4.py
++++ b/tests/statistical/bayesian/run-bayesian-4.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior distribution
+ # in a bayesian problem where the likelihood is calculated by providing
+diff --git a/tests/statistical/bayesian/run-bayesian-5.py b/tests/statistical/bayesian/run-bayesian-5.py
+index ab3b7bbc0..d947e28e7 100755
+--- a/tests/statistical/bayesian/run-bayesian-5.py
++++ b/tests/statistical/bayesian/run-bayesian-5.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior distribution
+ # in a bayesian problem where the likelihood is calculated by providing
+diff --git a/tests/statistical/bayesian/run-bayesian-6.py b/tests/statistical/bayesian/run-bayesian-6.py
+index 6ac998010..dc70537c7 100755
+--- a/tests/statistical/bayesian/run-bayesian-6.py
++++ b/tests/statistical/bayesian/run-bayesian-6.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior distribution
+ # in a bayesian problem where the likelihood is calculated by providing
+diff --git a/tests/statistical/bayesian/run-bayesian-7.py b/tests/statistical/bayesian/run-bayesian-7.py
+index 4f8b9a447..1bca54ae4 100755
+--- a/tests/statistical/bayesian/run-bayesian-7.py
++++ b/tests/statistical/bayesian/run-bayesian-7.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # In this example, we demonstrate how Korali samples the posterior distribution
+ # in a bayesian problem where the likelihood is calculated by providing
+diff --git a/tests/statistical/design/model/model.py b/tests/statistical/design/model/model.py
+index 5d9390280..a346b1d4f 100644
+--- a/tests/statistical/design/model/model.py
++++ b/tests/statistical/design/model/model.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import numpy as np
+diff --git a/tests/statistical/design/run-design-1.py b/tests/statistical/design/run-design-1.py
+index 48da4bbd7..f48ad1584 100644
+--- a/tests/statistical/design/run-design-1.py
++++ b/tests/statistical/design/run-design-1.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import math
+ import sys
+ sys.path.append('./_model/')
+diff --git a/tests/statistical/design/run-design-2.py b/tests/statistical/design/run-design-2.py
+index 702958a2b..f0b919c40 100644
+--- a/tests/statistical/design/run-design-2.py
++++ b/tests/statistical/design/run-design-2.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import math
+ import sys
+ sys.path.append('./_model/')
+diff --git a/tests/statistical/design/run-design-3.py b/tests/statistical/design/run-design-3.py
+index b31ea840d..5698ec615 100644
+--- a/tests/statistical/design/run-design-3.py
++++ b/tests/statistical/design/run-design-3.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import math
+ import sys
+ sys.path.append('./_model/')
+diff --git a/tests/statistical/executor/model/model.py b/tests/statistical/executor/model/model.py
+index 76f50520a..2362b09c3 100644
+--- a/tests/statistical/executor/model/model.py
++++ b/tests/statistical/executor/model/model.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import numpy as np
+diff --git a/tests/statistical/executor/run-executor-1.py b/tests/statistical/executor/run-executor-1.py
+index fa141f98b..9d9d5fb56 100755
+--- a/tests/statistical/executor/run-executor-1.py
++++ b/tests/statistical/executor/run-executor-1.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ sys.path.append('./model/')
+diff --git a/tests/statistical/executor/run-executor-2.py b/tests/statistical/executor/run-executor-2.py
+index 0a6239594..283807dbf 100755
+--- a/tests/statistical/executor/run-executor-2.py
++++ b/tests/statistical/executor/run-executor-2.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ sys.path.append('./model/')
+diff --git a/tests/statistical/integrator/model/model.py b/tests/statistical/integrator/model/model.py
+index 5d9390280..a346b1d4f 100644
+--- a/tests/statistical/integrator/model/model.py
++++ b/tests/statistical/integrator/model/model.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import numpy as np
+diff --git a/tests/statistical/integrator/run-integrator-1.py b/tests/statistical/integrator/run-integrator-1.py
+index 144f78b7d..e31128ee0 100755
+--- a/tests/statistical/integrator/run-integrator-1.py
++++ b/tests/statistical/integrator/run-integrator-1.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import math
+diff --git a/tests/statistical/integrator/run-integrator-2.py b/tests/statistical/integrator/run-integrator-2.py
+index beb980f22..e4fbb0158 100755
+--- a/tests/statistical/integrator/run-integrator-2.py
++++ b/tests/statistical/integrator/run-integrator-2.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import math
+diff --git a/tests/statistical/integrator/run-integrator-3.py b/tests/statistical/integrator/run-integrator-3.py
+index a8675b707..6871e654d 100755
+--- a/tests/statistical/integrator/run-integrator-3.py
++++ b/tests/statistical/integrator/run-integrator-3.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import math
+diff --git a/tests/statistical/integrator/run-integrator-4.py b/tests/statistical/integrator/run-integrator-4.py
+index 6b4955945..e15095079 100755
+--- a/tests/statistical/integrator/run-integrator-4.py
++++ b/tests/statistical/integrator/run-integrator-4.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import math
+diff --git a/tests/statistical/optimizers/correctness/.test-run.py b/tests/statistical/optimizers/correctness/.test-run.py
+index 41590eefb..1c9cfe722 100755
+--- a/tests/statistical/optimizers/correctness/.test-run.py
++++ b/tests/statistical/optimizers/correctness/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-cmaes.py"])
+diff --git a/tests/statistical/optimizers/correctness/helpers/helpers.py b/tests/statistical/optimizers/correctness/helpers/helpers.py
+index 1c745c51d..328d70504 100644
+--- a/tests/statistical/optimizers/correctness/helpers/helpers.py
++++ b/tests/statistical/optimizers/correctness/helpers/helpers.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import numpy as np
+ 
+ 
+diff --git a/tests/statistical/optimizers/correctness/run-cmaes.py b/tests/statistical/optimizers/correctness/run-cmaes.py
+index e70018c0c..f06e0de3e 100755
+--- a/tests/statistical/optimizers/correctness/run-cmaes.py
++++ b/tests/statistical/optimizers/correctness/run-cmaes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import korali
+diff --git a/tests/statistical/optimizers/correctness/run-dea.py b/tests/statistical/optimizers/correctness/run-dea.py
+index b6d5185c2..977eba2c0 100755
+--- a/tests/statistical/optimizers/correctness/run-dea.py
++++ b/tests/statistical/optimizers/correctness/run-dea.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import korali
+diff --git a/tests/statistical/optimizers/correctness/run-gridSearch.py b/tests/statistical/optimizers/correctness/run-gridSearch.py
+index bc7611a5f..2046c1bae 100755
+--- a/tests/statistical/optimizers/correctness/run-gridSearch.py
++++ b/tests/statistical/optimizers/correctness/run-gridSearch.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import korali
+diff --git a/tests/statistical/optimizers/detailed/ccmaes/.test-run.py b/tests/statistical/optimizers/detailed/ccmaes/.test-run.py
+index 0e02f6ac9..82c6e7641 100755
+--- a/tests/statistical/optimizers/detailed/ccmaes/.test-run.py
++++ b/tests/statistical/optimizers/detailed/ccmaes/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-ccmaes.py", "--constraint", "None"])
+diff --git a/tests/statistical/optimizers/detailed/ccmaes/helpers/helpers.py b/tests/statistical/optimizers/detailed/ccmaes/helpers/helpers.py
+index 4176002ae..49b9aaa2b 100644
+--- a/tests/statistical/optimizers/detailed/ccmaes/helpers/helpers.py
++++ b/tests/statistical/optimizers/detailed/ccmaes/helpers/helpers.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import math
+ 
+ 
+diff --git a/tests/statistical/optimizers/detailed/cmaes/.test-run.py b/tests/statistical/optimizers/detailed/cmaes/.test-run.py
+index 58b0d6737..c93fa047d 100755
+--- a/tests/statistical/optimizers/detailed/cmaes/.test-run.py
++++ b/tests/statistical/optimizers/detailed/cmaes/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-maxcmaes1.py"])
+diff --git a/tests/statistical/optimizers/detailed/cmaes/run-maxcmaes1.py b/tests/statistical/optimizers/detailed/cmaes/run-maxcmaes1.py
+index e4336711e..383ad35fe 100755
+--- a/tests/statistical/optimizers/detailed/cmaes/run-maxcmaes1.py
++++ b/tests/statistical/optimizers/detailed/cmaes/run-maxcmaes1.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ import sys
+ sys.path.append('./model')
+diff --git a/tests/statistical/optimizers/detailed/cmaes/run-maxcmaes2.py b/tests/statistical/optimizers/detailed/cmaes/run-maxcmaes2.py
+index 0378e464d..2d85f6d91 100755
+--- a/tests/statistical/optimizers/detailed/cmaes/run-maxcmaes2.py
++++ b/tests/statistical/optimizers/detailed/cmaes/run-maxcmaes2.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ import sys
+ sys.path.append('./model')
+diff --git a/tests/statistical/optimizers/detailed/cmaes/run-mincmaes1.py b/tests/statistical/optimizers/detailed/cmaes/run-mincmaes1.py
+index e26b18adb..444896ff7 100755
+--- a/tests/statistical/optimizers/detailed/cmaes/run-mincmaes1.py
++++ b/tests/statistical/optimizers/detailed/cmaes/run-mincmaes1.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ import sys
+ sys.path.append('./model')
+diff --git a/tests/statistical/optimizers/detailed/cmaes/run-mincmaes2.py b/tests/statistical/optimizers/detailed/cmaes/run-mincmaes2.py
+index 800351aae..96ec3fe0e 100755
+--- a/tests/statistical/optimizers/detailed/cmaes/run-mincmaes2.py
++++ b/tests/statistical/optimizers/detailed/cmaes/run-mincmaes2.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ import sys
+ sys.path.append('./model')
+diff --git a/tests/statistical/optimizers/termination/.test-run.py b/tests/statistical/optimizers/termination/.test-run.py
+index 0d3866d58..ad57e068f 100755
+--- a/tests/statistical/optimizers/termination/.test-run.py
++++ b/tests/statistical/optimizers/termination/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ cmaes_criteria = [
+diff --git a/tests/statistical/optimizers/termination/cmaes_termination.py b/tests/statistical/optimizers/termination/cmaes_termination.py
+index 557b549ba..1d453d7a7 100755
+--- a/tests/statistical/optimizers/termination/cmaes_termination.py
++++ b/tests/statistical/optimizers/termination/cmaes_termination.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import json
+diff --git a/tests/statistical/optimizers/termination/dea_termination.py b/tests/statistical/optimizers/termination/dea_termination.py
+index f436dd682..211c54301 100755
+--- a/tests/statistical/optimizers/termination/dea_termination.py
++++ b/tests/statistical/optimizers/termination/dea_termination.py
+@@ -1,4 +1,4 @@
+-#!#!/usr/bin/env python3
++#!#! @PYTHON3@
+ import os
+ import sys
+ import json
+diff --git a/tests/statistical/optimizers/termination/helpers/helpers.py b/tests/statistical/optimizers/termination/helpers/helpers.py
+index c59f86a33..3220dd363 100644
+--- a/tests/statistical/optimizers/termination/helpers/helpers.py
++++ b/tests/statistical/optimizers/termination/helpers/helpers.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ 
+ def evaluateModel(s):
+diff --git a/tests/statistical/samplers/configuration/run-nested.py b/tests/statistical/samplers/configuration/run-nested.py
+index c29e020a3..c13098b85 100755
+--- a/tests/statistical/samplers/configuration/run-nested.py
++++ b/tests/statistical/samplers/configuration/run-nested.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing the computational model
+ import sys
+diff --git a/tests/statistical/samplers/configuration/run-tmcmc.py b/tests/statistical/samplers/configuration/run-tmcmc.py
+index fd8ec1278..5bc6659a2 100755
+--- a/tests/statistical/samplers/configuration/run-tmcmc.py
++++ b/tests/statistical/samplers/configuration/run-tmcmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/correctness/helpers/helpers.py b/tests/statistical/samplers/correctness/helpers/helpers.py
+index e31d13cd4..6a124836f 100644
+--- a/tests/statistical/samplers/correctness/helpers/helpers.py
++++ b/tests/statistical/samplers/correctness/helpers/helpers.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import json
+ import numpy as np
+ 
+diff --git a/tests/statistical/samplers/correctness/run-dram.py b/tests/statistical/samplers/correctness/run-dram.py
+index f09ea5800..c1d905072 100755
+--- a/tests/statistical/samplers/correctness/run-dram.py
++++ b/tests/statistical/samplers/correctness/run-dram.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/correctness/run-hmc-bayesian.py b/tests/statistical/samplers/correctness/run-hmc-bayesian.py
+index f6d313404..8983661c4 100755
+--- a/tests/statistical/samplers/correctness/run-hmc-bayesian.py
++++ b/tests/statistical/samplers/correctness/run-hmc-bayesian.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/correctness/run-hmc-nuts-1.py b/tests/statistical/samplers/correctness/run-hmc-nuts-1.py
+index e8b9240fc..806073d83 100755
+--- a/tests/statistical/samplers/correctness/run-hmc-nuts-1.py
++++ b/tests/statistical/samplers/correctness/run-hmc-nuts-1.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/correctness/run-hmc-nuts-2.py b/tests/statistical/samplers/correctness/run-hmc-nuts-2.py
+index e1396ab87..84efa9d6a 100755
+--- a/tests/statistical/samplers/correctness/run-hmc-nuts-2.py
++++ b/tests/statistical/samplers/correctness/run-hmc-nuts-2.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/correctness/run-hmc-nuts-3.py b/tests/statistical/samplers/correctness/run-hmc-nuts-3.py
+index 4d22214da..5aa0db229 100755
+--- a/tests/statistical/samplers/correctness/run-hmc-nuts-3.py
++++ b/tests/statistical/samplers/correctness/run-hmc-nuts-3.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/correctness/run-hmc-nuts-4.py b/tests/statistical/samplers/correctness/run-hmc-nuts-4.py
+index b170c6226..168cbf965 100755
+--- a/tests/statistical/samplers/correctness/run-hmc-nuts-4.py
++++ b/tests/statistical/samplers/correctness/run-hmc-nuts-4.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/correctness/run-hmc.py b/tests/statistical/samplers/correctness/run-hmc.py
+index 2773c775b..15588299b 100755
+--- a/tests/statistical/samplers/correctness/run-hmc.py
++++ b/tests/statistical/samplers/correctness/run-hmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/correctness/run-mcmc.py b/tests/statistical/samplers/correctness/run-mcmc.py
+index 697926b91..fde809f41 100755
+--- a/tests/statistical/samplers/correctness/run-mcmc.py
++++ b/tests/statistical/samplers/correctness/run-mcmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/correctness/run-tmcmc-1.py b/tests/statistical/samplers/correctness/run-tmcmc-1.py
+index ea583da92..3274d22e1 100755
+--- a/tests/statistical/samplers/correctness/run-tmcmc-1.py
++++ b/tests/statistical/samplers/correctness/run-tmcmc-1.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/correctness/run-tmcmc-2.py b/tests/statistical/samplers/correctness/run-tmcmc-2.py
+index afe2bb906..4d860560d 100755
+--- a/tests/statistical/samplers/correctness/run-tmcmc-2.py
++++ b/tests/statistical/samplers/correctness/run-tmcmc-2.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/correctness/run-tmcmc-3.py b/tests/statistical/samplers/correctness/run-tmcmc-3.py
+index cfb9f812d..a8105bd7d 100755
+--- a/tests/statistical/samplers/correctness/run-tmcmc-3.py
++++ b/tests/statistical/samplers/correctness/run-tmcmc-3.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/detailed/mcmc/.test-run.py b/tests/statistical/samplers/detailed/mcmc/.test-run.py
+index 9e75a86a2..235ffa533 100755
+--- a/tests/statistical/samplers/detailed/mcmc/.test-run.py
++++ b/tests/statistical/samplers/detailed/mcmc/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "run-mcmc.py"])
+diff --git a/tests/statistical/samplers/detailed/mcmc/run-mcmc.py b/tests/statistical/samplers/detailed/mcmc/run-mcmc.py
+index 63f2f7193..4c3af849c 100755
+--- a/tests/statistical/samplers/detailed/mcmc/run-mcmc.py
++++ b/tests/statistical/samplers/detailed/mcmc/run-mcmc.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/detailed/tmcmc/.test-run.py b/tests/statistical/samplers/detailed/tmcmc/.test-run.py
+index db6429710..02f4353c6 100755
+--- a/tests/statistical/samplers/detailed/tmcmc/.test-run.py
++++ b/tests/statistical/samplers/detailed/tmcmc/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ r = call(["python3", "tmcmc-specifics.py"])
+diff --git a/tests/statistical/samplers/detailed/tmcmc/helpers/helpers.py b/tests/statistical/samplers/detailed/tmcmc/helpers/helpers.py
+index c59f86a33..3220dd363 100644
+--- a/tests/statistical/samplers/detailed/tmcmc/helpers/helpers.py
++++ b/tests/statistical/samplers/detailed/tmcmc/helpers/helpers.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ 
+ def evaluateModel(s):
+diff --git a/tests/statistical/samplers/detailed/tmcmc/tmcmc-specifics.py b/tests/statistical/samplers/detailed/tmcmc/tmcmc-specifics.py
+index cbd463eb0..600ca3df0 100755
+--- a/tests/statistical/samplers/detailed/tmcmc/tmcmc-specifics.py
++++ b/tests/statistical/samplers/detailed/tmcmc/tmcmc-specifics.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import json
+diff --git a/tests/statistical/samplers/mean/run-hmc-gaussian.py b/tests/statistical/samplers/mean/run-hmc-gaussian.py
+index e733d1ff4..255098551 100755
+--- a/tests/statistical/samplers/mean/run-hmc-gaussian.py
++++ b/tests/statistical/samplers/mean/run-hmc-gaussian.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-hmc-laplace.py b/tests/statistical/samplers/mean/run-hmc-laplace.py
+index 3b6d0d007..0d3e53e5b 100755
+--- a/tests/statistical/samplers/mean/run-hmc-laplace.py
++++ b/tests/statistical/samplers/mean/run-hmc-laplace.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-hmc-nuts-gaussian.py b/tests/statistical/samplers/mean/run-hmc-nuts-gaussian.py
+index 4827ca8c3..0e11a48f8 100755
+--- a/tests/statistical/samplers/mean/run-hmc-nuts-gaussian.py
++++ b/tests/statistical/samplers/mean/run-hmc-nuts-gaussian.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-hmc-nuts-laplace.py b/tests/statistical/samplers/mean/run-hmc-nuts-laplace.py
+index 8a6614532..7beaca28a 100755
+--- a/tests/statistical/samplers/mean/run-hmc-nuts-laplace.py
++++ b/tests/statistical/samplers/mean/run-hmc-nuts-laplace.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-hmc-riemannian-laplace.py b/tests/statistical/samplers/mean/run-hmc-riemannian-laplace.py
+index 85d459786..aa08d99a5 100755
+--- a/tests/statistical/samplers/mean/run-hmc-riemannian-laplace.py
++++ b/tests/statistical/samplers/mean/run-hmc-riemannian-laplace.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-mcmc-exponential.py b/tests/statistical/samplers/mean/run-mcmc-exponential.py
+index cef0249d7..828ebcfe6 100755
+--- a/tests/statistical/samplers/mean/run-mcmc-exponential.py
++++ b/tests/statistical/samplers/mean/run-mcmc-exponential.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-mcmc-gaussian.py b/tests/statistical/samplers/mean/run-mcmc-gaussian.py
+index a07b5aa34..3ea461924 100755
+--- a/tests/statistical/samplers/mean/run-mcmc-gaussian.py
++++ b/tests/statistical/samplers/mean/run-mcmc-gaussian.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-mcmc-gaussian5d.py b/tests/statistical/samplers/mean/run-mcmc-gaussian5d.py
+index a600bd365..c4f1cebbb 100755
+--- a/tests/statistical/samplers/mean/run-mcmc-gaussian5d.py
++++ b/tests/statistical/samplers/mean/run-mcmc-gaussian5d.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-mcmc-laplace.py b/tests/statistical/samplers/mean/run-mcmc-laplace.py
+index 5bd6e0a91..31d1abc1c 100755
+--- a/tests/statistical/samplers/mean/run-mcmc-laplace.py
++++ b/tests/statistical/samplers/mean/run-mcmc-laplace.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-multinest-gaussian5d.py b/tests/statistical/samplers/mean/run-multinest-gaussian5d.py
+index 5d65fc948..8be9aa08a 100755
+--- a/tests/statistical/samplers/mean/run-multinest-gaussian5d.py
++++ b/tests/statistical/samplers/mean/run-multinest-gaussian5d.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-nested-exponential.py b/tests/statistical/samplers/mean/run-nested-exponential.py
+index 3ca929ad9..b134ec102 100755
+--- a/tests/statistical/samplers/mean/run-nested-exponential.py
++++ b/tests/statistical/samplers/mean/run-nested-exponential.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing the computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-nested-gaussian.py b/tests/statistical/samplers/mean/run-nested-gaussian.py
+index ef05c80ee..a9193829c 100755
+--- a/tests/statistical/samplers/mean/run-nested-gaussian.py
++++ b/tests/statistical/samplers/mean/run-nested-gaussian.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing the computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-nested-gaussian5d.py b/tests/statistical/samplers/mean/run-nested-gaussian5d.py
+index 90c58afd2..c1d286074 100755
+--- a/tests/statistical/samplers/mean/run-nested-gaussian5d.py
++++ b/tests/statistical/samplers/mean/run-nested-gaussian5d.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-nested-laplace.py b/tests/statistical/samplers/mean/run-nested-laplace.py
+index 67fa3243c..192fab4a7 100755
+--- a/tests/statistical/samplers/mean/run-nested-laplace.py
++++ b/tests/statistical/samplers/mean/run-nested-laplace.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-rchmc-gaussian.py b/tests/statistical/samplers/mean/run-rchmc-gaussian.py
+index 081d35e7d..95e83b41d 100755
+--- a/tests/statistical/samplers/mean/run-rchmc-gaussian.py
++++ b/tests/statistical/samplers/mean/run-rchmc-gaussian.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-rchmc-laplace.py b/tests/statistical/samplers/mean/run-rchmc-laplace.py
+index 3787dbebd..7ac1d63d5 100755
+--- a/tests/statistical/samplers/mean/run-rchmc-laplace.py
++++ b/tests/statistical/samplers/mean/run-rchmc-laplace.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-tmcmc-exponential.py b/tests/statistical/samplers/mean/run-tmcmc-exponential.py
+index aebf35ae8..f3b21c4ef 100755
+--- a/tests/statistical/samplers/mean/run-tmcmc-exponential.py
++++ b/tests/statistical/samplers/mean/run-tmcmc-exponential.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-tmcmc-gaussian.py b/tests/statistical/samplers/mean/run-tmcmc-gaussian.py
+index f96c818d4..d75dc3034 100755
+--- a/tests/statistical/samplers/mean/run-tmcmc-gaussian.py
++++ b/tests/statistical/samplers/mean/run-tmcmc-gaussian.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-tmcmc-gaussian5d.py b/tests/statistical/samplers/mean/run-tmcmc-gaussian5d.py
+index 67802aca3..de529f55b 100755
+--- a/tests/statistical/samplers/mean/run-tmcmc-gaussian5d.py
++++ b/tests/statistical/samplers/mean/run-tmcmc-gaussian5d.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/mean/run-tmcmc-laplace.py b/tests/statistical/samplers/mean/run-tmcmc-laplace.py
+index 17273d9a6..a5a4b1439 100755
+--- a/tests/statistical/samplers/mean/run-tmcmc-laplace.py
++++ b/tests/statistical/samplers/mean/run-tmcmc-laplace.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ # Importing computational model
+ import sys
+diff --git a/tests/statistical/samplers/termination/.test-run.py b/tests/statistical/samplers/termination/.test-run.py
+index 8a4f4152f..8c732efac 100755
+--- a/tests/statistical/samplers/termination/.test-run.py
++++ b/tests/statistical/samplers/termination/.test-run.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python3
++#! @PYTHON3@
+ from subprocess import call
+ 
+ tmcmc_criteria = [
+diff --git a/tests/statistical/samplers/termination/helpers/helpers.py b/tests/statistical/samplers/termination/helpers/helpers.py
+index c59f86a33..3220dd363 100644
+--- a/tests/statistical/samplers/termination/helpers/helpers.py
++++ b/tests/statistical/samplers/termination/helpers/helpers.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ 
+ 
+ def evaluateModel(s):
+diff --git a/tests/statistical/samplers/termination/nested_termination.py b/tests/statistical/samplers/termination/nested_termination.py
+index 0212f06fd..5fa58252d 100755
+--- a/tests/statistical/samplers/termination/nested_termination.py
++++ b/tests/statistical/samplers/termination/nested_termination.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import json
+diff --git a/tests/statistical/samplers/termination/tmcmc_termination.py b/tests/statistical/samplers/termination/tmcmc_termination.py
+index c1706dd98..bdfb44bdc 100755
+--- a/tests/statistical/samplers/termination/tmcmc_termination.py
++++ b/tests/statistical/samplers/termination/tmcmc_termination.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import json
+diff --git a/tests/statistical/supervised/run-deep-supervisor.py b/tests/statistical/supervised/run-deep-supervisor.py
+index c1df7144f..75db45227 100755
+--- a/tests/statistical/supervised/run-deep-supervisor.py
++++ b/tests/statistical/supervised/run-deep-supervisor.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import sys
+ import numpy as np
+diff --git a/tools/build/build.py b/tools/build/build.py
+index 1fd5596ca..2b47ae591 100755
+--- a/tools/build/build.py
++++ b/tools/build/build.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import re
+ import argparse
+diff --git a/tools/build/build_variables_header.py b/tools/build/build_variables_header.py
+index 33cf0b680..9b4a2aa38 100755
+--- a/tools/build/build_variables_header.py
++++ b/tools/build/build_variables_header.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import os
+ import re
+ import argparse
+diff --git a/tools/build/generate_dependencies.py b/tools/build/generate_dependencies.py
+index c1a489475..68942363b 100755
+--- a/tools/build/generate_dependencies.py
++++ b/tools/build/generate_dependencies.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import sys
+ import os
+ import argparse
+diff --git a/tools/build/get_header_directory.py b/tools/build/get_header_directory.py
+index ad5d90499..5f9096714 100755
+--- a/tools/build/get_header_directory.py
++++ b/tools/build/get_header_directory.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#! @PYTHON3@
+ import pathlib
+ import sys
+ import os
+-- 
+2.39.1
+

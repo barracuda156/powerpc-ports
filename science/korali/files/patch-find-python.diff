@@ -1,0 +1,13 @@
+--- meson.build.orig	2021-09-24 20:46:28.000000000 +0800
++++ meson.build	2023-01-18 18:15:14.000000000 +0800
+@@ -20,8 +20,8 @@
+ korali_conf = configuration_data()
+ 
+ # python installation
+-pymodule = import('python')
+-python = pymodule.find_installation('python3', required: true)
++pymod = import('python')
++python = pymod.find_installation('@PYTHON3@')
+ 
+ korali = 'korali' # python package name
+ korali_install_base = python.get_install_dir() / korali
