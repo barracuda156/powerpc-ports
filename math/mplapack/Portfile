@@ -1,0 +1,38 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           compilers 1.0
+PortGroup           github 1.0
+PortGroup           linear_algebra 1.0
+
+github.setup        nakatamaho mplapack 2.0.1 v
+revision            0
+categories          math science
+license             BSD
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+description         Multi-precision linear algebra package, predicated upon the foundational structures of BLAS and LAPACK
+long_description    {*}${description}
+checksums           rmd160  180738faf90c899d4f557bb10a177c78f65dd686 \
+                    sha256  2329fa9d8c1b2d6ff640ae6034c28e293af89afc9cf78847776746f0373ccdaa \
+                    size    45841699
+
+use_autoreconf      yes
+
+depends_lib-append      port:gmp \
+                        port:libmpc \
+                        port:mpfr \
+                        port:qd
+depends_build-append    port:libtool
+
+configure.args-append \
+                    --disable-benchmark \
+                    --disable-examples \
+                    --disable-_Float128 \
+                    --enable-gmp \
+                    --enable-mpfr \
+                    --enable-qd \
+                    --enable-reference \
+                    --with-system-gmp=${prefix} \
+                    --with-system-mpc=${prefix} \
+                    --with-system-mpfr=${prefix} \
+                    --with-system-qd=${prefix}
