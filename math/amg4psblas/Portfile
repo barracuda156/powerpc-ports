@@ -1,0 +1,36 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           mpi 1.0
+
+github.setup        sfilippone amg4psblas 1.1.0 v
+revision            0
+categories          math science parallel
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+license             BSD
+description         Library of parallel sparse preconditionersfor PSBLAS
+long_description    {*}${description}
+checksums           rmd160  bc8a7ccd242349615806ea7a1e704bc5ab9bbba9 \
+                    sha256  a3d69120a766e1b2a08db369381782e5950c2e4b7f1d179803e096c696c39e74 \
+                    size    2594502
+
+depends_lib-append  port:mumps \
+                    port:psblas3
+
+if {${os.platform} eq "darwin" && ${os.arch} eq "powerpc"} {
+    mpi.setup       require require_fortran \
+                    -gcc44 -gcc45 -gcc46 -gcc47 -gcc48 -gcc49 \
+                    -clang -fortran
+} else {
+    mpi.setup       require require_fortran \
+                    -gcc44 -gcc45 -gcc46 -gcc47 -gcc48 -gcc49
+}
+
+pre-configure {
+    configure.env   MPIFC=${prefix}/bin/${mpi.f90} \
+                    MPICC=${prefix}/bin/${mpi.cc}
+}
+
+configure.args-append \
+                    --with-psblas=${prefix}
