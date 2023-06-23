@@ -7,7 +7,7 @@ PortGroup           ruby 1.0
 # architectures.  Don't change it without preserving this property.
 # The choice of Ruby versions doesn't affect clients.
 #
-ruby.setup          asciidoctor 2.0.20 gem {} rubygems ruby30
+ruby.setup          asciidoctor 2.0.20 gem {} rubygems ruby31
 name                asciidoctor
 revision            0
 
