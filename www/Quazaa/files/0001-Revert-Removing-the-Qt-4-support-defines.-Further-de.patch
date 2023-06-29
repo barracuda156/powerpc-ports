@@ -1,0 +1,901 @@
+From 545207ae7e1365437681032d4f676cbe9b789edc Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Wed, 28 Jun 2023 11:21:40 +0800
+Subject: [PATCH] Revert "Removing the Qt 4 support defines. Further
+ development will require Qt"
+
+This reverts commit 95eb80d7029bb65daa0178cdaa0c85904bf30067.
+---
+ Quazaa/Discovery/discovery.cpp           | 10 ++++++
+ Quazaa/Discovery/gwc.cpp                 | 40 ++++++++++++++++++++++++
+ Quazaa/Discovery/networktype.cpp         |  4 +++
+ Quazaa/Misc/fileiconprovider.cpp         | 27 ++++++++++++++++
+ Quazaa/Models/discoverytablemodel.cpp    | 24 ++++++++++++--
+ Quazaa/NetworkCore/handshakes.cpp        |  4 +++
+ Quazaa/NetworkCore/handshakes.h          |  5 ++-
+ Quazaa/NetworkCore/networkconnection.cpp |  6 +++-
+ Quazaa/NetworkCore/networkconnection.h   |  4 +++
+ Quazaa/Security/regexprule.cpp           | 19 +++++++++++
+ Quazaa/Security/regexprule.h             |  4 +++
+ Quazaa/Security/securerule.h             |  6 +++-
+ Quazaa/Security/useragentrule.cpp        | 12 +++++++
+ Quazaa/Security/useragentrule.h          |  5 +++
+ Quazaa/ShareManager/sharemanager.cpp     |  8 +++++
+ Quazaa/UI/dialogircsettings.cpp          | 11 +++++++
+ Quazaa/UI/suggestedlineedit.cpp          | 17 +++++++++-
+ Quazaa/UI/widgetdiscovery.cpp            | 19 +++++++++--
+ Quazaa/UI/widgetlibrary.cpp              |  4 +++
+ Quazaa/UI/widgetreturnemittextedit.cpp   |  7 +++++
+ Quazaa/quazaaglobals.cpp                 | 21 +++++++++++++
+ Quazaa/quazaasettings.cpp                |  4 +++
+ Quazaa/quazaasysinfo.cpp                 |  9 ++++++
+ VersionTool/main.cpp                     | 14 +++++++--
+ 24 files changed, 273 insertions(+), 11 deletions(-)
+
+diff --git Quazaa/Discovery/discovery.cpp Quazaa/Discovery/discovery.cpp
+index 9fe67298..d91e7d2a 100644
+--- Quazaa/Discovery/discovery.cpp
++++ Quazaa/Discovery/discovery.cpp
+@@ -25,7 +25,12 @@
+ #include <QFile>
+ #include <QDateTime>
+ #include <QDir>
++
++#if QT_VERSION >= 0x050000
+ #include <QRegularExpression>
++#else
++#include <QRegExp>
++#endif
+ 
+ #include <QNetworkConfigurationManager>
+ 
+@@ -1473,8 +1478,13 @@ bool CDiscovery::normalizeURL(QString& sURL)
+ 	// Check it has a valid protocol
+ 	if ( sURL.startsWith( "http://" ) || sURL.startsWith("https://") )
+ 	{
++#if QT_VERSION >= 0x050000
+ 		sURL.remove( QRegularExpression( "/*$" ) );
+ 		sURL.remove( QRegularExpression( "\\.nyud\\.net:[0-9]+" ) );
++#else
++		sURL.remove( QRegExp( "/*$" ) );
++		sURL.remove( QRegExp( "\\.nyud\\.net:[0-9]+" ) );
++#endif
+ 
+ 		// First check whether the URL can be parsed at all.
+ 		QUrl oURL( sURL, QUrl::StrictMode );
+diff --git Quazaa/Discovery/gwc.cpp Quazaa/Discovery/gwc.cpp
+index b605aed4..d7247bfc 100644
+--- Quazaa/Discovery/gwc.cpp
++++ Quazaa/Discovery/gwc.cpp
+@@ -25,7 +25,10 @@
+ #include <QNetworkRequest>
+ #include <QNetworkReply>
+ #include <QStringList>
++
++#if QT_VERSION >= 0x050000
+ #include <QUrlQuery>
++#endif
+ 
+ #include "network.h"
+ #include "quazaaglobals.h"
+@@ -70,6 +73,7 @@ void CGWC::doQuery() throw()
+ 	QString sVersion = QString::number( Version::MAJOR ) + "." + QString::number( Version::MINOR );
+ 
+ 	// build query
++#if QT_VERSION >= 0x050000
+ 	{
+ 		QUrlQuery query;
+ 		query.addQueryItem( "ping", "1" );
+@@ -79,6 +83,13 @@ void CGWC::doQuery() throw()
+ 		query.addQueryItem( "version", sVersion.toLocal8Bit().data() );
+ 		oURL.setQuery(query);
+ 	}
++#else
++	oURL.addQueryItem( "ping", "1" );
++	oURL.addQueryItem( "get", "1" );
++	oURL.addQueryItem( "net", "gnutella2" );
++	oURL.addQueryItem( "client", QuazaaGlobals::VENDOR_CODE() );
++	oURL.addQueryItem( "version", sVersion.toLocal8Bit().data() );
++#endif
+ 
+ 	// inform user
+ 	postLog( LogSeverity::Debug, QString( "Querying GWC: %1" ).arg( oURL.toString() ) );
+@@ -92,8 +103,13 @@ void CGWC::doQuery() throw()
+ 	// obtain network access manager for query
+ 	m_pNAMgr = discoveryManager.requestNAM();
+ 
++#if QT_VERSION >= 0x050000
+ 	connect( m_pNAMgr.data(), &QNetworkAccessManager::finished,
+ 			 this, &CGWC::requestCompleted );
++#else
++	connect( m_pNAMgr.data(), SIGNAL( finished(QNetworkReply*) ),
++			 this, SLOT( requestCompleted(QNetworkReply*) ) );
++#endif
+ 
+ 	// do query
+ 	m_pNAMgr->get( *m_pRequest );
+@@ -111,6 +127,7 @@ void CGWC::doUpdate() throw()
+ 	QString sPromoteURL = discoveryManager.getWorkingService( stGWC );
+ 
+ 	// build query
++#if QT_VERSION >= 0x050000
+ 	{
+ 		QUrlQuery query;
+ 		query.addQueryItem( "ping", "1" );
+@@ -127,6 +144,19 @@ void CGWC::doUpdate() throw()
+ 
+ 		oURL.setQuery(query);
+ 	}
++#else
++	oURL.addQueryItem( "ping", "1" );
++	oURL.addQueryItem( "update", "1" );
++	oURL.addQueryItem( "net", "gnutella2" );
++	oURL.addQueryItem( "ip", sOwnIP );
++	oURL.addQueryItem( "client", QuazaaGlobals::VENDOR_CODE() );
++	oURL.addQueryItem( "version", sVersion );
++
++	if ( !sPromoteURL.isEmpty() )
++	{
++		oURL.addQueryItem( "url", QUrl::toPercentEncoding( sPromoteURL ) );
++	}
++#endif
+ 
+ 	// inform user
+ 	postLog( LogSeverity::Debug, QString( "Updating GWC: %1" ).arg( oURL.toString() ) );
+@@ -140,8 +170,13 @@ void CGWC::doUpdate() throw()
+ 	// obtain network access manager for update
+ 	m_pNAMgr = discoveryManager.requestNAM();
+ 
++#if QT_VERSION >= 0x050000
+ 	connect( m_pNAMgr.data(), &QNetworkAccessManager::finished,
+ 			 this, &CGWC::requestCompleted );
++#else
++	connect( m_pNAMgr.data(), SIGNAL( finished(QNetworkReply*) ),
++			 this, SLOT( requestCompleted(QNetworkReply*) ) );
++#endif
+ 
+ 	// do query
+ 	m_pNAMgr->get( *m_pRequest );
+@@ -149,8 +184,13 @@ void CGWC::doUpdate() throw()
+ 
+ void CGWC::doCancelRequest() throw()
+ {
++#if QT_VERSION >= 0x050000
+ 	disconnect( m_pNAMgr.data(), &QNetworkAccessManager::finished,
+ 				this, &CGWC::requestCompleted );
++#else
++	disconnect( m_pNAMgr.data(), SIGNAL( finished(QNetworkReply*) ),
++				this, SLOT( requestCompleted(QNetworkReply*) ) );
++#endif
+ 
+ 	delete m_pRequest;
+ 	m_pRequest = NULL;
+diff --git Quazaa/Discovery/networktype.cpp Quazaa/Discovery/networktype.cpp
+index 20b14b1c..efac2f7f 100644
+--- Quazaa/Discovery/networktype.cpp
++++ Quazaa/Discovery/networktype.cpp
+@@ -24,6 +24,10 @@
+ 
+ #include <QObject>
+ 
++#if QT_VERSION < 0x050000
++#include <QMetaType>
++#endif
++
+ #include "networktype.h"
+ 
+ CNetworkType::CNetworkType() :
+diff --git Quazaa/Misc/fileiconprovider.cpp Quazaa/Misc/fileiconprovider.cpp
+index c9727573..9e05b1ae 100644
+--- Quazaa/Misc/fileiconprovider.cpp
++++ Quazaa/Misc/fileiconprovider.cpp
+@@ -32,8 +32,17 @@
+ #  include <objbase.h>
+ #  include <qpixmapcache.h>
+ #  include <qdir.h>
++#if QT_VERSION >= 0x050000
+ #  include <windows.h>
+ #endif
++#endif
++
++#if defined(Q_OS_WINCE) && QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++#include <winbase.h>
++#include "qguifunctions_wince.h"
++extern bool qt_wince_is_high_dpi();
++extern bool qt_wince_is_pocket_pc();
++#endif
+ 
+ #ifdef Q_OS_WIN
+ 
+@@ -47,6 +56,7 @@
+ #endif
+ 
+ // Copied removed windows icon getters from Qt 4.8 QPixmap code for Qt 5
++#if QT_VERSION >= 0x050000
+ #ifndef Q_OS_WINCE
+ QImage fromWinHBITMAP(HDC hdc, HBITMAP bitmap, int w, int h)
+ {
+@@ -240,6 +250,7 @@ QPixmap fromWinHICON(HICON icon)
+ 	return QPixmap::fromImage(image);
+ }
+ #endif //ifndef Q_OS_WINCE
++#endif //QT_VERSION >= 0x050000
+ 
+ // QFileIconProviderPrivate::getWinIcon copy modified to get icons for non-existing files
+ QIcon getWinIcon(const QFileInfo &fileInfo)
+@@ -295,10 +306,18 @@ QIcon getWinIcon(const QFileInfo &fileInfo)
+ 			}
+ 		}
+ 		if (pixmap.isNull()) {
++#if QT_VERSION >= 0x050000
+ #ifndef Q_OS_WINCE
+ 			pixmap = fromWinHICON(info.hIcon);
+ #else
+ 			pixmap = fromWinHICON(ImageList_GetIcon((HIMAGELIST) val, info.iIcon, ILD_NORMAL));
++#endif
++#else
++#ifndef Q_OS_WINCE
++			pixmap = QPixmap::fromWinHICON(info.hIcon);
++#else
++			pixmap = QPixmap::fromWinHICON(ImageList_GetIcon((HIMAGELIST) val, info.iIcon, ILD_NORMAL));
++#endif
+ #endif
+ 			if (!pixmap.isNull()) {
+ 				retIcon.addPixmap(pixmap);
+@@ -325,10 +344,18 @@ QIcon getWinIcon(const QFileInfo &fileInfo)
+ 			//using the unique icon index provided by windows save us from duplicate keys
+ 			key = QString::fromLatin1("qt_dir_%1").arg(info.iIcon);
+ 		}
++#if QT_VERSION >= 0x050000
+ #ifndef Q_OS_WINCE
+ 		pixmap = fromWinHICON(info.hIcon);
+ #else
+ 		pixmap = fromWinHICON(ImageList_GetIcon((HIMAGELIST) val, info.iIcon, ILD_NORMAL));
++#endif
++#else
++#ifndef Q_OS_WINCE
++		pixmap = QPixmap::fromWinHICON(info.hIcon);
++#else
++		pixmap = QPixmap::fromWinHICON(ImageList_GetIcon((HIMAGELIST) val, info.iIcon, ILD_NORMAL));
++#endif
+ #endif
+ 		if (!pixmap.isNull()) {
+ 			retIcon.addPixmap(pixmap);
+diff --git Quazaa/Models/discoverytablemodel.cpp Quazaa/Models/discoverytablemodel.cpp
+index 61890cc5..a1a7bc41 100644
+--- Quazaa/Models/discoverytablemodel.cpp
++++ Quazaa/Models/discoverytablemodel.cpp
+@@ -50,8 +50,17 @@ CDiscoveryTableModel::Service::Service(TConstServicePtr pService, CDiscoveryTabl
+ {
+ 	refreshServiceIcon( model );
+ 
++#if QT_VERSION >= 0x050000
++
+ 	connect( m_pNode.data(), &Discovery::CDiscoveryService::updated, model,
+ 			 &CDiscoveryTableModel::update, Qt::QueuedConnection );
++
++#else	// Qt4 code
++
++	connect( m_pNode.data(), SIGNAL( updated( TServiceID ) ), model,
++			 SLOT( update( TServiceID ) ), Qt::QueuedConnection );
++
++#endif
+ }
+ 
+ CDiscoveryTableModel::Service::~Service()
+@@ -217,7 +226,7 @@ bool CDiscoveryTableModel::Service::lessThan(int col, const CDiscoveryTableModel
+ 	{
+ 	case TYPE:
+ 		return (         m_bBanned ?         m_nType * -1 :         m_nType ) <
+-			   ( pOther->m_bBanned ? pOther->m_nType * -1 : pOther->m_nType );
++		       ( pOther->m_bBanned ? pOther->m_nType * -1 : pOther->m_nType );
+ 
+ 	case URL:
+ 		return m_sURL  < pOther->m_sURL;
+@@ -311,11 +320,22 @@ CDiscoveryTableModel::CDiscoveryTableModel(QObject *parent, QWidget* container)
+ 	m_pIcons[GWC_BLUE]  = new QIcon( ":/Resource/Discovery/DiscoveryGWCBlue.ico"  );
+ 	m_pIcons[GWC_GRAY]  = new QIcon( ":/Resource/Discovery/DiscoveryGWCGray.ico"  );
+ 
++#if QT_VERSION >= 0x050000
++
+ 	connect( &discoveryManager, &Discovery::CDiscovery::serviceAdded, this,
+ 			 &CDiscoveryTableModel::addService, Qt::QueuedConnection );
+ 	connect( &discoveryManager, &Discovery::CDiscovery::serviceRemoved, this,
+ 			 &CDiscoveryTableModel::removeService, Qt::QueuedConnection );
+ 
++#else	// Qt4 code
++
++	connect( &discoveryManager, SIGNAL( serviceAdded( TConstServicePtr ) ), this,
++			 SLOT( addService( TConstServicePtr ) ), Qt::QueuedConnection );
++	connect( &discoveryManager, SIGNAL( serviceRemoved( TServiceID ) ), this,
++			 SLOT( removeService( TServiceID ) ), Qt::QueuedConnection );
++
++#endif
++
+ 	// This needs to be called to make sure that all rules added to the discoveryManager before this
+ 	// part of the GUI is loaded are properly added to the model.
+ 	completeRefresh();
+@@ -378,7 +398,7 @@ QVariant CDiscoveryTableModel::data(const QModelIndex& index, int role) const
+ 			return *pService->m_piType;
+ 		}
+ 	}
+-	// TODO: Add formatting options back to models
++    // TODO: Add formatting options back to models
+ 	/*else if ( role == Qt::ForegroundRole )
+ 	{
+ 		switch ( nbr->nState )
+diff --git Quazaa/NetworkCore/handshakes.cpp Quazaa/NetworkCore/handshakes.cpp
+index 4121647c..876a597f 100644
+--- Quazaa/NetworkCore/handshakes.cpp
++++ Quazaa/NetworkCore/handshakes.cpp
+@@ -76,7 +76,11 @@ void CHandshakes::stop()
+ 	Q_ASSERT(m_lHandshakes.isEmpty());
+ }
+ 
++#if QT_VERSION < QT_VERSION_CHECK(5,0,0)
++void CHandshakes::incomingConnection(int handle)
++#else
+ void CHandshakes::incomingConnection(qintptr handle)
++#endif
+ {
+ 	QMutexLocker l(&m_pSection);
+ 
+diff --git Quazaa/NetworkCore/handshakes.h Quazaa/NetworkCore/handshakes.h
+index 804156ec..ffd6fde3 100644
+--- Quazaa/NetworkCore/handshakes.h
++++ Quazaa/NetworkCore/handshakes.h
+@@ -70,8 +70,11 @@ protected slots:
+ signals:
+ 
+ protected:
++#if QT_VERSION < QT_VERSION_CHECK(5,0,0)
++	void incomingConnection(int handle);
++#else
+ 	void incomingConnection(qintptr handle);
+-
++#endif
+ 	void removeHandshake(CHandshake* pHs);
+ 
+ 	void processNeighbour(CHandshake* pHs);
+diff --git Quazaa/NetworkCore/networkconnection.cpp Quazaa/NetworkCore/networkconnection.cpp
+index 20f374fd..ffad5fa6 100644
+--- Quazaa/NetworkCore/networkconnection.cpp
++++ Quazaa/NetworkCore/networkconnection.cpp
+@@ -116,9 +116,13 @@ void CNetworkConnection::attachTo(CNetworkConnection* pOther)
+ 	initializeSocket();
+ 
+ 	emit readyRead();
+-}
+ 
++}
++#if QT_VERSION < QT_VERSION_CHECK(5,0,0)
++void CNetworkConnection::AcceptFrom(int nHandle)
++#else
+ void CNetworkConnection::acceptFrom(qintptr nHandle)
++#endif
+ {
+ 	Q_ASSERT(m_pSocket == 0);
+ 	m_pSocket = new QTcpSocket();
+diff --git Quazaa/NetworkCore/networkconnection.h Quazaa/NetworkCore/networkconnection.h
+index 7b98aa1f..9cfbe1f3 100644
+--- Quazaa/NetworkCore/networkconnection.h
++++ Quazaa/NetworkCore/networkconnection.h
+@@ -78,7 +78,11 @@ public:
+ public:
+ 	virtual void connectTo(CEndPoint oAddress);
+ 	virtual void attachTo(CNetworkConnection* pOther);
++#if QT_VERSION < QT_VERSION_CHECK(5,0,0)
++	virtual void AcceptFrom(int nHandle);
++#else
+ 	virtual void acceptFrom(qintptr nHandle);
++#endif
+ 	virtual void close(bool bDelayed = false);
+ 
+ private:
+diff --git Quazaa/Security/regexprule.cpp Quazaa/Security/regexprule.cpp
+index d693fd18..d3a82ed6 100644
+--- Quazaa/Security/regexprule.cpp
++++ Quazaa/Security/regexprule.cpp
+@@ -42,8 +42,13 @@ bool CRegularExpressionRule::parseContent(const QString& sContent)
+ 		m_bSpecialElements = false;
+ 		bool bValid;
+ 
++#if QT_VERSION >= 0x050000
+ 		m_regularExpressionContent = QRegularExpression( m_sContent );
+ 		bValid = m_regularExpressionContent.isValid();
++#else
++		m_regExpContent = QRegExp( m_sContent );
++		bValid = m_regExpContent.isValid();
++#endif
+ 
+ 		return bValid;
+ 	}
+@@ -92,21 +97,35 @@ bool CRegularExpressionRule::match(const QList<QString>& lQuery, const QString&
+ 			// add whats left of the base filter string to the newly generated filter
+ 			sFilter += sBaseFilter;
+ 
++#if QT_VERSION >= 0x050000
+ 			QRegularExpression oRegExpFilter = QRegularExpression( sFilter );
+ 			return oRegExpFilter.match( sContent ).hasMatch();
++#else
++			QRegExp oRegExpFilter = QRegExp( sFilter );
++			return oRegExpFilter.exactMatch( sContent );
++#endif
+ 		}
+ 		else
+ 		{
+ 			// This shouldn't happen, but it's covered anyway...
+ 			Q_ASSERT( false );
+ 
++#if QT_VERSION >= 0x050000
+ 			QRegularExpression oRegExpFilter = QRegularExpression( m_sContent );
+ 			return oRegExpFilter.match( sContent ).hasMatch();
++#else
++			QRegExp oRegExpFilter = QRegExp( m_sContent );
++			return oRegExpFilter.exactMatch( sContent );
++#endif
+ 		}
+ 	}
+ 	else
+ 	{
++#if QT_VERSION >= 0x050000
+ 		return m_regularExpressionContent.match( sContent ).hasMatch();
++#else
++		return m_regExpContent.exactMatch( sContent );
++#endif
+ 	}
+ }
+ 
+diff --git Quazaa/Security/regexprule.h Quazaa/Security/regexprule.h
+index bd45b591..19d6306f 100644
+--- Quazaa/Security/regexprule.h
++++ Quazaa/Security/regexprule.h
+@@ -8,7 +8,11 @@ class CRegularExpressionRule : public CSecureRule
+ private:
+ 	bool				m_bSpecialElements;
+ 
++#if QT_VERSION >= 0x050000
+ 	QRegularExpression	m_regularExpressionContent;
++#else
++	QRegExp				m_regExpContent;
++#endif
+ 
+ public:
+ 	CRegularExpressionRule();
+diff --git Quazaa/Security/securerule.h Quazaa/Security/securerule.h
+index 78412ec9..9229e61e 100644
+--- Quazaa/Security/securerule.h
++++ Quazaa/Security/securerule.h
+@@ -30,7 +30,11 @@
+ #include <QXmlStreamReader>
+ #include <QXmlStreamWriter>
+ 
+-#include <QRegularExpression>
++#if QT_VERSION >= 0x050000
++#  include <QRegularExpression>
++#else
++#  include <QRegExp>
++#endif
+ 
+ #include <QString>
+ #include <QUuid>
+diff --git Quazaa/Security/useragentrule.cpp Quazaa/Security/useragentrule.cpp
+index faa452eb..d23a9982 100644
+--- Quazaa/Security/useragentrule.cpp
++++ Quazaa/Security/useragentrule.cpp
+@@ -27,7 +27,11 @@ void CUserAgentRule::setRegExp(bool bRegExp)
+ 
+ 	if ( m_bRegExp )
+ 	{
++#if QT_VERSION >= 0x050000
+ 		m_regularExpressionContent = QRegularExpression( m_sContent );
++#else
++		m_regExpContent = QRegExp( m_sContent );
++#endif
+ 	}
+ }
+ 
+@@ -37,7 +41,11 @@ bool CUserAgentRule::parseContent(const QString& sContent)
+ 
+ 	if ( m_bRegExp )
+ 	{
++#if QT_VERSION >= 0x050000
+ 		m_regularExpressionContent = QRegularExpression( m_sContent );
++#else
++		m_regExpContent = QRegExp( m_sContent );
++#endif
+ 	}
+ 
+ 	return true;
+@@ -49,7 +57,11 @@ bool CUserAgentRule::match(const QString& sUserAgent) const
+ 
+ 	if( m_bRegExp )
+ 	{
++#if QT_VERSION >= 0x050000
+ 		return m_regularExpressionContent.match( sUserAgent ).hasMatch();
++#else
++		return m_regExpContent.exactMatch( sUserAgent );
++#endif
+ 	}
+ 	else
+ 	{
+diff --git Quazaa/Security/useragentrule.h Quazaa/Security/useragentrule.h
+index 0173397c..de05ed44 100644
+--- Quazaa/Security/useragentrule.h
++++ Quazaa/Security/useragentrule.h
+@@ -7,7 +7,12 @@ class CUserAgentRule : public CSecureRule
+ {
+ private:
+ 	bool				m_bRegExp;  // is the content of this rule is a regular expression?
++
++#if QT_VERSION >= 0x050000
+ 	QRegularExpression	m_regularExpressionContent;
++#else
++	QRegExp				m_regExpContent;
++#endif
+ 
+ public:
+ 	CUserAgentRule();
+diff --git Quazaa/ShareManager/sharemanager.cpp Quazaa/ShareManager/sharemanager.cpp
+index 6d8a6761..54c33618 100644
+--- Quazaa/ShareManager/sharemanager.cpp
++++ Quazaa/ShareManager/sharemanager.cpp
+@@ -67,11 +67,19 @@ void CShareManager::setupThread()
+ {
+ 	systemLog.postLog(LogSeverity::Debug, QString("Setting up ShareManager thread"));
+ 	m_oDatabase = QSqlDatabase::addDatabase("QSQLITE", "Shares");
++#if QT_VERSION >= 0x050000
+ 	QDir path = QDir(CQuazaaGlobals::SETTINGS_PATH());
+ 	if(!path.exists())
+ 		path.mkpath(CQuazaaGlobals::SETTINGS_PATH());
+ 
+ 	m_oDatabase.setDatabaseName(QString("%1shares.sdb").arg(CQuazaaGlobals::SETTINGS_PATH()));
++#else
++	QDir path = QDir(CQuazaaGlobals::SETTINGS_PATH());
++	if(!path.exists())
++		path.mkpath(CQuazaaGlobals::SETTINGS_PATH());
++
++	m_oDatabase.setDatabaseName(QString("%1shares.sdb").arg(CQuazaaGlobals::SETTINGS_PATH());
++#endif
+ 
+ 	if(!m_oDatabase.open())
+ 	{
+diff --git Quazaa/UI/dialogircsettings.cpp Quazaa/UI/dialogircsettings.cpp
+index 703c776f..0cd1c85b 100644
+--- Quazaa/UI/dialogircsettings.cpp
++++ Quazaa/UI/dialogircsettings.cpp
+@@ -68,8 +68,13 @@ CDialogIrcSettings::CDialogIrcSettings(QWidget *parent) :
+ 
+ //TODO:	ui->treeWidgetColors->setItemDelegate(new ColorItemDelegate(ui->treeWidgetColors));
+ 	ui->treeWidgetShortcuts->setItemDelegate(new ShortcutItemDelegate(ui->treeWidgetShortcuts));
++#if QT_VERSION >= 0x050000
+ //TODO:		ui->treeWidgetColors->header()->setSectionResizeMode(ColorColumns::Message, QHeaderView::ResizeToContents);
+ 	ui->treeWidgetShortcuts->header()->setSectionResizeMode(ShortcutColumns::Description, QHeaderView::ResizeToContents);
++#else
++	ui->treeWidgetColors->header()->setResizeMode(ColorColumns::Message, QHeaderView::ResizeToContents);
++	ui->treeWidgetShortcuts->header()->setResizeMode(ShortcutColumns::Description, QHeaderView::ResizeToContents);
++#endif
+ 	ui->treeWidgetShortcuts->expandItem(ui->treeWidgetShortcuts->topLevelItem(0));
+ 	ui->treeWidgetShortcuts->expandItem(ui->treeWidgetShortcuts->topLevelItem(1));
+ 	proxyModel = new SortFilterProxyModel(ui->treeViewAliases);
+@@ -255,9 +260,15 @@ void CDialogIrcSettings::loadSettings()
+ 			addAliasRow(alias, command);
+ 	}
+ 
++#if QT_VERSION < 0x050000
++	ui->treeViewAliases->header()->setResizeMode(0, QHeaderView::ResizeToContents);
++	ui->treeViewAliases->header()->setResizeMode(1, QHeaderView::Stretch);
++	ui->treeViewAliases->header()->setResizeMode(2, QHeaderView::ResizeToContents);
++#else
+ 	ui->treeViewAliases->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+ 	ui->treeViewAliases->header()->setSectionResizeMode(1, QHeaderView::Stretch);
+ 	ui->treeViewAliases->header()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
++#endif
+ }
+ 
+ void CDialogIrcSettings::on_pushButtonOK_clicked()
+diff --git Quazaa/UI/suggestedlineedit.cpp Quazaa/UI/suggestedlineedit.cpp
+index 66f2bc22..3e20a22d 100644
+--- Quazaa/UI/suggestedlineedit.cpp
++++ Quazaa/UI/suggestedlineedit.cpp
+@@ -32,7 +32,9 @@
+ #include <QSettings>
+ #include <QAbstractItemView>
+ #include <QUrl>
++#if QT_VERSION >= 0x050000
+ #include <QUrlQuery>
++#endif
+ #include <QNetworkAccessManager>
+ #include <QNetworkReply>
+ #include <QXmlStreamReader>
+@@ -87,7 +89,11 @@ CSuggestedLineEdit::~CSuggestedLineEdit()
+ 
+ void CSuggestedLineEdit::load()
+ {
++#if QT_VERSION >= 0x050000
+ 	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++#else
++	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++#endif
+ 
+ 	m_qSettings.beginGroup(objectName());
+ 	m_lRecent = m_qSettings.value("recent").toStringList();
+@@ -97,7 +103,11 @@ void CSuggestedLineEdit::load()
+ 
+ void CSuggestedLineEdit::save()
+ {
++#if QT_VERSION >= 0x050000
++	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++#else
+ 	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++#endif
+ 
+ 	m_qSettings.beginGroup(objectName());
+ 	m_qSettings.setValue("recent", m_lRecent);
+@@ -165,13 +175,18 @@ void CSuggestedLineEdit::getSuggestions()
+ 		}
+ 
+ 		QUrl url(QLatin1String("http://www.google.com/complete/search"));
++#if QT_VERSION >= 0x050000
+ 		QUrlQuery query;
+ 		query.setQuery(url.query());
+ 		query.addQueryItem(QUrl::toPercentEncoding(QLatin1String("q")),
+ 								QUrl::toPercentEncoding(text));
+ 		query.addQueryItem(QLatin1String("output"), QLatin1String("toolbar"));
+ 		url.setQuery(query);
+-
++#else
++		url.addQueryItem(QUrl::toPercentEncoding(QLatin1String("q")),
++								QUrl::toPercentEncoding(text));
++		url.addQueryItem(QLatin1String("output"), QLatin1String("toolbar"));
++#endif
+ 		QNetworkRequest request(url);
+ 		request.setAttribute(QNetworkRequest::User, text);
+ 		QNetworkReply *reply = m_pNetworkAccessManager->get(request);
+diff --git Quazaa/UI/widgetdiscovery.cpp Quazaa/UI/widgetdiscovery.cpp
+index 48b7bdb7..ec211213 100644
+--- Quazaa/UI/widgetdiscovery.cpp
++++ Quazaa/UI/widgetdiscovery.cpp
+@@ -38,7 +38,7 @@ CWidgetDiscovery::CWidgetDiscovery(QWidget* parent) :
+ 	QMainWindow(parent),
+ 	ui(new Ui::CWidgetDiscovery)
+ {
+-	ui->setupUi(this);
++    ui->setupUi(this);
+ 
+ 	m_pDiscoveryMenu = new QMenu( this );
+ 	m_pDiscoveryMenu->addAction( ui->actionDiscoveryAddService );
+@@ -52,6 +52,8 @@ CWidgetDiscovery::CWidgetDiscovery(QWidget* parent) :
+ 	tableViewDiscovery->verticalHeader()->setVisible( false );
+ 	ui->verticalLayoutDiscoveryTable->addWidget( tableViewDiscovery );
+ 
++#if QT_VERSION >= 0x050000
++
+ 	connect( tableViewDiscovery, &CTableView::clicked,
+ 			 this, &CWidgetDiscovery::tableViewDiscovery_clicked );
+ 	connect( tableViewDiscovery, &CTableView::doubleClicked,
+@@ -59,6 +61,17 @@ CWidgetDiscovery::CWidgetDiscovery(QWidget* parent) :
+ 	connect( tableViewDiscovery, &CTableView::customContextMenuRequested,
+ 			 this, &CWidgetDiscovery::tableViewDiscovery_customContextMenuRequested );
+ 
++#else	// Qt4 code
++
++	connect( tableViewDiscovery, SIGNAL( clicked(QModelIndex) ),
++			 this, SLOT( tableViewDiscovery_clicked(QModelIndex) ) );
++	connect( tableViewDiscovery, SIGNAL( doubleClicked(QModelIndex) ),
++			 this, SLOT( tableViewDiscovery_doubleClicked(QModelIndex) ) );
++	connect( tableViewDiscovery, SIGNAL( customContextMenuRequested(QPoint) ),
++			 this, SLOT( tableViewDiscovery_customContextMenuRequested(QPoint) ) );
++
++#endif
++
+ 	m_pDiscoveryList = new CDiscoveryTableModel( this, tableView() );
+ 	setModel( m_pDiscoveryList );
+ 	m_pDiscoveryList->sort( tableViewDiscovery->horizontalHeader()->sortIndicatorSection(),
+@@ -321,9 +334,9 @@ void CWidgetDiscovery::on_actionDiscoveryProperties_triggered()
+ 
+ 	if ( index.isValid() )
+ 	{
+-
++	
+ 	//see https://qt-project.org/wiki/New_Signal_Slot_Syntax
+-
++	
+ // TODO: Pop up dialog to edit service
+ 	}
+ }
+diff --git Quazaa/UI/widgetlibrary.cpp Quazaa/UI/widgetlibrary.cpp
+index 2d1dd737..cdf5d02b 100644
+--- Quazaa/UI/widgetlibrary.cpp
++++ Quazaa/UI/widgetlibrary.cpp
+@@ -25,7 +25,11 @@
+ #include "widgetlibrary.h"
+ #include "ui_widgetlibrary.h"
+ #include "dialogeditshares.h"
++#if QT_VERSION >= 0x050000 
+ #include <QtWidgets>
++#else
++#include <QtGui>
++#endif
+ 
+ #include "quazaasettings.h"
+ #include "skinsettings.h"
+diff --git Quazaa/UI/widgetreturnemittextedit.cpp Quazaa/UI/widgetreturnemittextedit.cpp
+index a030b1f5..7a3ec83f 100644
+--- Quazaa/UI/widgetreturnemittextedit.cpp
++++ Quazaa/UI/widgetreturnemittextedit.cpp
+@@ -29,7 +29,9 @@
+ #include <QDebug>
+ #include <QApplication>
+ 
++#if QT_VERSION >= 0x050000
+ #include <QTextDocument> //For Qt::escape()
++#endif
+ 
+ #include "debug_new.h"
+ 
+@@ -204,7 +206,12 @@ void CWidgetReturnEmitTextEdit::addHistory(QTextDocument* document)
+ void CWidgetReturnEmitTextEdit::addHistory(QString* text)
+ {
+ 	QTextDocument* document = new QTextDocument();
++#if QT_VERSION >= 0x050000
+ 	document->setHtml(text->toHtmlEscaped());
++#else
++	QString escapeText = text->toLocal8Bit();
++	document->setHtml(Qt::escape(escapeText));
++#endif
+ 	addHistory(document);
+ }
+ 
+diff --git Quazaa/quazaaglobals.cpp Quazaa/quazaaglobals.cpp
+index 588dcb8e..1c4c321d 100644
+--- Quazaa/quazaaglobals.cpp
++++ Quazaa/quazaaglobals.cpp
+@@ -27,7 +27,12 @@
+ 
+ #include "debug_new.h"
+ 
++#if QT_VERSION >= 0x050000
+ #include <QStandardPaths>
++#else
++#include <QDesktopServices>
++#endif
++
+ #include <QDir>
+ 
+ /*!
+@@ -139,9 +144,15 @@ QString CQuazaaGlobals::MEDIA_OPEN_FILTER()
+ 
+ QString CQuazaaGlobals::SETTINGS_PATH()
+ {
++#if QT_VERSION >= 0x050000
+ 	QDir path;
+ 	path.mkpath( ( QString("%1/.quazaa/").arg(QStandardPaths::writableLocation(QStandardPaths::HomeLocation ) ) ) );
+ 	return QDir::toNativeSeparators( QString("%1/.quazaa/").arg(QStandardPaths::writableLocation(QStandardPaths::HomeLocation ) ) );
++#else
++	QDir path;
++	path.mkpath( QString("%1/.quazaa/").arg(QDesktopServices::storageLocation(QDesktopServices::HomeLocation ) ) );
++	return QDir::toNativeSeparators( QString("%1/.quazaa/").arg(QDesktopServices::storageLocation(QDesktopServices::HomeLocation ) ) );
++#endif
+ }
+ 
+ /*!
+@@ -156,14 +167,24 @@ QString CQuazaaGlobals::DATA_PATH()
+ 
+ QString CQuazaaGlobals::STORAGE_PATH()
+ {
++#if QT_VERSION >= 0x050000
+ 	QDir path;
+ 	path.mkpath( QString("%1/Quazaa/").arg(QStandardPaths::writableLocation(QStandardPaths::HomeLocation ) ) );
+ 	return QDir::toNativeSeparators( QString("%1/Quazaa/").arg(QStandardPaths::writableLocation(QStandardPaths::HomeLocation ) ) );
++#else
++	QDir path;
++	path.mkpath( QString("%1/Quazaa/").arg(QDesktopServices::storageLocation(QDesktopServices::HomeLocation ) ) );
++	return QDir::toNativeSeparators( QString("%1/Quazaa/").arg(QDesktopServices::storageLocation(QDesktopServices::HomeLocation ) ) );
++#endif
+ }
+ 
+ QString CQuazaaGlobals::INI_FILE()
+ {
++#if QT_VERSION >= 0x050000
+ 	return QString("%1quazaa.ini").arg( SETTINGS_PATH() );
++#else
++	return QString("%1quazaa.ini").arg( SETTINGS_PATH() );
++#endif
+ }
+ 
+ 
+diff --git Quazaa/quazaasettings.cpp Quazaa/quazaasettings.cpp
+index 87d08ff1..1b902d7c 100644
+--- Quazaa/quazaasettings.cpp
++++ Quazaa/quazaasettings.cpp
+@@ -555,7 +555,11 @@ void CQuazaaSettings::loadSettings()
+ 	quazaaSettings.Downloads.ChunkSize = m_qSettings.value("ChunkSize", 524288).toInt();
+ 	quazaaSettings.Downloads.ChunkStrap = m_qSettings.value("ChunkStrap", 131072).toInt();
+ 	quazaaSettings.Downloads.ClearDelay = m_qSettings.value("ClearDelay", 30000).toInt();
++#if QT_VERSION >= 0x050000
+ 	quazaaSettings.Downloads.CompletePath = m_qSettings.value("CompletePath", QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)).toString();
++#else
++	quazaaSettings.Downloads.CompletePath = m_qSettings.value("CompletePath", QDesktopServices::storageLocation(QDesktopServices::HomeLocation) + "/Downloads").toString();
++#endif
+ 	quazaaSettings.Downloads.ConnectThrottle = m_qSettings.value("ConnectThrottle", 800).toInt();
+ 	quazaaSettings.Downloads.DropFailedSourcesThreshold = m_qSettings.value("DropFailedSourcesThreshold", 20).toInt();
+ 	quazaaSettings.Downloads.ExpandDownloads = m_qSettings.value("ExpandDownloads", false).toBool();
+diff --git Quazaa/quazaasysinfo.cpp Quazaa/quazaasysinfo.cpp
+index 85f1eb71..af37712e 100644
+--- Quazaa/quazaasysinfo.cpp
++++ Quazaa/quazaasysinfo.cpp
+@@ -11,7 +11,11 @@
+ #define BUFSIZE 80
+ 
+ // Preventing redefinition warnings on Windows using MinGW toolchain.
++// The QT_VERSION check is used as a substitute for checking against MinGW >= v4.7, as the Qt4.8 SDK
++// is delivered bundled with MinGW4.4 by default. This is a result of __MINGW32_MAJOR_VERSION and
++// __MINGW32_MINOR_VERSION being set to useless values for some reason.
+ // [cedric] mingw xcompiler toolchain gives still problems though
++#if !( defined(Q_OS_WIN) && defined(Q_CC_GNU) && QT_VERSION >= 0x050000 ) || !defined(PRODUCT_UNDEFINED)
+ 
+ #ifndef Q_CC_MSVC
+ #define VER_SUITE_WH_SERVER 0x8000
+@@ -89,6 +93,9 @@
+ #define PRODUCT_PROFESSIONAL_E                      0x00000045
+ #define PRODUCT_ENTERPRISE_E                        0x00000046
+ #define PRODUCT_ULTIMATE_E                          0x00000047
++
++#endif // !defined(Q_OS_WIN) || !defined(Q_CC_GNU) || QT_VERSION < 0x050000
++
+ #define PRODUCT_ENTERPRISE_EVALUATION               0x00000048
+ #define PRODUCT_MULTIPOINT_STANDARD_SERVER          0x0000004C
+ #define PRODUCT_MULTIPOINT_PREMIUM_SERVER           0x0000004D
+@@ -207,8 +214,10 @@ OSVersion::OSVersion CQuazaaSysInfo::osVersion()
+ 		return OSVersion::WinVista;
+ 	case QSysInfo::WV_WINDOWS7:
+ 		return OSVersion::Win7;
++#if QT_VERSION >= 0x050000
+ 	case QSysInfo::WV_WINDOWS8: // not yet defined in Qt4.8
+ 		return OSVersion::Win8;
++#endif
+ 	default:
+ 		return OSVersion::Win7;
+ 	}
+diff --git VersionTool/main.cpp VersionTool/main.cpp
+index d4493dde..512d2419 100644
+--- VersionTool/main.cpp
++++ VersionTool/main.cpp
+@@ -52,9 +52,9 @@ static QString getGitShortVersionHash()
+   result = process.waitForFinished(1000);
+ 
+   if (result)
+-	return process.readAllStandardOutput().trimmed();
++    return process.readAllStandardOutput().trimmed();
+   else
+-	  return "unknown";
++      return "unknown";
+ }
+ 
+ static QByteArray readFile(const QString& fileName)
+@@ -83,11 +83,21 @@ static int writeFile(const QString& fileName, const int major, const int minor,
+ 	out << "\tstatic const int MINOR = " << minor << ";\r\n";
+ 
+ // Note: this only works for newer versions of gcc/MinGW
++// The QT_VERSION check is used as a substitute for checking against MinGW >= v4.7, as the Qt4.8 SDK
++// is delivered bundled with MinGW4.4 by default. This is a result of __MINGW32_MAJOR_VERSION and
++// __MINGW32_MINOR_VERSION being set to useless values for some reason.
++#if defined(Q_CC_GNU) && QT_VERSION >= 0x050000
+ 	out << "#pragma GCC diagnostic push\r\n";                         // save diagnostic settings
+ 	out << "#pragma GCC diagnostic ignored \"-Wunused-variable\"\r\n";// suppress unused var warning
++#endif
++
+ 	out << "\tstatic const char* REVISION = \"" << revision << "\";\r\n";
+ 	out << "\tstatic const char* BUILD_DATE = \"" << build << "\";\r\n";
++
++#if defined(Q_CC_GNU) && QT_VERSION >= 0x050000
+ 	out << "#pragma GCC diagnostic pop\r\n";                          // restore diagnostic settings
++#endif
++
+ 	out << "}\r\n\r\n";
+ 	out << "#endif // VERSION_H\r\n";
+ 
+-- 
+2.40.0
+

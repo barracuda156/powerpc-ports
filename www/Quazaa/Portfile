@@ -1,0 +1,42 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+#PortGroup           compiler_blacklist_versions 1.0
+PortGroup           github 1.0
+#PortGroup           openssl 1.0
+PortGroup           qmake 1.0
+
+#openssl.branch      1.0
+
+github.setup        quazaa-development-team Quazaa 850a70bdb58a7c1bab5182249cc77bb3739f5815
+version             2018.11.01
+revision            0
+
+categories          www p2p
+license             GPL-3
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+
+description         Multi-network P2P app
+long_description    {*}${description} with support for Gnutella1, Gnutella2, eDonkey2000, BitTorrent and more
+
+checksums           rmd160  0e956c0bdb030144b2229948c02c70258d652ca8 \
+                    sha256  8ecd137a3e4b8ee75743e6d973c393ff2fb8d591a522fe41853ed9efb589557f \
+                    size    8521460
+
+depends_lib-append  port:qt4-mac
+
+#compiler.blacklist-append *gcc-4.* {clang < 421}
+
+# post-patch {
+#     reinplace "s,@PREFIX@,${prefix},g" ${worksrcpath}/Deriv.pro
+# }
+
+patchfiles-append   0001-Revert-Removing-the-Qt-4-support-defines.-Further-de.patch
+
+pre-configure {
+    system -W ${worksrcpath} "${qt_lrelease_cmd} ${name}.pro"
+}
+
+destroot {
+    move ${worksrcpath}/${name}.app ${destroot}${applications_dir}/${name}.app
+}
