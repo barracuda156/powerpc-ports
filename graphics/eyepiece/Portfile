@@ -1,0 +1,27 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           qmake 1.0
+PortGroup           github 1.0
+
+github.setup        radekp eyepiece f1462273633afd6345548e2f6fc6a1431dbfb2fc
+version             0.2.0-alpha-r1
+revision            0
+
+categories          graphics
+license             GPL
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+
+description         DjVu/PDF viewer for Qt Extended
+long_description    {*}${description}
+
+checksums           rmd160  cfea79546b61742716486088d80b44a2f2b37d74 \
+                    sha256  4335dbcec70aaf5b2049f86981ec81f5b3e9eeba1c9df610f520899d318490b9 \
+                    size    21703523
+
+depends_lib-append  port:poppler \
+                    port:qt4-mac
+
+destroot {
+    move ${worksrcpath}/Obsession.app ${destroot}${applications_dir}
+}
