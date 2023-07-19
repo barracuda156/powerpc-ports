@@ -1,0 +1,89 @@
+From 45d0c84a7bc386732e57e7f717d25da4f76ae7fb Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Wed, 19 Jul 2023 16:10:12 +0800
+Subject: [PATCH 4/5] SDL_cocoamessagebox: conditionally revert unsupported
+ code
+
+See: https://github.com/libsdl-org/SDL/commit/51c61d7cdf5171aa9f79e7408f91ecf6984f4585
+---
+ src/video/cocoa/SDL_cocoamessagebox.m | 27 +++++++++++++++++++++++++--
+ 1 file changed, 25 insertions(+), 2 deletions(-)
+
+diff --git src/video/cocoa/SDL_cocoamessagebox.m src/video/cocoa/SDL_cocoamessagebox.m
+index 458005a79..bbdfd35c7 100644
+--- src/video/cocoa/SDL_cocoamessagebox.m
++++ src/video/cocoa/SDL_cocoamessagebox.m
+@@ -88,10 +88,17 @@
+ 
+ @end
+ 
+-
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__)
+ static void
+ Cocoa_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, int *buttonid, int *returnValue)
+ {
++#else
++int	
++Cocoa_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
++{
++    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
++#endif
++
+     Cocoa_RegisterApp();
+ 
+     NSAlert* alert = [[[NSAlert alloc] init] autorelease];
+@@ -131,7 +138,14 @@ Cocoa_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, int *buttonid
+ 
+     SDLMessageBoxPresenter* presenter = [[[SDLMessageBoxPresenter alloc] initWithParentWindow:messageboxdata->window] autorelease];
+ 
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__)
+     [presenter showAlert:alert];
++#else
++    [presenter performSelectorOnMainThread:@selector(showAlert:)
++                                withObject:alert
++                             waitUntilDone:YES];
++    int returnValue = 0;
++#endif
+ 
+     NSInteger clicked = presenter->clicked;
+     if (clicked >= NSAlertFirstButtonReturn) {
+@@ -140,17 +154,23 @@ Cocoa_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, int *buttonid
+             clicked = messageboxdata->numbuttons - 1 - clicked;
+         }
+         *buttonid = buttons[clicked].buttonid;
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__)
+         *returnValue = 0;
++#endif
+     } else {
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__)
+         *returnValue = SDL_SetError("Did not get a valid `clicked button' id: %ld", (long)clicked);
+     }
++#else
++        returnValue = SDL_SetError("Did not get a valid `clicked button' id: %ld", (long)clicked);
++#endif
+ }
+ 
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__) && defined(__clang__)
+ /* Display a Cocoa message box */
+ int
+ Cocoa_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
+ {
+-#ifdef __clang__
+     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+     __block int returnValue = 0;
+ 
+@@ -159,8 +179,11 @@ Cocoa_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
+     } else {
+         dispatch_sync(dispatch_get_main_queue(), ^{ Cocoa_ShowMessageBoxImpl(messageboxdata, buttonid, &returnValue); });
+     }
++#endif
+     [pool release];
+     return returnValue;
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__) && defined(__clang__)
++    }
+ #endif
+ }
+ 
+-- 
+2.41.0
+

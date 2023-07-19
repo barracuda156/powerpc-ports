@@ -1,0 +1,127 @@
+From 7d14cd3edb703353edb4929a7af49f00f8b7e948 Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Wed, 19 Jul 2023 15:49:29 +0800
+Subject: [PATCH 3/5] SDL_cocoaopengl: conditionally revert breaking dispatch
+ commit
+
+Breaking commit: https://github.com/libsdl-org/SDL/commit/309d6137aee5cb406b9371d6bf6c80d8b09a41ca
+---
+ src/video/cocoa/SDL_cocoaopengl.h |  3 ++-
+ src/video/cocoa/SDL_cocoaopengl.m | 33 +++++++++++++++++++++++++++++--
+ 2 files changed, 33 insertions(+), 3 deletions(-)
+
+diff --git src/video/cocoa/SDL_cocoaopengl.h src/video/cocoa/SDL_cocoaopengl.h
+index 9ac44ab5f..094379bf3 100644
+--- src/video/cocoa/SDL_cocoaopengl.h
++++ src/video/cocoa/SDL_cocoaopengl.h
+@@ -49,9 +49,10 @@ struct SDL_GLDriverData
+ - (void)scheduleUpdate;
+ - (void)updateIfNeeded;
+ - (void)setWindow:(SDL_Window *)window;
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__)
+ - (SDL_Window*)window;
+ - (void)explicitUpdate;
+-
++#endif
+ @end
+ 
+ /* OpenGL functions */
+diff --git src/video/cocoa/SDL_cocoaopengl.m src/video/cocoa/SDL_cocoaopengl.m
+index caafa7bb8..216eb2e22 100644
+--- src/video/cocoa/SDL_cocoaopengl.m
++++ src/video/cocoa/SDL_cocoaopengl.m
+@@ -63,10 +63,22 @@
+ /* This should only be called on the thread on which a user is using the context. */
+ - (void)updateIfNeeded
+ {
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__)
+     const int value = SDL_AtomicSet(&self->dirty, 0);
++#else
++    int value = SDL_AtomicSet(&self->dirty, 0);
++#endif
+     if (value > 0) {
+         /* We call the real underlying update here, since -[SDLOpenGLContext update] just calls us. */
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__)
+         [self explicitUpdate];
++#else
++        if ([NSThread isMainThread]) {
++            [super update];
++        } else {
++            [super performSelectorOnMainThread:@selector(update) withObject:nil waitUntilDone:NO];
++        }
++#endif
+     }
+ }
+ 
+@@ -104,13 +116,21 @@
+         }
+ 
+         if ([self view] != contentview) {
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__)
+             if ([NSThread isMainThread]) {
+                 [self setView:contentview];
+             } else {
+                 dispatch_sync(dispatch_get_main_queue(), ^{ [self setView:contentview]; });
+             }
++#else
++            [self setView:contentview];
++#endif
+             if (self == [NSOpenGLContext currentContext]) {
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__)
+                 [self explicitUpdate];
++#else
++                [self update];
++#endif
+             } else {
+                 [self scheduleUpdate];
+             }
+@@ -118,13 +138,18 @@
+     } else {
+         [self clearDrawable];
+         if (self == [NSOpenGLContext currentContext]) {
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__)
+             [self explicitUpdate];
++#else
++            [self update];
++#endif
+         } else {
+             [self scheduleUpdate];
+         }
+     }
+ }
+ 
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__)
+ - (SDL_Window*)window
+ {
+     return self->window;
+@@ -138,10 +163,9 @@
+         dispatch_async(dispatch_get_main_queue(), ^{ [super update]; });
+     }
+ }
+-
++#endif
+ @end
+ 
+-
+ int
+ Cocoa_GL_LoadLibrary(_THIS, const char *path)
+ {
+@@ -372,10 +396,15 @@ Cocoa_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
+     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+     if (context) {
+         SDLOpenGLContext *nscontext = (SDLOpenGLContext *)context;
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__)
+         if ([nscontext window] != window) {
+             [nscontext setWindow:window];
+             [nscontext updateIfNeeded];
+         }
++#else
++        [nscontext setWindow:window];
++        [nscontext updateIfNeeded];
++#endif
+         [nscontext makeCurrentContext];
+     } else {
+         [NSOpenGLContext clearCurrentContext];
+-- 
+2.41.0
+

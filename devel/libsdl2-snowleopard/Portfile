@@ -31,21 +31,9 @@ checksums       rmd160  887c0414e1e3ad1a74900eae89c071a053d9a178 \
 configure.args  --without-x
 build.args      V=1
 
-compiler.blacklist *gcc* { clang < 211 }
+compiler.blacklist *gcc-4.* { clang < 211 }
 
 minimum_xcodeversions   {11 4.3}
-
-platform macosx {
-    if {${os.major} <= 10} {
-        # Build requires at least 10.7.3 SDK, even when targeting 10.6
-        configure.sdk_version   10.7
-        if {${configure.sdkroot} eq ""} {
-            pre-fetch {
-                error "Building $name @${version} on Mac OS X 10.6 requires the MacOSX10.7.sdk to be present in ${developer_dir}/SDKs/"
-            }
-        }
-    }
-}
 
 variant x11 {
     configure.args-delete --without-x
@@ -63,8 +51,29 @@ variant x11 {
         port:xorg-libXxf86vm \
         port:xrender
 }
-if {${os.subplatform} ne "macosx"} {
+if {${os.subplatform} ne "macosx" || ${os.arch} eq "powerpc"} {
     default_variants +x11
+}
+
+platform darwin powerpc {
+    patchfiles-append \
+        0001-hidapi-revert-a-commit-that-triggers-ICE-with-GCC.patch \
+        0002-Fixes-for-older-macOS.patch \
+        0003-SDL_cocoaopengl-conditionally-revert-breaking-dispat.patch \
+        0004-SDL_cocoamessagebox-conditionally-revert-unsupported.patch \
+        0005-SDL_cocoamodes-use-some-legacy-code.patch
+
+    post-patch {
+        reinplace "s,-Werror=declaration-after-statement,,g" ${worksrcpath}/configure
+    }
+
+    configure.args-append \
+        --disable-cpuinfo \
+        --disable-joystick \
+        --disable-joystick-mfi \
+        --disable-joystick-virtual
+    configure.cflags-append \
+        -std=gnu11
 }
 
 post-destroot {
