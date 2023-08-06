@@ -3,7 +3,7 @@
 PortSystem          1.0
 
 name                xld
-version             20230627
+version             20230416
 revision            0
 
 categories          audio
@@ -19,28 +19,83 @@ long_description    \
     on Mac OS X 10.4 and later.
 homepage            https://tmkk.undo.jp/xld/index_e.html
 
-master_sites        sourceforge:xld
-distname            xld-${version}
-use_dmg             yes
+if {![variant_isset prebuilt]} {
+    PortGroup       xcode 1.0
 
-checksums           rmd160  d57a04ff6a04b25bd5df2d6296c49d3ffa6bf1b2 \
-                    sha256  ad9d3d6bbc491a368f9ef843cd2d2e59e87db193354b4b4e5cfec0120a903cc4 \
-                    size    11190494
+    maintainers     {judaew @judaew} {@barracuda156 gmail.com:vital.had} openmaintainer
+    fetch.type      svn
+    svn.url         https://svn.code.sf.net/p/xld/code/trunk
+    svn.revision    r617
+    worksrcdir      trunk
 
-variant universal {}
-default_variants +universal
+    xcode.project   "XLD/XLD_export.xcodeproj"
 
-use_configure       no
-build {}
+    depends_lib-append \
+                    port:flac \
+                    port:libcddb \
+                    port:libebur128 \
+                    port:libsndfile \
+                    port:monkeys-audio \
+                    port:soxr \
+                    port:wavpack
 
-patchfiles          patch-use-macports-applications-dir.diff
+#     post-extract {
+#         move ${workpath}/trunk/XLDID3 ${worksrcpath}/XLDID3.framework
+#     	foreach f { XLDOpusOutput XLDTakDecoder XLDShortenDecoder XLDSparkleUpdater XLDWavpackOutput XLDHEAACOutput XLDAacOutput2 XLDFlacDecoder XLDFlacOutput \
+# 		    XLDAlacOutput XLDApeDecoder XLDLameOutput XLDAacOutput XLDVorbisOutput XLDTtaDecoder XLDWavpackDecoder XLDAlacDecoder XLDLibsndfileDecoder XLDMP3Decoder } {
+# 		            move ${workpath}/trunk/${f} ${worksrcpath}/${f}.bundle
+# 		}
+#     }
 
-post-patch {
-    reinplace "s,@@APPLICATIONS_DIR@@,${applications_dir},g" \
-        ${worksrcpath}/CLI/xld
+    patchfiles      patch-project.diff \
+                    patch-XLD.diff
+
+    post-patch {
+        reinplace "s,@PREFIX@,${prefix},g" ${worksrcpath}/XLD/XLD_export.xcodeproj/project.pbxproj
+    }
+
+    build {
+        set xcode_configuration_arg [xcode::get_configuration_arg ${xcode.configuration}]
+        set xcode_build_args [xcode::get_build_args]
+        foreach dir {XLDOpusOutput XLDTakDecoder XLDShortenDecoder XLDSparkleUpdater XLDWavpackOutput XLDHEAACOutput XLDAacOutput2 XLDFlacDecoder XLDFlacOutput \
+ 		    XLDAlacOutput XLDApeDecoder XLDLameOutput XLDAacOutput XLDVorbisOutput XLDTtaDecoder XLDWavpackDecoder XLDAlacDecoder XLDLibsndfileDecoder XLDMP3Decoder XLD} {
+            build.dir ${worksrcpath}/${dir}
+            xcode::build_one_target "-target \"${dir}\" ${xcode_configuration_arg}" \
+                "${xcode_build_args} ${xcode.build.settings}"
+        }
+    }
+
+    xcode.build.settings \
+                    LIBRARY_SEARCH_PATHS=${prefix}/lib
+    xcode.destroot.settings \
+                    LIBRARY_SEARCH_PATHS=${prefix}/lib
 }
 
-destroot {
-    move ${worksrcpath}/XLD.app ${destroot}${applications_dir}
-    xinstall -m 0755 ${worksrcpath}/CLI/${name} ${destroot}${prefix}/bin
+variant prebuilt description "Install prebuilt app" {
+    maintainers     {judaew @judaew} openmaintainer
+    master_sites    sourceforge:xld
+    distname        xld-${version}
+    use_dmg         yes
+
+    checksums       rmd160  46f76b806f523d7081a1ebc5ebe1746ce61bba57 \
+                    sha256  264e34bd90bea1cb5c7fc2756675c9c714d4907c85d959ea219268c0d455589a \
+                    size    11140995
+
+    variant universal   {}
+    default_variants    +universal
+
+    use_configure   no
+    build {}
+
+    patchfiles      patch-use-macports-applications-dir.diff
+
+    post-patch {
+        reinplace "s,@@APPLICATIONS_DIR@@,${applications_dir},g" \
+            ${worksrcpath}/CLI/xld
+    }
+
+    destroot {
+        move ${worksrcpath}/XLD.app ${destroot}${applications_dir}
+        xinstall -m 0755 ${worksrcpath}/CLI/${name} ${destroot}${prefix}/bin
+    }
 }

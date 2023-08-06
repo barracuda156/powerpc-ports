@@ -1,0 +1,27 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem              1.0
+PortGroup               xcode 1.0
+
+name                    xld
+version                 20220917
+revision                0
+categories              audio
+maintainers             {@barracuda156 gmail.com:vital.had} openmaintainer
+license                 OSS
+description             Lossless audio decoder for Mac OS X
+long_description        ${description}
+homepage                https://tmkk.undo.jp/xld/index_e.html
+
+fetch.type              svn
+svn.url                 https://svn.code.sf.net/p/xld/code/trunk
+svn.revision            r600
+worksrcdir              trunk
+
+depends_lib-append      port:flac \
+                        port:libcddb \
+                        port:libsndfile \
+                        port:monkeys-audio \
+                        port:wavpack
+
+build.dir               ${worksrcpath}/XLD
