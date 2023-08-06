@@ -1,0 +1,104 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem              1.0
+PortGroup               cmake 1.1
+PortGroup               github 1.0
+PortGroup               legacysupport 1.1
+PortGroup               openssl 1.0
+
+github.setup            oxen-io lokinet 559fa8aec4f0bdcb6be3eb7d6e77e9982242551f
+version                 20230511
+revision                0
+categories              security net
+maintainers             {@barracuda156 gmail.com:vital.had} openmaintainer
+license                 GPL-3
+description             Lokinet is an anonymous, decentralized and IP based overlay network for the internet
+long_description        Lokinet is the reference implementation of LLARP (low latency anonymous routing protocol), \
+                        a layer 3 onion routing protocol.
+homepage                https://lokinet.org
+
+checksums               rmd160  50a5a46eb69fe79ca567c50f19620a73b8c6376e \
+                        sha256  ec5a4a04455e3382b679a4d2af501198fc5ee910ab4dd2df0fc9c25c3a3edd93 \
+                        size    759695
+github.tarball_from     archive
+
+# strnlen
+legacysupport.newest_darwin_requires_legacy 10
+
+set port_libfmt         libfmt10
+cmake.module_path-append \
+                        ${prefix}/lib/${port_libfmt}/cmake
+
+depends_lib-append      path:lib/libzmq.dylib:zmq \
+                        port:${port_libfmt} \
+                        port:CLI11 \
+                        port:cppzmq \
+                        port:curl \
+                        port:ghc-filesystem \
+                        port:jemalloc \
+                        port:libsodium \
+                        port:libuv \
+                        port:nghttp3 \
+                        port:ngtcp2 \
+                        port:nlohmann-json \
+                        port:oxen-logging \
+                        port:oxenc \
+                        port:oxenmq \
+                        port:spdlog \
+                        port:unbound \
+                        port:uvw
+
+depends_build-append    port:git \
+                        port:pkgconfig
+git.cmd                 ${prefix}/bin/git
+
+compiler.cxx_standard   2017
+
+patchfiles-append       0001-Use-correct-flags-on-all-powerpc.patch \
+                        0002-Fix-Apple-build.patch
+
+configure.args-append   -DBUILD_DAEMON:BOOL=OFF \
+                        -DBUILD_PACKAGE:BOOL=OFF \
+                        -DBUILD_STATIC_DEPS:BOOL=OFF \
+                        -DCOCOASETUP:BOOL=OFF \
+                        -DCODESIGN:BOOL=OFF \
+                        -DMACOS_SYSTEM_EXTENSION:BOOL=OFF \
+                        -DNATIVE_BUILD:BOOL=OFF \
+                        -DSTATIC_LINK:BOOL=OFF \
+                        -DTESTNET:BOOL=OFF \
+                        -DUSE_AVX2:BOOL=OFF \
+                        -DUSE_JEMALLOC:BOOL=ON \
+                        -DUSE_NETNS:BOOL=OFF \
+                        -DWARNINGS_AS_ERRORS:BOOL=OFF \
+                        -DWITH_BOOTSTRAP:BOOL=OFF \
+                        -DWITH_COVERAGE:BOOL=OFF \
+                        -DWITH_EMBEDDED_LOKINET:BOOL=OFF \
+                        -DWITH_HIVE:BOOL=OFF \
+                        -DWITH_PEERSTATS:BOOL=OFF \
+                        -DWITH_TESTS:BOOL=OFF \
+                        -DXSAN:BOOL=OFF
+
+platform powerpc {
+    configure.args-append \
+                        -Dppc_support:BOOL=TRUE
+}
+
+if {${os.platform} eq "darwin" && ${os.major} < 10} {
+    # Until jemalloc fixed for 10.5 and below: https://trac.macports.org/ticket/65945
+    configure.args-replace \
+                        -DUSE_JEMALLOC:BOOL=ON -DUSE_JEMALLOC:BOOL=OFF
+}
+
+configure.cppflags-append \
+                        -DUVW_AS_LIB
+configure.cxxflags-append \
+                        -I${prefix}/include/${port_libfmt}
+
+# Build auto-detects ccache if it is installed and attempts to write
+# to CCACHE_DIR, which is not allowed if configure.ccache=off.
+# Set CCACHE_DIR to the build directory instead.
+if {![option configure.ccache]} {
+    configure.env-append   CCACHE_DIR=${workpath}/.ccache
+    build.env-append       CCACHE_DIR=${workpath}/.ccache
+    destroot.env-append    CCACHE_DIR=${workpath}/.ccache
+}

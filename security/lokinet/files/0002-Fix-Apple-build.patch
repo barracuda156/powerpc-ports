@@ -1,0 +1,176 @@
+From 03e8e2d1081e851d8daede4dac0badbfd41adab6 Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Thu, 22 Jun 2023 15:40:45 +0800
+Subject: [PATCH 2/2] Fix Apple build
+
+---
+ CMakeLists.txt             | 15 ++++++++++-----
+ cmake/gui-option.cmake     |  6 +++---
+ cmake/macos.cmake          |  2 +-
+ external/CMakeLists.txt    |  9 +--------
+ llarp/CMakeLists.txt       |  6 ++++--
+ llarp/apple/CMakeLists.txt |  7 +++----
+ 6 files changed, 22 insertions(+), 23 deletions(-)
+
+diff --git CMakeLists.txt CMakeLists.txt
+index 6657b17a..79449123 100644
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -3,14 +3,19 @@ cmake_minimum_required(VERSION 3.13...3.24)  # 3.13 is buster's version
+ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+ 
+ # Has to be set before `project()`, and ignored on non-macos:
+-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "macOS deployment target (Apple clang only)")
++if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
++    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "macOS deployment target (Apple clang only)")
++endif()
+ 
+ option(BUILD_DAEMON "build lokinet daemon and associated utils" ON)
+-
++option(COCOASETUP "use proprietary Apple interfaces on macOS" ON)
+ 
+ set(LANGS C CXX)
+ if(APPLE AND BUILD_DAEMON)
+-  set(LANGS ${LANGS} OBJC Swift)
++  set(LANGS ${LANGS} OBJC)
++if(COCOASETUP)
++  set(LANGS ${LANGS} Swift)
++endif()
+ endif()
+ 
+ find_program(CCACHE_PROGRAM ccache)
+@@ -317,7 +322,7 @@ add_subdirectory(docs)
+ 
+ include(cmake/gui.cmake)
+ 
+-if(APPLE)
++if(APPLE AND COCOASETUP)
+   macos_target_setup()
+ endif()
+ 
+@@ -332,7 +337,7 @@ if(NOT TARGET uninstall)
+     COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+ endif()
+ 
+-if(BUILD_PACKAGE AND NOT APPLE)
++if(BUILD_PACKAGE AND NOT (APPLE AND COCOASETUP))
+   include(cmake/installer.cmake)
+ endif()
+ 
+diff --git cmake/gui-option.cmake cmake/gui-option.cmake
+index 1ec141ea..bd10061f 100644
+--- cmake/gui-option.cmake
++++ cmake/gui-option.cmake
+@@ -1,5 +1,7 @@
++option(BUILD_GUI "build electron gui from 'gui' submodule source" ${default_build_gui})
++
+ set(default_build_gui OFF)
+-if(APPLE OR WIN32)
++if(BUILD_GUI AND (APPLE OR WIN32))
+   set(default_build_gui ON)
+ endif()
+ 
+@@ -10,8 +12,6 @@ if(WIN32)
+   endif()
+ endif()
+ 
+-option(BUILD_GUI "build electron gui from 'gui' submodule source" ${default_build_gui})
+-
+ if(BUILD_GUI AND GUI_EXE)
+   message(FATAL_ERROR "-DGUI_EXE=... and -DBUILD_GUI=ON are mutually exclusive")
+ endif()
+diff --git cmake/macos.cmake cmake/macos.cmake
+index c7224835..d4094f3c 100644
+--- cmake/macos.cmake
++++ cmake/macos.cmake
+@@ -1,4 +1,4 @@
+-if(NOT APPLE)
++if(NOT (APPLE AND COCOASETUP))
+   return()
+ endif()
+ 
+diff --git external/CMakeLists.txt external/CMakeLists.txt
+index c2226bd7..142aa4ec 100644
+--- external/CMakeLists.txt
++++ external/CMakeLists.txt
+@@ -67,12 +67,6 @@ set(JSON_BuildTests OFF CACHE INTERNAL "")
+ set(JSON_Install OFF CACHE INTERNAL "")
+ system_or_submodule(NLOHMANN nlohmann_json nlohmann_json>=3.7.0 nlohmann)
+ 
+-if (STATIC OR FORCE_SPDLOG_SUBMODULE OR FORCE_FMT_SUBMODULE)
+-    set(OXEN_LOGGING_FORCE_SUBMODULES ON CACHE INTERNAL "")
+-endif()
+-set(OXEN_LOGGING_SOURCE_ROOT "${PROJECT_SOURCE_DIR}" CACHE INTERNAL "")
+-add_subdirectory(oxen-logging)
+-
+ if(WITH_HIVE)
+   add_subdirectory(pybind11 EXCLUDE_FROM_ALL)
+ endif()
+@@ -95,8 +89,7 @@ target_include_directories(uvw INTERFACE uvw/src)
+ target_link_libraries(uvw INTERFACE libuv)
+ 
+ # ngtcp2 needs some massaging to build nicely:
+-include(ngtcp2_lib)
+-add_ngtcp2_lib()
++add_library(ngtcp2_lib INTERFACE ngtcp2)
+ 
+ # cpr configuration.  Ideally we'd just do this via add_subdirectory, but cpr's cmake requires
+ # 3.15+, and we target lower than that (and this is fairly simple to build).
+diff --git llarp/CMakeLists.txt llarp/CMakeLists.txt
+index 6653a5f0..c1ccb7f0 100644
+--- llarp/CMakeLists.txt
++++ llarp/CMakeLists.txt
+@@ -72,7 +72,9 @@ else()
+ endif()
+ 
+ if(APPLE)
++if(COCOASETUP)
+   add_subdirectory(apple)
++endif()
+   target_sources(lokinet-platform PRIVATE util/nop_service_manager.cpp)
+ endif()
+ 
+@@ -333,7 +335,7 @@ add_library(lokinet-base INTERFACE)
+ target_include_directories(lokinet-base
+   INTERFACE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include
+ )
+-target_link_libraries(lokinet-base INTERFACE oxen::logging lokinet-cryptography)
++target_link_libraries(lokinet-base INTERFACE oxen-logging lokinet-cryptography)
+ 
+ if(WITH_PEERSTATS)
+   target_compile_definitions(lokinet-base INTERFACE -DLOKINET_PEERSTATS_BACKEND)
+@@ -529,7 +531,7 @@ if(WITH_EMBEDDED_LOKINET)
+   if(WIN32)
+     target_link_libraries(lokinet-shared PUBLIC ws2_32 iphlpapi -fstack-protector)
+     install(TARGETS lokinet-shared DESTINATION bin COMPONENT liblokinet)
+-  elseif(NOT APPLE)
++  elseif(NOT (APPLE AND COCOASETUP))
+     install(TARGETS lokinet-shared LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
+   endif()
+ endif()
+diff --git llarp/apple/CMakeLists.txt llarp/apple/CMakeLists.txt
+index 8dd561ef..b2a6e44a 100644
+--- llarp/apple/CMakeLists.txt
++++ llarp/apple/CMakeLists.txt
+@@ -1,11 +1,8 @@
++if(APPLE AND COCOASETUP)
+ 
+ # 3.13+ so that we can add link libraries to parent targets
+ cmake_minimum_required(VERSION 3.13)
+ 
+-if (BUILD_SHARED_LIBS OR NOT BUILD_STATIC_DEPS OR NOT STATIC_LINK)
+-  message(FATAL_ERROR "macOS builds require a full static build; perhaps use the contrib/mac.sh script to build?")
+-endif()
+-
+ # god (steve jobs) made apple so that man may suffer
+ find_library(FOUNDATION Foundation REQUIRED)
+ find_library(NETEXT NetworkExtension REQUIRED)
+@@ -61,3 +58,5 @@ if(CODESIGN AND CODESIGN_EXT_PROFILE)
+       $<TARGET_BUNDLE_DIR:lokinet-extension>/Contents/embedded.provisionprofile
+   )
+ endif()
++
++endif()
+-- 
+2.41.0
+
