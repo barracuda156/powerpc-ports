@@ -1,0 +1,11 @@
+--- cmake/Macros.cmake.orig	2023-06-21 05:44:57.000000000 +0800
++++ cmake/Macros.cmake	2023-08-06 17:38:42.000000000 +0800
+@@ -20,7 +20,7 @@
+         endif()
+     endif()
+ 
+-    if (SFML_OS_MACOSX)
++    if (SFML_OS_MACOSX AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+         if (${CMAKE_GENERATOR} MATCHES "Xcode")
+             sfml_set_xcode_property(${target} CLANG_CXX_LIBRARY "libc++")
+         else()

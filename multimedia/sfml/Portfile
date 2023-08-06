@@ -2,10 +2,11 @@
 
 PortSystem          1.0
 PortGroup           cmake 1.1
+PortGroup           compiler_blacklist_versions 1.0
 
 name                sfml
-version             2.5.1
-revision            2
+version             2.6.0
+revision            0
 categories          multimedia devel
 maintainers         gmail.com:rkitover openmaintainer
 license             zlib
@@ -22,9 +23,9 @@ master_sites        https://www.sfml-dev.org/files/
 distname            SFML-${version}-sources
 use_zip             yes
 
-checksums           rmd160  3b137887696a223f0c3576b16bae9f0e3535f16f \
-                    sha256  bf1e0643acb92369b24572b703473af60bac82caf5af61e77c063b779471bb7f \
-                    size    23283095
+checksums           rmd160  8696ff8370ae252cb2de5c5462198cdbf8473421 \
+                    sha256  dc477fc7266641709046bd38628c909f5748bd2564b388cf6c750a9e20cdfef1 \
+                    size    25953824
 
 worksrcdir          SFML-${version}
 
@@ -43,12 +44,22 @@ depends_lib-append  port:freetype \
 
 cmake.out_of_source yes
 
-patchfiles          patch-apple-silicon.diff
+patchfiles          patch-apple-silicon.diff \
+                    patch-macos-ver.diff \
+                    patch-unbreak-gcc.diff
 
 configure.args-append \
                     -DSFML_USE_SYSTEM_DEPS=TRUE \
                     -DSFML_BUILD_DOC=TRUE \
                     -DCMAKE_FRAMEWORK_PATH=${frameworks_dir}
+
+compiler.blacklist-append \
+                    *gcc-4.* {clang < 421}
+
+if {[string match *gcc* ${configure.compiler}]} {
+    configure.args-append \
+                    -DWARNINGS_AS_ERRORS=OFF
+}
 
 post-destroot {
     file mkdir ${destroot}${prefix}/share/doc/${name}
