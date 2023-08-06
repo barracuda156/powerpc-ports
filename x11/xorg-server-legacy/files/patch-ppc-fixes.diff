@@ -1,0 +1,62 @@
+--- a/configure.ac	2021-04-29 02:02:54.000000000 +0800
++++ b/configure.ac	2023-03-04 06:15:03.000000000 +0800
+@@ -695,7 +695,7 @@
+ 		fi
+ 
+ 		AC_CHECK_FUNC(dispatch_async,
+-		              AC_DEFINE([HAVE_LIBDISPATCH], 1, [Define to 1 if you have the libdispatch (GCD) available]),
++		              AC_DEFINE([HAVE_LIBDISPATCH], 0, [Define to 1 if you have the libdispatch (GCD) available]),
+ 		              [])
+ 
+ 		if test "x$XQUARTZ" = xyes ; then
+
+
+--- a/hw/xquartz/xpr/xprScreen.c	2021-04-29 02:02:54.000000000 +0800
++++ b/hw/xquartz/xpr/xprScreen.c	2023-03-04 05:14:16.000000000 +0800
+@@ -333,7 +333,7 @@
+     DEBUG_LOG("index=%d depth=%d\n", index, depth);
+ 
+     if (depth == -1) {
+-#if MAC_OS_X_VERSION_MIN_REQUIRED < 1060
++#if MAC_OS_X_VERSION_MIN_REQUIRED < 1060 || defined(__ppc__)
+         depth = CGDisplaySamplesPerPixel(kCGDirectMainDisplay) *
+                 CGDisplayBitsPerSample(kCGDirectMainDisplay);
+ #else
+@@ -369,7 +369,7 @@
+ #endif
+     }
+ 
+-#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__)
+ have_depth:
+ #endif
+     switch (depth) {
+
+--- a/hw/xquartz/quartzRandR.c	2021-04-29 02:02:54.000000000 +0800
++++ b/hw/xquartz/quartzRandR.c	2023-08-06 08:04:38.000000000 +0800
+@@ -66,7 +66,8 @@
+ typedef int (*QuartzModeCallback)
+     (ScreenPtr, QuartzModeInfoPtr, void *);
+ 
+-#if MAC_OS_X_VERSION_MIN_REQUIRED < 1060
++#if (MAC_OS_X_VERSION_MIN_REQUIRED < 1060) || \
++    (MAC_OS_X_VERSION_MIN_REQUIRED == 1060 && defined(__ppc__))
+ 
+ static long
+ getDictLong(CFDictionaryRef dictRef, CFStringRef key)
+
+--- a/hw/xquartz/console_redirect.c	2021-04-29 02:02:54.000000000 +0800
++++ b/hw/xquartz/console_redirect.c	2023-08-06 08:05:10.000000000 +0800
+@@ -31,6 +31,12 @@
+ #include <dix-config.h>
+ #else
+ #define DEBUG_CONSOLE_REDIRECT 1
++#endif
++
++#include <AvailabilityMacros.h>
++
++/* Libdispatch presently unsupported on any ppc, including Rosetta */
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined(__ppc__)
+ #define HAVE_LIBDISPATCH       1
+ #endif
+ 

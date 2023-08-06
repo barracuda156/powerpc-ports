@@ -1,0 +1,246 @@
+--- a/configure.ac	2021-04-29 02:02:54.000000000 +0800
++++ b/configure.ac	2023-03-04 06:15:03.000000000 +0800
+@@ -695,7 +695,7 @@
+ 		fi
+ 
+ 		AC_CHECK_FUNC(dispatch_async,
+-		              AC_DEFINE([HAVE_LIBDISPATCH], 1, [Define to 1 if you have the libdispatch (GCD) available]),
++		              AC_DEFINE([HAVE_LIBDISPATCH], 0, [Define to 1 if you have the libdispatch (GCD) available]),
+ 		              [])
+ 
+ 		if test "x$XQUARTZ" = xyes ; then
+
+--- a/hw/xquartz/xpr/xprScreen.c	2021-04-29 02:02:54.000000000 +0800
++++ b/hw/xquartz/xpr/xprScreen.c	2023-03-04 05:14:16.000000000 +0800
+@@ -333,7 +333,7 @@
+     DEBUG_LOG("index=%d depth=%d\n", index, depth);
+ 
+     if (depth == -1) {
+-#if MAC_OS_X_VERSION_MIN_REQUIRED < 1060
++#if MAC_OS_X_VERSION_MIN_REQUIRED < 1060 || defined __ppc__
+         depth = CGDisplaySamplesPerPixel(kCGDirectMainDisplay) *
+                 CGDisplayBitsPerSample(kCGDirectMainDisplay);
+ #else
+@@ -369,7 +369,7 @@
+ #endif
+     }
+ 
+-#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined __ppc__
+ have_depth:
+ #endif
+     switch (depth) {
+
+--- a/hw/xquartz/X11Controller.m	2021-04-29 02:02:54.000000000 +0800
++++ b/hw/xquartz/X11Controller.m	2023-03-04 05:15:14.000000000 +0800
+@@ -868,7 +868,7 @@
+ 
+ - (IBAction) x11_help:sender
+ {
+-#if MAC_OS_X_VERSION_MIN_REQUIRED < 1060
++#if MAC_OS_X_VERSION_MIN_REQUIRED < 1060 || defined __ppc__
+     AHLookupAnchor((CFStringRef)NSLocalizedString(@"Mac Help",
+                                                   no comment),
+                    CFSTR("mchlp2276"));
+
+--- a/hw/xquartz/X11Controller.h	2021-04-29 02:02:54.000000000 +0800
++++ b/hw/xquartz/X11Controller.h	2023-03-04 05:16:03.000000000 +0800
+@@ -57,7 +57,7 @@
+ #endif
+ 
+ @interface X11Controller : NSObject
+-#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 && !defined __ppc__
+     <NSTableViewDataSource>
+ #endif
+ {
+
+--- a/hw/xquartz/quartzRandR.c	2021-04-29 02:02:54.000000000 +0800
++++ b/hw/xquartz/quartzRandR.c	2023-03-04 05:16:59.000000000 +0800
+@@ -66,7 +66,7 @@
+ typedef int (*QuartzModeCallback)
+     (ScreenPtr, QuartzModeInfoPtr, void *);
+ 
+-#if MAC_OS_X_VERSION_MIN_REQUIRED < 1060
++#if MAC_OS_X_VERSION_MIN_REQUIRED < 1060 || defined __ppc__
+ 
+ static long
+ getDictLong(CFDictionaryRef dictRef, CFStringRef key)
+
+--- a/hw/xquartz/console_redirect.c.orig	2021-04-29 02:02:54.000000000 +0800
++++ b/hw/xquartz/console_redirect.c	2023-03-04 06:30:37.000000000 +0800
+@@ -31,9 +31,10 @@
+ #include <dix-config.h>
+ #else
+ #define DEBUG_CONSOLE_REDIRECT 1
+-#define HAVE_LIBDISPATCH       1
+ #endif
+ 
++#define HAVE_LIBDISPATCH       0
++
+ #include <assert.h>
+ #include <unistd.h>
+ #include <stdio.h>
+@@ -49,7 +50,7 @@
+ 
+ #define BUF_SIZE 512
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+ #include <dispatch/dispatch.h>
+ 
+ static dispatch_queue_t redirect_serial_q;
+@@ -75,7 +76,7 @@
+     char *buf;
+     char *w;
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+     dispatch_source_t read_source;
+ #endif
+ } asl_redirect;
+@@ -153,7 +154,7 @@
+     return total_read;
+ }
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+ static void
+ read_from_source(void *_source)
+ {
+@@ -262,7 +263,7 @@
+     if (redirect_fds[STDOUT_FILENO].buf)
+         fflush(stdout);
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+     {
+         int i;
+ 
+@@ -290,7 +291,7 @@
+ #endif
+ }
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+ static void
+ xq_asl_init(void *ctx __unused)
+ #else
+@@ -301,7 +302,7 @@
+     assert((redirect_fds = calloc(16, sizeof(*redirect_fds))) != NULL);
+     n_redirect_fds = 16;
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+     redirect_serial_q = dispatch_queue_create("com.apple.asl-redirect", NULL);
+     assert(redirect_serial_q != NULL);
+ 
+@@ -333,7 +334,7 @@
+ int
+ xq_asl_log_fd(aslclient asl, aslmsg msg, int level, int fd)
+ {
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+     int err __block = 0;
+     static dispatch_once_t once_control;
+     dispatch_once_f(&once_control, NULL, xq_asl_init);
+@@ -346,7 +347,7 @@
+     if (fd < 0)
+         return EBADF;
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+ #define BLOCK_DONE return
+     dispatch_sync(redirect_serial_q, ^
+ #else
+@@ -394,7 +395,7 @@
+                             O_NONBLOCK);
+ 
+                       /* Start listening */
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+                       {
+                           dispatch_source_t read_source =
+                               dispatch_source_create(
+@@ -417,7 +418,7 @@
+                       }
+ #endif
+                   }
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+                   );
+ #else
+ done:
+
+--- a/hw/xquartz/mach-startup/bundle-main.c	2021-04-29 02:02:54.000000000 +0800
++++ b/hw/xquartz/mach-startup/bundle-main.c	2023-03-04 06:59:38.000000000 +0800
+@@ -44,11 +44,7 @@
+ #include <stdbool.h>
+ #include <signal.h>
+ 
+-#ifdef HAVE_LIBDISPATCH
+-#include <dispatch/dispatch.h>
+-#else
+ #include <pthread.h>
+-#endif
+ 
+ #include <sys/socket.h>
+ #include <sys/un.h>
+@@ -119,7 +115,6 @@
+ static char *pref_login_shell;
+ static char *pref_startx_script;
+ 
+-#ifndef HAVE_LIBDISPATCH
+ /*** Pthread Magics ***/
+ static pthread_t
+ create_thread(void *(*func)(void *), void *arg)
+@@ -135,7 +130,6 @@
+ 
+     return tid;
+ }
+-#endif
+ 
+ /*** Mach-O IPC Stuffs ***/
+ 
+@@ -243,16 +237,10 @@
+ /* This thread accepts an incoming connection and hands off the file
+  * descriptor for the new connection to accept_fd_handoff()
+  */
+-#ifdef HAVE_LIBDISPATCH
+-static void
+-socket_handoff(socket_handoff_t *handoff_data)
+-{
+-#else
+ static void *
+ socket_handoff_thread(void *arg)
+ {
+     socket_handoff_t *handoff_data = (socket_handoff_t *)arg;
+-#endif
+ 
+     int launchd_fd = -1;
+     int connected_fd;
+@@ -287,9 +275,7 @@
+         launchd_fd);
+     DarwinListenOnOpenFD(launchd_fd);
+ 
+-#ifndef HAVE_LIBDISPATCH
+     return NULL;
+-#endif
+ }
+ 
+ static int
+@@ -373,14 +359,7 @@
+ 
+     strlcpy(filename, handoff_data->filename, STRING_T_SIZE);
+ 
+-#ifdef HAVE_LIBDISPATCH
+-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT,
+-                                             0), ^ {
+-                       socket_handoff(handoff_data);
+-                   });
+-#else
+     create_thread(socket_handoff_thread, handoff_data);
+-#endif
+ 
+ #ifdef DEBUG
+     ErrorF(

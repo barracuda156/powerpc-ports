@@ -1,0 +1,138 @@
+# See: https://gitlab.freedesktop.org/xorg/xserver/-/issues/1112
+
+--- a/render/picture.c	2023-08-06 02:50:33.000000000 +0800
++++ b/render/picture.c	2023-08-06 02:50:59.000000000 +0800
+@@ -527,12 +527,12 @@
+                     return format;
+             }
+             else {
+-                if (format->direct.redMask << format->direct.red ==
+-                    pVisual->redMask &&
+-                    format->direct.greenMask << format->direct.green ==
+-                    pVisual->greenMask &&
+-                    format->direct.blueMask << format->direct.blue ==
+-                    pVisual->blueMask) {
++                if ((unsigned long)format->direct.redMask <<
++                        format->direct.red == pVisual->redMask &&
++                    (unsigned long)format->direct.greenMask <<
++                        format->direct.green == pVisual->greenMask &&
++                    (unsigned long)format->direct.blueMask <<
++                        format->direct.blue == pVisual->blueMask) {
+                     return format;
+                 }
+             }
+
+--- a/hw/xfree86/common/xf86Helper.c	2021-04-29 02:02:54.000000000 +0800
++++ b/hw/xfree86/common/xf86Helper.c	2023-08-06 02:50:25.000000000 +0800
+@@ -728,9 +728,9 @@
+         scrp->mask.red = mask.red;
+         scrp->mask.green = mask.green;
+         scrp->mask.blue = mask.blue;
+-        scrp->offset.red = ffs(mask.red);
+-        scrp->offset.green = ffs(mask.green);
+-        scrp->offset.blue = ffs(mask.blue);
++        scrp->offset.red = ffs(mask.red) - 1;
++        scrp->offset.green = ffs(mask.green) - 1;
++        scrp->offset.blue = ffs(mask.blue) - 1;
+     }
+     return TRUE;
+ }
+
+# See: https://gitlab.freedesktop.org/xorg/xserver/-/commit/99d20d35e2976eb15b4b5cc1aea9ee2c4e2306a0
+
+--- a/glamor/glamor_text.c	2021-04-29 02:02:54.000000000 +0800
++++ b/glamor/glamor_text.c	2023-08-06 05:39:56.000000000 +0800
+@@ -24,6 +24,8 @@
+ #include <dixfontstr.h>
+ #include "glamor_transform.h"
+ 
++#include <X11/Xarch.h>		/* for X_LITTLE_ENDIAN/X_BIG_ENDIAN */
++
+ /*
+  * Fill in the array of charinfo pointers for the provided characters. For
+  * missing characters, place a NULL in the array so that the charinfo array
+@@ -235,7 +237,11 @@
+ 
+ static const char fs_exec_text[] =
+     "       ivec2 itile_texture = ivec2(glyph_pos);\n"
++#elif X_BYTE_ORDER == X_BIG_ENDIAN
++    "       uint x = uint(7) - uint(itile_texture.x & 7);\n"
++#else
+     "       uint x = uint(itile_texture.x & 7);\n"
++#endif
+     "       itile_texture.x >>= 3;\n"
+     "       uint texel = texelFetch(font, itile_texture, 0).x;\n"
+     "       uint bit = (texel >> x) & uint(1);\n"
+@@ -244,7 +250,11 @@
+ 
+ static const char fs_exec_te[] =
+     "       ivec2 itile_texture = ivec2(glyph_pos);\n"
++#elif X_BYTE_ORDER == X_BIG_ENDIAN
++    "       uint x = uint(7) - uint(itile_texture.x & 7);\n"
++#else
+     "       uint x = uint(itile_texture.x & 7);\n"
++#endif
+     "       itile_texture.x >>= 3;\n"
+     "       uint texel = texelFetch(font, itile_texture, 0).x;\n"
+     "       uint bit = (texel >> x) & uint(1);\n"
+
+--- a/glamor/glamor_glyphblt.c	2021-04-29 02:02:54.000000000 +0800
++++ b/glamor/glamor_glyphblt.c	2023-08-06 05:43:15.000000000 +0800
+@@ -30,6 +30,8 @@
+ #include <dixfontstr.h>
+ #include "glamor_transform.h"
+ 
++#include <X11/Xarch.h>		/* for X_LITTLE_ENDIAN/X_BIG_ENDIAN */
++
+ static const glamor_facet glamor_facet_poly_glyph_blt = {
+     .name = "poly_glyph_blt",
+     .vs_vars = "attribute vec2 primitive;\n",
+@@ -101,7 +103,11 @@
+                         int pt_x_i = glyph_x + xx;
+                         int pt_y_i = glyph_y + yy;
+ 
++#elif X_BYTE_ORDER == X_BIG_ENDIAN
++                        if (!(*glyph & (128 >> (xx & 7))))
++#else
+                         if (!(*glyph & (1 << (xx & 7))))
++#endif
+                             continue;
+ 
+                         if (!RegionContainsPoint(clip, pt_x_i, pt_y_i, NULL))
+@@ -208,7 +214,11 @@
+     for (yy = 0; yy < h; yy++) {
+         uint8_t *bitmap_row = bitmap_data + yy * bitmap_stride;
+         for (xx = 0; xx < w; xx++) {
++#elif X_BYTE_ORDER == X_BIG_ENDIAN
++            if (bitmap_row[xx / 8] & (128 >> xx % 8) &&
++#else
+             if (bitmap_row[xx / 8] & (1 << xx % 8) &&
++#endif
+                 RegionContainsPoint(clip,
+                                     x + xx,
+                                     y + yy,
+
+
+# See: https://launchpadlibrarian.net/210614798/0001-include-Fix-endianness-setup.patch
+
+--- a/include/dix-config.h.in	2021-04-29 02:02:54.000000000 +0800
++++ b/include/dix-config.h.in	2023-08-06 08:10:11.000000000 +0800
+@@ -490,6 +491,7 @@
+ 
+ /* byte order */
+ #undef X_BYTE_ORDER
++#include <X11/Xarch.h>
+ 
+ /* Listen on TCP socket */
+ #undef LISTEN_TCP
+
+--- a/include/xorg-server.h.in	2023-08-06 08:11:54.000000000 +0800
++++ b/include/xorg-server.h.in	2023-08-06 08:12:22.000000000 +0800
+@@ -218,5 +218,6 @@
+ 
+ /* byte order */
+ #undef X_BYTE_ORDER
++#include <X11/Xarch.h>
+ 
+ #endif /* _XORG_SERVER_H_ */
+

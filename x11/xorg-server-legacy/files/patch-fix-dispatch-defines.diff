@@ -1,0 +1,191 @@
+--- a/hw/xquartz/mach-startup/bundle-main.c	2021-04-29 02:02:54.000000000 +0800
++++ b/hw/xquartz/mach-startup/bundle-main.c	2023-08-06 08:36:24.000000000 +0800
+@@ -44,7 +44,7 @@
+ #include <stdbool.h>
+ #include <signal.h>
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+ #include <dispatch/dispatch.h>
+ #else
+ #include <pthread.h>
+@@ -119,7 +119,7 @@
+ static char *pref_login_shell;
+ static char *pref_startx_script;
+ 
+-#ifndef HAVE_LIBDISPATCH
++#if !HAVE_LIBDISPATCH
+ /*** Pthread Magics ***/
+ static pthread_t
+ create_thread(void *(*func)(void *), void *arg)
+@@ -243,7 +243,7 @@
+ /* This thread accepts an incoming connection and hands off the file
+  * descriptor for the new connection to accept_fd_handoff()
+  */
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+ static void
+ socket_handoff(socket_handoff_t *handoff_data)
+ {
+@@ -287,7 +287,7 @@
+         launchd_fd);
+     DarwinListenOnOpenFD(launchd_fd);
+ 
+-#ifndef HAVE_LIBDISPATCH
++#if !HAVE_LIBDISPATCH
+     return NULL;
+ #endif
+ }
+@@ -373,7 +373,7 @@
+ 
+     strlcpy(filename, handoff_data->filename, STRING_T_SIZE);
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT,
+                                              0), ^ {
+                        socket_handoff(handoff_data);
+
+--- a/hw/xquartz/console_redirect.c	2021-04-29 02:02:54.000000000 +0800
++++ b/hw/xquartz/console_redirect.c	2023-08-06 08:32:52.000000000 +0800
+@@ -49,7 +49,7 @@
+ 
+ #define BUF_SIZE 512
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+ #include <dispatch/dispatch.h>
+ 
+ static dispatch_queue_t redirect_serial_q;
+@@ -75,7 +75,7 @@
+     char *buf;
+     char *w;
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+     dispatch_source_t read_source;
+ #endif
+ } asl_redirect;
+@@ -153,7 +153,7 @@
+     return total_read;
+ }
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+ static void
+ read_from_source(void *_source)
+ {
+@@ -262,7 +262,7 @@
+     if (redirect_fds[STDOUT_FILENO].buf)
+         fflush(stdout);
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+     {
+         int i;
+ 
+@@ -290,7 +290,7 @@
+ #endif
+ }
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+ static void
+ xq_asl_init(void *ctx __unused)
+ #else
+@@ -301,7 +301,7 @@
+     assert((redirect_fds = calloc(16, sizeof(*redirect_fds))) != NULL);
+     n_redirect_fds = 16;
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+     redirect_serial_q = dispatch_queue_create("com.apple.asl-redirect", NULL);
+     assert(redirect_serial_q != NULL);
+ 
+@@ -333,7 +333,7 @@
+ int
+ xq_asl_log_fd(aslclient asl, aslmsg msg, int level, int fd)
+ {
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+     int err __block = 0;
+     static dispatch_once_t once_control;
+     dispatch_once_f(&once_control, NULL, xq_asl_init);
+@@ -346,7 +346,7 @@
+     if (fd < 0)
+         return EBADF;
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+ #define BLOCK_DONE return
+     dispatch_sync(redirect_serial_q, ^
+ #else
+@@ -394,7 +394,7 @@
+                             O_NONBLOCK);
+ 
+                       /* Start listening */
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+                       {
+                           dispatch_source_t read_source =
+                               dispatch_source_create(
+@@ -417,7 +417,7 @@
+                       }
+ #endif
+                   }
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+                   );
+ #else
+ done:
+
+--- a/hw/xquartz/X11Application.m	2023-08-06 08:44:16.000000000 +0800
++++ b/hw/xquartz/X11Application.m	2023-08-06 08:36:47.000000000 +0800
+@@ -64,7 +64,7 @@
+ #define XSERVER_VERSION "?"
+ #endif
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+ #include <dispatch/dispatch.h>
+ 
+ static dispatch_queue_t eventTranslationQueue;
+@@ -554,7 +554,7 @@
+     if (for_appkit) [super sendEvent:e];
+ 
+     if (for_x) {
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+         dispatch_async(eventTranslationQueue, ^{
+                            [self sendX11NSEvent:e];
+                        });
+@@ -1293,7 +1293,7 @@
+         aquaMenuBarHeight = NSHeight([primaryScreen frame]) - NSMaxY([primaryScreen visibleFrame]);
+     }
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+     eventTranslationQueue = dispatch_queue_create(
+         BUNDLE_ID_PREFIX ".X11.NSEventsToX11EventsQueue", NULL);
+     assert(eventTranslationQueue != NULL);
+
+--- a/hw/xquartz/xpr/xprEvent.c	2021-04-29 02:02:54.000000000 +0800
++++ b/hw/xquartz/xpr/xprEvent.c	2023-08-06 08:37:29.000000000 +0800
+@@ -52,7 +52,7 @@
+ #include <sys/uio.h>
+ #include <unistd.h>
+ 
+-#ifdef HAVE_LIBDISPATCH
++#if HAVE_LIBDISPATCH
+ #include <dispatch/dispatch.h>
+ #endif
+ 
+@@ -79,7 +79,7 @@
+         /* There's no need to do xp_window_bring_all_to_front on Leopard,
+          * and we don't care about the result, so just do it async.
+          */
+-#if defined(HAVE_LIBDISPATCH) && defined(XPLUGIN_VERSION) && XPLUGIN_VERSION >= 6
++#if HAVE_LIBDISPATCH && defined(XPLUGIN_VERSION) && XPLUGIN_VERSION >= 6
+ #  if defined(XPLUGIN_VERSION_MIN_REQUIRED) && XPLUGIN_VERSION_MIN_REQUIRED < 6
+         if (&xp_window_bring_all_to_front) {
+ #  endif
