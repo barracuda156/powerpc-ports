@@ -1,0 +1,32 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           qmake 1.0
+
+github.setup        mojocorp QProgressIndicator 4388bacab7e8a3f4f389f39cd170d3a15455541e
+version             1.0.2
+revision            0
+
+categories          devel
+license             MIT
+maintainers         nomaintainer
+
+description         Qt spinning progress indicator
+long_description    The QProgressIndicator class lets an application display a progress indicator to show that a lengthy task is under way.
+
+checksums           rmd160  f2090d261da2fa3c6b8fc28b0a4cf51f56db6dc2 \
+                    sha256  bcfdbd57e3df62d113bb92f2d8182071ffee3e38f47fd65d8118c4a309ffad57 \
+                    size    62045
+github.tarball_from archive
+
+patchfiles          0001-Add-install-targets.patch
+
+destroot {
+    set incdir ${destroot}${prefix}/include/${name}
+    xinstall -d ${incdir}
+    xinstall -m 0644 -W ${worksrcpath} ${name} ${name}.h ${incdir}
+    foreach dylib [glob ${worksrcpath}/*.dylib] {
+        copy ${dylib} ${destroot}${prefix}/lib
+    }
+}

@@ -1,0 +1,32 @@
+From cf9c99a53ae16dff2f467b917aab1c417fcc5515 Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Wed, 30 Aug 2023 15:07:03 +0800
+Subject: [PATCH] Add install targets
+
+---
+ example.pro => QProgressIndicator.pro | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+ rename example.pro => QProgressIndicator.pro (53%)
+
+diff --git example.pro QProgressIndicator.pro
+similarity index 53%
+rename from example.pro
+rename to QProgressIndicator.pro
+index 83bba94..1697b05 100644
+--- example.pro
++++ QProgressIndicator.pro
+@@ -1,11 +1,11 @@
+-TEMPLATE = app
+-TARGET = 
++TEMPLATE = lib
++TARGET = QProgressIndicator
+ DEPENDPATH += .
+ INCLUDEPATH += . intermediate
+ 
+ # Input
+ HEADERS += QProgressIndicator.h
+-SOURCES += main.cpp QProgressIndicator.cpp
++SOURCES += QProgressIndicator.cpp
+ 
+ OBJECTS_DIR = intermediate
+ MOC_DIR = intermediate
