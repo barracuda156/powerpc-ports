@@ -1,0 +1,53 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           cmake 1.1
+PortGroup           github 1.0
+PortGroup           qt4 1.0
+
+name                photoqt-qt4
+github.setup        luspi photoqt-legacy 7f6f60f0679f1fd1dc39e5c6a520a65ed90e3a4f
+version             1.0
+revision            0
+categories          graphics
+license             GPL-2
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+
+description         PhotoQt Image Viewer
+long_description    PhotoQt is a simple yet powerful and good looking image viewer, based on Qt/QML, published as open-source and completely free.
+
+homepage            https://photoqt.org
+# master_sites        ${homepage}/downloads/source/
+# distname            photoqt-${version}
+# checksums           rmd160  2c21022451524eca48af45325e8bfcafc0818ef7 \
+#                     sha256  e7f866540a03e95463dacdf2769a954f601ac3cd1507655793f9f231ab8689ce \
+#                     size    709752
+checksums           rmd160  e7dd75ee30a7bbfe3200cededa2b044de61d2bc5 \
+                    sha256  c049ef5d0b182aedc0eca7de79df637f76f3fe8c824d12c7976132bfd190f0ba \
+                    size    796226
+github.tarball_from archive
+
+depends_lib-append  port:desktop-file-utils \
+                    port:exiv2 \
+                    port:GraphicsMagick \
+                    port:phonon
+
+depends_build-append \
+                    port:pkgconfig
+
+patchfiles-append   patch-exiv2.diff \
+                    patch-include-magick.diff
+
+post-patch {
+    reinplace "s,@PREFIX@,${prefix}," ${worksrcpath}/CMakeLists.txt
+}
+
+# filehandling.cpp: error: invalid conversion from 'QPushButton*' to 'CustomPushButton*' [-fpermissive]
+configure.cxxflags-append \
+                   -fpermissive
+
+compiler.cxx_standard 2011
+
+post-activate {
+    system "${prefix}/bin/update-desktop-database ${prefix}/share/applications"
+}
