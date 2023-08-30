@@ -1,0 +1,33 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem              1.0
+PortGroup               cmake 1.1
+PortGroup               github 1.0
+
+github.setup            abdes blocxxi 1.0.1 v
+revision                0
+categories              net security
+maintainers             {@barracuda156 gmail.com:vital.had} openmaintainer
+license                 BSD
+description             Implementation of Kademlia DHT and Blockchain in C++
+long_description        {*}${description}
+checksums               rmd160  c2f4c8cc83501e62d2b592b7fab5fbc74b463815 \
+                        sha256  d78ce8c360217be2fb1772ae242fbfc804988a69a03237540e0fc36e2971b00e \
+                        size    517857
+github.tarball_from     archive
+
+if {${os.platform} eq "darwin" && ${os.major} < 14} {
+    depends_build-append \
+                    port:git
+    git.cmd         ${prefix}/bin/git
+}
+
+compiler.cxx_standard   2017
+
+# PowerPC setting merely unbreaks building for it without affecting other archs.
+# 
+configure.args-append   -DASAP_BUILD_EXAMPLES:BOOL=OFF \
+                        -DASAP_BUILD_TESTS:BOOL=OFF \
+                        -DBUILD_SHARED_LIBS:BOOL=ON \
+                        -Dppc_support:BOOL=ON
+
