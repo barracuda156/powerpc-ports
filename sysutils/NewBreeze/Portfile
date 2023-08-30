@@ -1,0 +1,33 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           qmake 1.0
+
+# The last of 2.x series is not only archaic but direly broken.
+github.setup        marcusbritanicus NewBreeze 3.0.0 v -rc8
+revision            0
+
+categories          sysutils
+license             GPL-3
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+
+description         Fast and light-weight file manager based on Qt
+long_description    {*}${description}
+
+checksums           rmd160  23120cec4ff621803c17c3caf13f6083985d9024 \
+                    sha256  3b013e5a2520dc4073e1286a29a629554c16506e9e3b9497f0739e0f2f2420a8 \
+                    size    3428267
+github.tarball_from archive
+
+depends_lib-append  port:bzip2 \
+                    port:libarchive \
+                    port:libmagic \
+                    port:libqtxdg-legacy \
+                    port:libtar \
+                    port:libzip \
+                    port:lzma \
+                    port:qscintilla-qt4 \
+                    port:zlib
+
+compiler.cxx_standard 2011
