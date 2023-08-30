@@ -1,0 +1,52 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           qmake 1.0
+
+# github.setup        quazaa-development-team Quazaa 850a70bdb58a7c1bab5182249cc77bb3739f5815
+# version             2018.11.01
+# checksums           rmd160  0e956c0bdb030144b2229948c02c70258d652ca8 \
+#                     sha256  8ecd137a3e4b8ee75743e6d973c393ff2fb8d591a522fe41853ed9efb589557f \
+#                     size    8521460
+
+github.setup        quazaa-development-team Quazaa 577b54849ac2148e2e78fd28ede3777cacd99458
+version             2013.11.05
+checksums           rmd160  d761f58fb2befbdafbdbd0c92c82aa5fd4c3d8ba \
+                    sha256  e349768720fd532840d6f76ec924765610520c11ea7f6d47f83fd9a3122a8ae2 \
+                    size    8433694
+
+revision            0
+
+categories          www p2p
+license             GPL-3
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+
+description         Multi-network P2P app
+long_description    {*}${description} with support for Gnutella1, Gnutella2, eDonkey2000, BitTorrent and more.
+
+depends_lib-append  port:libcommuni \
+                    port:qt4-mac
+
+patchfiles-append   patch-Quazaa.diff
+
+# patchfiles-append   0001-Revert-Removing-the-Qt-4-support-defines.-Further-de.patch \
+#                     0002-Revert-several-video-related-breaking-commits.patch \
+#                     0003-Fixes-for-quazaaglobals.patch
+
+post-extract {
+    copy ${filespath}/version.h ${worksrcpath}/${name}/version.h
+}
+
+pre-configure {
+    system -W ${worksrcpath} "${qt_lrelease_cmd} ${name}.pro"
+}
+
+# pre-configure {
+#     system -W ${workpath}/VersionTool "${qt_qmake_cmd} VersionTool.pro"
+#     
+# }
+
+destroot {
+    move ${worksrcpath}/${name}.app ${destroot}${applications_dir}/${name}.app
+}

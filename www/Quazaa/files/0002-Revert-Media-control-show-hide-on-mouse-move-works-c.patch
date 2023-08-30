@@ -1,0 +1,796 @@
+From cd38c243f8922dc907f43d8ab9a02a69a4e6c94d Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Sat, 1 Jul 2023 23:04:55 +0800
+Subject: [PATCH 2/7] Revert "Media control show/hide on mouse move works
+ correctly."
+
+This reverts commit 052fa081bae4db8e423ff0810b18f37c9b83afce.
+---
+ Quazaa/Quazaa.pro                             |  13 +--
+ Quazaa/UI/mediacontrols.cpp                   |  84 --------------
+ Quazaa/UI/mediaoverlay.cpp                    | 107 ++++++++++++++++++
+ Quazaa/UI/{mediacontrols.h => mediaoverlay.h} |  12 +-
+ .../UI/{mediacontrols.ui => mediaoverlay.ui}  |  35 +++---
+ Quazaa/UI/videocontainer.cpp                  |  77 -------------
+ Quazaa/UI/videocontainer.h                    |  40 -------
+ Quazaa/UI/videocontainer.ui                   |  44 -------
+ Quazaa/UI/videowidget.cpp                     |  46 +++++++-
+ Quazaa/UI/videowidget.h                       |  11 +-
+ Quazaa/UI/widgetmedia.cpp                     |  45 ++++----
+ Quazaa/UI/widgetmedia.h                       |   9 +-
+ Quazaa/UI/widgetmedia.ui                      |   5 -
+ 13 files changed, 222 insertions(+), 306 deletions(-)
+ delete mode 100644 Quazaa/UI/mediacontrols.cpp
+ create mode 100644 Quazaa/UI/mediaoverlay.cpp
+ rename Quazaa/UI/{mediacontrols.h => mediaoverlay.h} (75%)
+ rename Quazaa/UI/{mediacontrols.ui => mediaoverlay.ui} (96%)
+ delete mode 100644 Quazaa/UI/videocontainer.cpp
+ delete mode 100644 Quazaa/UI/videocontainer.h
+ delete mode 100644 Quazaa/UI/videocontainer.ui
+
+diff --git Quazaa/Quazaa.pro Quazaa/Quazaa.pro
+index aef9b78e..8c2db54c 100644
+--- Quazaa/Quazaa.pro
++++ Quazaa/Quazaa.pro
+@@ -396,9 +396,8 @@ HEADERS += \
+ 		Models/securityfiltermodel.h \
+ 		UI/dialogimportsecurity.h \
+ 	UI/dialogmodifyrule.h \
+-	UI/videowidget.h \
+-	UI/mediacontrols.h \
+-    UI/videocontainer.h
++	UI/mediaoverlay.h \
++	UI/videowidget.h
+ 
+ # Sources
+ SOURCES += \
+@@ -559,9 +558,8 @@ SOURCES += \
+ 		Models/securityfiltermodel.cpp \
+ 		UI/dialogimportsecurity.cpp \
+ 	UI/dialogmodifyrule.cpp \
+-	UI/videowidget.cpp \
+-	UI/mediacontrols.cpp \
+-    UI/videocontainer.cpp
++	UI/mediaoverlay.cpp \
++	UI/videowidget.cpp
+ 
+ FORMS += \
+ 		UI/dialogabout.ui \
+@@ -622,8 +620,7 @@ FORMS += \
+ 	UI/wizardircconnection.ui \
+ 	UI/dialogimportsecurity.ui \
+ 	UI/dialogmodifyrule.ui \
+-	UI/mediacontrols.ui \
+-    UI/videocontainer.ui
++	UI/mediaoverlay.ui
+ 
+ TRANSLATIONS = \
+ 		Language/quazaa_af.ts \
+diff --git Quazaa/UI/mediacontrols.cpp Quazaa/UI/mediacontrols.cpp
+deleted file mode 100644
+index bc0ef10e..00000000
+--- Quazaa/UI/mediacontrols.cpp
++++ /dev/null
+@@ -1,84 +0,0 @@
+-#include "mediacontrols.h"
+-#include "ui_mediacontrols.h"
+-
+-#include <QDebug>
+-
+-MediaControls::MediaControls(QWidget *parent) :
+-	QWidget(parent),
+-	ui(new Ui::MediaControls)
+-{
+-	ui->setupUi(this);
+-
+-	m_tVolumeControl = new QTimer(this);
+-	m_tVolumeControl->setSingleShot(true);
+-	connect(m_tVolumeControl, SIGNAL(timeout()), ui->horizontalSliderVolume, SLOT(hide()));
+-
+-	ui->horizontalSliderVolume->hide();
+-}
+-
+-MediaControls::~MediaControls()
+-{
+-	delete ui;
+-}
+-
+-void MediaControls::mouseMoveEvent(QMouseEvent *e)
+-{
+-	if(ui->toolButtonMute->underMouse()) {
+-		if(!ui->horizontalSliderVolume->isVisible())
+-			ui->horizontalSliderVolume->show();
+-
+-		m_tVolumeControl->start(5000);
+-	}
+-
+-	QWidget::mouseMoveEvent(e);
+-}
+-
+-QToolButton *MediaControls::playPauseButton()
+-{
+-	return ui->toolButtonPlayPause;
+-}
+-
+-QToolButton *MediaControls::previousButton()
+-{
+-	return ui->toolButtonPrevious;
+-}
+-
+-QToolButton *MediaControls::stopButton()
+-{
+-	return ui->toolButtonStop;
+-}
+-
+-QToolButton *MediaControls::nextButton()
+-{
+-	return ui->toolButtonNext;
+-}
+-
+-QToolButton *MediaControls::openButton()
+-{
+-	return ui->toolButtonOpen;
+-}
+-
+-QToolButton *MediaControls::replayButton()
+-{
+-	return ui->toolButtonReplay;
+-}
+-
+-QToolButton *MediaControls::shuffleButton()
+-{
+-	return ui->toolButtonShuffle;
+-}
+-
+-QToolButton *MediaControls::fullScreenButton()
+-{
+-	return ui->toolButtonFullScreen;
+-}
+-
+-QToolButton *MediaControls::settingsButton()
+-{
+-	return ui->toolButtonSettings;
+-}
+-
+-QToolButton *MediaControls::muteButton()
+-{
+-	return ui->toolButtonMute;
+-}
+diff --git Quazaa/UI/mediaoverlay.cpp Quazaa/UI/mediaoverlay.cpp
+new file mode 100644
+index 00000000..077fd082
+--- /dev/null
++++ Quazaa/UI/mediaoverlay.cpp
+@@ -0,0 +1,107 @@
++#include "mediaoverlay.h"
++#include "ui_mediaoverlay.h"
++
++#include <QDebug>
++
++MediaOverlay::MediaOverlay(QWidget *parent) :
++	QWidget(parent),
++	ui(new Ui::MediaOverlay)
++{
++	ui->setupUi(this);
++
++	setPalette(Qt::transparent);
++	setAttribute(Qt::WA_OpaquePaintEvent, false);
++	setAttribute(Qt::WA_NoSystemBackground);
++
++	m_tMediaControls = new QTimer(this);
++	m_tMediaControls->setSingleShot(true);
++	connect(m_tMediaControls, SIGNAL(timeout()), ui->frameMediaControls, SLOT(hide()));
++	m_tVolumeControl = new QTimer(this);
++	m_tVolumeControl->setSingleShot(true);
++	connect(m_tVolumeControl, SIGNAL(timeout()), ui->horizontalSliderVolume, SLOT(hide()));
++
++	ui->frameMediaControls->hide();
++	ui->horizontalSliderVolume->hide();
++}
++
++MediaOverlay::~MediaOverlay()
++{
++	delete ui;
++}
++
++void MediaOverlay::mouseMoveEvent(QMouseEvent *e)
++{
++	if(underMouse()) {
++		if(!ui->frameMediaControls->isVisible())
++			ui->frameMediaControls->show();
++
++		m_tMediaControls->start(5000);
++	}
++
++	if(ui->toolButtonMute->underMouse()) {
++		if(!ui->horizontalSliderVolume->isVisible())
++			ui->horizontalSliderVolume->show();
++
++		m_tVolumeControl->start(5000);
++	}
++
++	QWidget::mouseMoveEvent(e);
++}
++
++void MediaOverlay::showControls()
++{
++	if(!ui->frameMediaControls->isVisible())
++		ui->frameMediaControls->show();
++
++	m_tMediaControls->start(5000);
++}
++
++QToolButton *MediaOverlay::playPauseButton()
++{
++	return ui->toolButtonPlayPause;
++}
++
++QToolButton *MediaOverlay::previousButton()
++{
++	return ui->toolButtonPrevious;
++}
++
++QToolButton *MediaOverlay::stopButton()
++{
++	return ui->toolButtonStop;
++}
++
++QToolButton *MediaOverlay::nextButton()
++{
++	return ui->toolButtonNext;
++}
++
++QToolButton *MediaOverlay::openButton()
++{
++	return ui->toolButtonOpen;
++}
++
++QToolButton *MediaOverlay::replayButton()
++{
++	return ui->toolButtonReplay;
++}
++
++QToolButton *MediaOverlay::shuffleButton()
++{
++	return ui->toolButtonShuffle;
++}
++
++QToolButton *MediaOverlay::fullScreenButton()
++{
++	return ui->toolButtonFullScreen;
++}
++
++QToolButton *MediaOverlay::settingsButton()
++{
++	return ui->toolButtonSettings;
++}
++
++QToolButton *MediaOverlay::muteButton()
++{
++	return ui->toolButtonMute;
++}
+diff --git Quazaa/UI/mediacontrols.h Quazaa/UI/mediaoverlay.h
+similarity index 75%
+rename from Quazaa/UI/mediacontrols.h
+rename to Quazaa/UI/mediaoverlay.h
+index bce583f1..51dc0c1f 100644
+--- Quazaa/UI/mediacontrols.h
++++ Quazaa/UI/mediaoverlay.h
+@@ -6,25 +6,27 @@
+ #include <QToolButton>
+ 
+ namespace Ui {
+-class MediaControls;
++class MediaOverlay;
+ }
+ 
+-class MediaControls : public QWidget
++class MediaOverlay : public QWidget
+ {
+ 	Q_OBJECT
+ 
+ public:
+-	explicit MediaControls(QWidget *parent = 0);
+-	~MediaControls();
++	explicit MediaOverlay(QWidget *parent = 0);
++	~MediaOverlay();
+ 
+ private:
+-	Ui::MediaControls *ui;
++	Ui::MediaOverlay *ui;
++	QTimer* m_tMediaControls;
+ 	QTimer* m_tVolumeControl;
+ 
+ protected:
+ 	void mouseMoveEvent(QMouseEvent *e);
+ 
+ public slots:
++	void showControls();
+ 	QToolButton* playPauseButton();
+ 	QToolButton* previousButton();
+ 	QToolButton* stopButton();
+diff --git Quazaa/UI/mediacontrols.ui Quazaa/UI/mediaoverlay.ui
+similarity index 96%
+rename from Quazaa/UI/mediacontrols.ui
+rename to Quazaa/UI/mediaoverlay.ui
+index e3c6133a..d53df426 100644
+--- Quazaa/UI/mediacontrols.ui
++++ Quazaa/UI/mediaoverlay.ui
+@@ -1,13 +1,13 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <ui version="4.0">
+- <class>MediaControls</class>
+- <widget class="QWidget" name="MediaControls">
++ <class>MediaOverlay</class>
++ <widget class="QWidget" name="MediaOverlay">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>646</width>
+-    <height>70</height>
++    <height>355</height>
+    </rect>
+   </property>
+   <property name="mouseTracking">
+@@ -17,24 +17,25 @@
+    <string>Form</string>
+   </property>
+   <property name="styleSheet">
+-   <string notr="true">QWidget#MediaControls {
+-	background-color: black;
++   <string notr="true">QWidget#MediaOverlay {
++	background-color: transparent;
+ }</string>
+   </property>
+   <layout class="QGridLayout" name="gridLayout">
+-   <property name="leftMargin">
+-    <number>4</number>
+-   </property>
+-   <property name="topMargin">
+-    <number>4</number>
+-   </property>
+-   <property name="rightMargin">
+-    <number>4</number>
+-   </property>
+-   <property name="bottomMargin">
+-    <number>4</number>
+-   </property>
+    <item row="0" column="0">
++    <spacer name="verticalSpacer">
++     <property name="orientation">
++      <enum>Qt::Vertical</enum>
++     </property>
++     <property name="sizeHint" stdset="0">
++      <size>
++       <width>20</width>
++       <height>258</height>
++      </size>
++     </property>
++    </spacer>
++   </item>
++   <item row="1" column="0">
+     <widget class="QFrame" name="frameMediaControls">
+      <property name="mouseTracking">
+       <bool>true</bool>
+diff --git Quazaa/UI/videocontainer.cpp Quazaa/UI/videocontainer.cpp
+deleted file mode 100644
+index afefa08a..00000000
+--- Quazaa/UI/videocontainer.cpp
++++ /dev/null
+@@ -1,77 +0,0 @@
+-#include "videocontainer.h"
+-#include "ui_videocontainer.h"
+-
+-#include <QKeyEvent>
+-#include <QMouseEvent>
+-#include <QDebug>
+-
+-VideoContainer::VideoContainer(QWidget *parent) :
+-	QWidget(parent),
+-	ui(new Ui::VideoContainer)
+-{
+-	ui->setupUi(this);
+-
+-	m_oVideoWidget = new VideoWidget();
+-	ui->verticalLayoutContents->addWidget(m_oVideoWidget);
+-
+-	m_oMediaControls = new MediaControls(this);
+-	ui->verticalLayoutContents->addWidget(m_oMediaControls);
+-	m_oMediaControls->hide();
+-
+-	m_tMediaControls = new QTimer(this);
+-	m_tMediaControls->setSingleShot(true);
+-	connect(m_tMediaControls, SIGNAL(timeout()), m_oMediaControls, SLOT(hide()));
+-}
+-
+-VideoContainer::~VideoContainer()
+-{
+-	delete ui;
+-}
+-
+-void VideoContainer::keyPressEvent(QKeyEvent *event)
+-{
+-	if (event->key() == Qt::Key_Escape && isFullScreen()) {
+-//		setFullScreen(false);
+-		event->accept();
+-	} else if (event->key() == Qt::Key_Enter && event->modifiers() & Qt::Key_Alt) {
+-//		setFullScreen(!isFullScreen());
+-		event->accept();
+-	} else {
+-		QWidget::keyPressEvent(event);
+-	}
+-}
+-
+-void VideoContainer::mouseDoubleClickEvent(QMouseEvent *event)
+-{
+-	emit doubleClicked();
+-	event->accept();
+-}
+-
+-void VideoContainer::mousePressEvent(QMouseEvent *event)
+-{
+-	QWidget::mousePressEvent(event);
+-}
+-
+-void VideoContainer::mouseMoveEvent(QMouseEvent *event)
+-{
+-	if(underMouse() || m_oVideoWidget->underMouse() || m_oMediaControls->underMouse()) {
+-		if(!m_oMediaControls->isVisible())
+-			m_oMediaControls->show();
+-
+-		m_tMediaControls->start(5000);
+-	}
+-
+-	QWidget::mouseMoveEvent(event);
+-}
+-
+-VideoWidget *VideoContainer::videoWidget()
+-{
+-	return m_oVideoWidget;
+-}
+-
+-MediaControls *VideoContainer::mediaControls()
+-{
+-	return m_oMediaControls;
+-}
+-
+-
+diff --git Quazaa/UI/videocontainer.h Quazaa/UI/videocontainer.h
+deleted file mode 100644
+index 0ff5fca4..00000000
+--- Quazaa/UI/videocontainer.h
++++ /dev/null
+@@ -1,40 +0,0 @@
+-#ifndef VIDEOCONTAINER_H
+-#define VIDEOCONTAINER_H
+-
+-#include <QWidget>
+-#include <QEvent>
+-
+-#include "videowidget.h"
+-#include "mediacontrols.h"
+-
+-namespace Ui {
+-class VideoContainer;
+-}
+-
+-class VideoContainer : public QWidget
+-{
+-	Q_OBJECT
+-
+-public:
+-	explicit VideoContainer(QWidget *parent = 0);
+-	~VideoContainer();
+-	VideoWidget* videoWidget();
+-	MediaControls* mediaControls();
+-
+-protected:
+-	void keyPressEvent(QKeyEvent *event);
+-	void mouseDoubleClickEvent(QMouseEvent *event);
+-	void mousePressEvent(QMouseEvent *event);
+-	void mouseMoveEvent(QMouseEvent *event);
+-
+-signals:
+-	void doubleClicked();
+-
+-private:
+-	Ui::VideoContainer *ui;
+-	VideoWidget *m_oVideoWidget;
+-	MediaControls *m_oMediaControls;
+-	QTimer* m_tMediaControls;
+-};
+-
+-#endif // VIDEOCONTAINER_H
+diff --git Quazaa/UI/videocontainer.ui Quazaa/UI/videocontainer.ui
+deleted file mode 100644
+index 06263548..00000000
+--- Quazaa/UI/videocontainer.ui
++++ /dev/null
+@@ -1,44 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<ui version="4.0">
+- <class>VideoContainer</class>
+- <widget class="QWidget" name="VideoContainer">
+-  <property name="geometry">
+-   <rect>
+-    <x>0</x>
+-    <y>0</y>
+-    <width>661</width>
+-    <height>410</height>
+-   </rect>
+-  </property>
+-  <property name="mouseTracking">
+-   <bool>true</bool>
+-  </property>
+-  <property name="windowTitle">
+-   <string>Form</string>
+-  </property>
+-  <property name="styleSheet">
+-   <string notr="true">QWidget#VideoContainer {
+-	background-color: black;
+-}</string>
+-  </property>
+-  <layout class="QVBoxLayout" name="verticalLayoutContents">
+-   <property name="spacing">
+-    <number>0</number>
+-   </property>
+-   <property name="leftMargin">
+-    <number>0</number>
+-   </property>
+-   <property name="topMargin">
+-    <number>0</number>
+-   </property>
+-   <property name="rightMargin">
+-    <number>0</number>
+-   </property>
+-   <property name="bottomMargin">
+-    <number>0</number>
+-   </property>
+-  </layout>
+- </widget>
+- <resources/>
+- <connections/>
+-</ui>
+diff --git Quazaa/UI/videowidget.cpp Quazaa/UI/videowidget.cpp
+index 1d546969..277091fe 100644
+--- Quazaa/UI/videowidget.cpp
++++ Quazaa/UI/videowidget.cpp
+@@ -1,5 +1,7 @@
+ #include "videowidget.h"
+ 
++#include <QKeyEvent>
++#include <QMouseEvent>
+ #include <QDebug>
+ 
+ VideoWidget::VideoWidget(QWidget *parent) :
+@@ -12,10 +14,52 @@ VideoWidget::VideoWidget(QWidget *parent) :
+ 	setPalette(p);
+ 
+ 	setAttribute(Qt::WA_OpaquePaintEvent);
+-	setAttribute(Qt::WA_TransparentForMouseEvents);
++
++	mediaOverlay = new MediaOverlay(this);
++	setMouseTracking(true);
+ }
+ 
+ VideoWidget::~VideoWidget()
+ {
+ 
+ }
++
++void VideoWidget::keyPressEvent(QKeyEvent *event)
++{
++	if (event->key() == Qt::Key_Escape && isFullScreen()) {
++		setFullScreen(false);
++		event->accept();
++	} else if (event->key() == Qt::Key_Enter && event->modifiers() & Qt::Key_Alt) {
++		setFullScreen(!isFullScreen());
++		event->accept();
++	} else {
++		QVideoWidget::keyPressEvent(event);
++	}
++}
++
++void VideoWidget::mouseDoubleClickEvent(QMouseEvent *event)
++{
++	setFullScreen(!isFullScreen());
++	event->accept();
++}
++
++void VideoWidget::mousePressEvent(QMouseEvent *event)
++{
++	QVideoWidget::mousePressEvent(event);
++}
++
++void VideoWidget::resizeEvent(QResizeEvent *event)
++{
++	//mediaOverlay->resize(event->size());
++	event->accept();
++}
++
++void VideoWidget::raiseControls()
++{
++	mediaOverlay->raise();
++}
++
++MediaOverlay *VideoWidget::controls()
++{
++	return mediaOverlay;
++}
+diff --git Quazaa/UI/videowidget.h Quazaa/UI/videowidget.h
+index 0804a502..d16a4192 100644
+--- Quazaa/UI/videowidget.h
++++ Quazaa/UI/videowidget.h
+@@ -2,7 +2,7 @@
+ #define VIDEOWIDGET_H
+ 
+ #include <QVideoWidget>
+-#include "mediacontrols.h"
++#include "mediaoverlay.h"
+ 
+ class VideoWidget : public QVideoWidget
+ {
+@@ -12,10 +12,19 @@ public:
+ 	~VideoWidget();
+ 
+ protected:
++	void keyPressEvent(QKeyEvent *event);
++	void mouseDoubleClickEvent(QMouseEvent *event);
++	void mousePressEvent(QMouseEvent *event);
++	void resizeEvent(QResizeEvent *event);
+ 
+ private:
++	MediaOverlay *mediaOverlay;
++
++signals:
+ 
+ public slots:
++	void raiseControls();
++	MediaOverlay* controls();
+ };
+ 
+ #endif // VIDEOWIDGET_H
+diff --git Quazaa/UI/widgetmedia.cpp Quazaa/UI/widgetmedia.cpp
+index b24dd7bd..cb607517 100644
+--- Quazaa/UI/widgetmedia.cpp
++++ Quazaa/UI/widgetmedia.cpp
+@@ -32,7 +32,6 @@
+ 
+ #include <QDebug>
+ #include <QtMultimedia>
+-#include <QDesktopWidget>
+ 
+ #include <QFileDialog>
+ 
+@@ -40,6 +39,7 @@
+ 
+ CWidgetMedia::CWidgetMedia(QWidget* parent) :
+ 	QWidget(parent),
++	videoWidget(0),
+ 	ui(new Ui::CWidgetMedia)
+ {
+ 	ui->setupUi(this);
+@@ -50,16 +50,15 @@ CWidgetMedia::CWidgetMedia(QWidget* parent) :
+ 	// owned by PlaylistModel
+ 	playlist = new QMediaPlaylist();
+ 	player->setPlaylist(playlist);
+-	videoContainer = new VideoContainer(this);
+ 
+-	player->setVideoOutput(videoContainer->videoWidget());
++	videoWidget = new VideoWidget(ui->videoContainerWidget);
++	player->setVideoOutput(videoWidget);
++	videoWidget->raiseControls(); // This corrects the controls being put under the video widget during setVideoWidget
+ 
+-	connect(videoContainer, SIGNAL(doubleClicked()), SLOT(toggleFullScreen()));
+-	connect(videoContainer->mediaControls()->fullScreenButton(), SIGNAL(clicked()), SLOT(toggleFullScreen()));
++	ui->verticalLayoutMedia->addWidget(videoWidget);
++	connect(videoWidget, SIGNAL(fullScreenChanged(bool)), SLOT(fullScreenChanged(bool)));
+ 
+-	ui->verticalLayoutMedia->addWidget(videoContainer);
+-
+-	connect(videoContainer->mediaControls()->openButton(), SIGNAL(clicked()), SLOT(openMedia()));
++	connect(videoWidget->controls()->openButton(), SIGNAL(clicked()), SLOT(openMedia()));
+ 
+ 	setSkin();
+ }
+@@ -87,6 +86,16 @@ void CWidgetMedia::saveWidget()
+ 	quazaaSettings.WinMain.MediaSplitter = ui->splitterMedia->saveState();
+ }
+ 
++void CWidgetMedia::on_actionMediaRepeat_triggered(bool checked)
++{
++	quazaaSettings.Media.Repeat = checked;
++}
++
++void CWidgetMedia::on_actionMediaShuffle_triggered(bool checked)
++{
++	quazaaSettings.Media.Shuffle = checked;
++}
++
+ void CWidgetMedia::on_splitterMedia_customContextMenuRequested(QPoint pos)
+ {
+ 	Q_UNUSED(pos);
+@@ -139,6 +148,13 @@ void CWidgetMedia::setSkin()
+ 	ui->listViewMediaPlaylist->setStyleSheet(skinSettings.listViews);
+ }
+ 
++void CWidgetMedia::fullScreenChanged(bool fullScreen)
++{
++	qDebug() << "Full screen change caught.";
++	if(!fullScreen)
++		ui->verticalLayoutMedia->addWidget(videoWidget);
++}
++
+ void CWidgetMedia::openMedia()
+ {
+ 	QString file = QFileDialog::getOpenFileName(this, tr("Open File"));
+@@ -149,16 +165,3 @@ void CWidgetMedia::openMedia()
+ 
+ 	player->play();
+ }
+-
+-void CWidgetMedia::toggleFullScreen()
+-{
+-	if(!ui->videoContainerWidget->isFullScreen()) {
+-		ui->videoContainerWidget->setParent(0);
+-		ui->videoContainerWidget->showFullScreen();
+-		videoContainer->mediaControls()->fullScreenButton()->setIcon(QIcon(":/Resource/Media/NoFullScreen.png"));
+-	} else {
+-		ui->videoContainerWidget->setParent(this);
+-		ui->splitterMedia->insertWidget(0,ui->videoContainerWidget);
+-		videoContainer->mediaControls()->fullScreenButton()->setIcon(QIcon(":/Resource/Media/FullScreen.png"));
+-	}
+-}
+diff --git Quazaa/UI/widgetmedia.h Quazaa/UI/widgetmedia.h
+index 385beded..9dec97df 100644
+--- Quazaa/UI/widgetmedia.h
++++ Quazaa/UI/widgetmedia.h
+@@ -22,7 +22,7 @@
+ #ifndef WIDGETMEDIA_H
+ #define WIDGETMEDIA_H
+ 
+-#include "videocontainer.h"
++#include "videowidget.h"
+ 
+ #include <QWidget>
+ #include <QSlider>
+@@ -52,14 +52,17 @@ private:
+ private slots:
+ 	void on_toolButtonMediaPlaylistTaskHeader_clicked();
+ 	void on_splitterMedia_customContextMenuRequested(QPoint pos);
++	void on_actionMediaShuffle_triggered(bool checked);
++	void on_actionMediaRepeat_triggered(bool checked);
+ 	void setSkin();
++	void fullScreenChanged(bool fullScreen);
+ 	void openMedia();
+-	void toggleFullScreen();
+ 
+ private:
+ 	QMediaPlayer *player;
+ 	QMediaPlaylist *playlist;
+-	VideoContainer *videoContainer;
++	VideoWidget *videoWidget;
++
+ };
+ 
+ #endif // WIDGETMEDIA_H
+diff --git Quazaa/UI/widgetmedia.ui Quazaa/UI/widgetmedia.ui
+index d92da2da..b6f954f8 100644
+--- Quazaa/UI/widgetmedia.ui
++++ Quazaa/UI/widgetmedia.ui
+@@ -63,11 +63,6 @@
+       <property name="autoFillBackground">
+        <bool>false</bool>
+       </property>
+-      <property name="styleSheet">
+-       <string notr="true">QWidget#videoContainerWidget {
+-	background-color: black;
+-}</string>
+-      </property>
+       <layout class="QVBoxLayout" name="verticalLayoutMedia">
+        <property name="spacing">
+         <number>0</number>
+-- 
+2.41.0
+

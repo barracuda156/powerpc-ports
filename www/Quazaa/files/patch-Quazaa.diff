@@ -1,0 +1,37 @@
+--- Quazaa/Quazaa.pro.orig	2018-11-01 18:03:01.000000000 +0800
++++ Quazaa/Quazaa.pro	2023-07-01 19:30:50.000000000 +0800
+@@ -78,8 +78,6 @@
+ 		UI \
+ 		.
+ 
+-include(3rdparty/communi-desktop/src/src.pri)
+-
+ # Version stuff
+ MAJOR = 0
+ MINOR = 1
+@@ -141,13 +139,13 @@
+ 		LIBS += -Lbin -luser32 -lole32 -lshell32 # if you are at windows os
+ }
+ mac {
+-		LIBS += -lz
++		LIBS += -lz -lIrcCore -lIrcModel -lIrcUtil
+ }
+ linux {
+-		LIBS += -lz -L/usr/lib
++		LIBS += -lz -lIrcCore -lIrcModel -lIrcUtil
+ }
+ unix {
+-		LIBS += -lz -L/usr/lib
++		LIBS += -lz -lIrcCore -lIrcModel -lIrcUtil
+ }
+ 
+ TEMPLATE = app
+@@ -223,7 +221,7 @@
+ }
+ 
+ # Use Qt's Zlib
+-INCLUDEPATH += $$[QT_INSTALL_HEADERS]/QtZlib
++INCLUDEPATH += $$[QT_INSTALL_HEADERS]/QtZlib $$[QT_INSTALL_HEADERS]/Communi
+ 
+ # Headers
+ HEADERS += \

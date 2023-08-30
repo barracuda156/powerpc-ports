@@ -1,0 +1,1927 @@
+From 75b6f16983246df7f047692566b3d0d5aca2f9cb Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Sat, 1 Jul 2023 23:04:55 +0800
+Subject: [PATCH 2/3] Revert several video-related breaking commits.
+
+This reverts commit 052fa081bae4db8e423ff0810b18f37c9b83afce.
+
+This reverts commit 2078b47cbb53bd9be4f2563ac90f6dd471f2ecec.
+
+This reverts commit e10c1067b3312bcb749a0d6a6d093c58137c9c68.
+
+This reverts commit 148b3706e8360f77a6e09fd54c822c61b258d31c.
+
+This reverts commit e16baa1003cf40ff4f995b2ed989dd77d0aa9b18.
+
+This reverts commit dbcedc6cc88ca534d7519a75f8b5d88ed5d1b252.
+---
+ Quazaa/Quazaa.pro            |  19 +-
+ Quazaa/UI/mediacontrols.cpp  |  84 ------
+ Quazaa/UI/mediacontrols.h    |  40 ---
+ Quazaa/UI/mediacontrols.ui   | 495 --------------------------------
+ Quazaa/UI/mediaoverlay.cpp   | 116 ++++++++
+ Quazaa/UI/mediaoverlay.h     |  60 ++++
+ Quazaa/UI/videocontainer.cpp |  77 -----
+ Quazaa/UI/videocontainer.h   |  40 ---
+ Quazaa/UI/videocontainer.ui  |  44 ---
+ Quazaa/UI/videowidget.cpp    |  21 --
+ Quazaa/UI/videowidget.h      |  21 --
+ Quazaa/UI/widgetmedia.cpp    | 101 ++++---
+ Quazaa/UI/widgetmedia.h      |  17 +-
+ Quazaa/UI/widgetmedia.ui     | 532 +++++++++++++++++++++++++++++++++--
+ Quazaa/main.cpp              |   7 +-
+ 15 files changed, 761 insertions(+), 913 deletions(-)
+ delete mode 100644 Quazaa/UI/mediacontrols.cpp
+ delete mode 100644 Quazaa/UI/mediacontrols.h
+ delete mode 100644 Quazaa/UI/mediacontrols.ui
+ create mode 100644 Quazaa/UI/mediaoverlay.cpp
+ create mode 100644 Quazaa/UI/mediaoverlay.h
+ delete mode 100644 Quazaa/UI/videocontainer.cpp
+ delete mode 100644 Quazaa/UI/videocontainer.h
+ delete mode 100644 Quazaa/UI/videocontainer.ui
+ delete mode 100644 Quazaa/UI/videowidget.cpp
+ delete mode 100644 Quazaa/UI/videowidget.h
+
+diff --git Quazaa/Quazaa.pro Quazaa/Quazaa.pro
+index aef9b78e..15285025 100644
+--- Quazaa/Quazaa.pro
++++ Quazaa/Quazaa.pro
+@@ -29,11 +29,10 @@ QT_VER_MAJ = $$member(QT_VERSION, 0)
+ QT_VER_MIN = $$member(QT_VERSION, 1)
+ 
+ greaterThan(QT_VER_MAJ, 4) {
+-		QT +=	widgets \
++		QT += widgets \
++				gui \
+ 				multimedia \
+-				multimediawidgets \
+-				network \
+-				xml
++				multimediawidgets
+ }
+ 
+ QT += network \
+@@ -396,9 +395,7 @@ HEADERS += \
+ 		Models/securityfiltermodel.h \
+ 		UI/dialogimportsecurity.h \
+ 	UI/dialogmodifyrule.h \
+-	UI/videowidget.h \
+-	UI/mediacontrols.h \
+-    UI/videocontainer.h
++    UI/mediaoverlay.h
+ 
+ # Sources
+ SOURCES += \
+@@ -559,9 +556,7 @@ SOURCES += \
+ 		Models/securityfiltermodel.cpp \
+ 		UI/dialogimportsecurity.cpp \
+ 	UI/dialogmodifyrule.cpp \
+-	UI/videowidget.cpp \
+-	UI/mediacontrols.cpp \
+-    UI/videocontainer.cpp
++    UI/mediaoverlay.cpp
+ 
+ FORMS += \
+ 		UI/dialogabout.ui \
+@@ -621,9 +616,7 @@ FORMS += \
+ 	UI/dialogirccolordialog.ui \
+ 	UI/wizardircconnection.ui \
+ 	UI/dialogimportsecurity.ui \
+-	UI/dialogmodifyrule.ui \
+-	UI/mediacontrols.ui \
+-    UI/videocontainer.ui
++	UI/dialogmodifyrule.ui
+ 
+ TRANSLATIONS = \
+ 		Language/quazaa_af.ts \
+diff --git Quazaa/UI/mediacontrols.cpp Quazaa/UI/mediacontrols.cpp
+deleted file mode 100644
+index bc0ef10e..00000000
+--- Quazaa/UI/mediacontrols.cpp
++++ /dev/null
+@@ -1,84 +0,0 @@
+-#include "mediacontrols.h"
+-#include "ui_mediacontrols.h"
+-
+-#include <QDebug>
+-
+-MediaControls::MediaControls(QWidget *parent) :
+-	QWidget(parent),
+-	ui(new Ui::MediaControls)
+-{
+-	ui->setupUi(this);
+-
+-	m_tVolumeControl = new QTimer(this);
+-	m_tVolumeControl->setSingleShot(true);
+-	connect(m_tVolumeControl, SIGNAL(timeout()), ui->horizontalSliderVolume, SLOT(hide()));
+-
+-	ui->horizontalSliderVolume->hide();
+-}
+-
+-MediaControls::~MediaControls()
+-{
+-	delete ui;
+-}
+-
+-void MediaControls::mouseMoveEvent(QMouseEvent *e)
+-{
+-	if(ui->toolButtonMute->underMouse()) {
+-		if(!ui->horizontalSliderVolume->isVisible())
+-			ui->horizontalSliderVolume->show();
+-
+-		m_tVolumeControl->start(5000);
+-	}
+-
+-	QWidget::mouseMoveEvent(e);
+-}
+-
+-QToolButton *MediaControls::playPauseButton()
+-{
+-	return ui->toolButtonPlayPause;
+-}
+-
+-QToolButton *MediaControls::previousButton()
+-{
+-	return ui->toolButtonPrevious;
+-}
+-
+-QToolButton *MediaControls::stopButton()
+-{
+-	return ui->toolButtonStop;
+-}
+-
+-QToolButton *MediaControls::nextButton()
+-{
+-	return ui->toolButtonNext;
+-}
+-
+-QToolButton *MediaControls::openButton()
+-{
+-	return ui->toolButtonOpen;
+-}
+-
+-QToolButton *MediaControls::replayButton()
+-{
+-	return ui->toolButtonReplay;
+-}
+-
+-QToolButton *MediaControls::shuffleButton()
+-{
+-	return ui->toolButtonShuffle;
+-}
+-
+-QToolButton *MediaControls::fullScreenButton()
+-{
+-	return ui->toolButtonFullScreen;
+-}
+-
+-QToolButton *MediaControls::settingsButton()
+-{
+-	return ui->toolButtonSettings;
+-}
+-
+-QToolButton *MediaControls::muteButton()
+-{
+-	return ui->toolButtonMute;
+-}
+diff --git Quazaa/UI/mediacontrols.h Quazaa/UI/mediacontrols.h
+deleted file mode 100644
+index bce583f1..00000000
+--- Quazaa/UI/mediacontrols.h
++++ /dev/null
+@@ -1,40 +0,0 @@
+-#ifndef MEDIAOVERLAY_H
+-#define MEDIAOVERLAY_H
+-
+-#include <QWidget>
+-#include <QTimer>
+-#include <QToolButton>
+-
+-namespace Ui {
+-class MediaControls;
+-}
+-
+-class MediaControls : public QWidget
+-{
+-	Q_OBJECT
+-
+-public:
+-	explicit MediaControls(QWidget *parent = 0);
+-	~MediaControls();
+-
+-private:
+-	Ui::MediaControls *ui;
+-	QTimer* m_tVolumeControl;
+-
+-protected:
+-	void mouseMoveEvent(QMouseEvent *e);
+-
+-public slots:
+-	QToolButton* playPauseButton();
+-	QToolButton* previousButton();
+-	QToolButton* stopButton();
+-	QToolButton* nextButton();
+-	QToolButton* openButton();
+-	QToolButton* replayButton();
+-	QToolButton* shuffleButton();
+-	QToolButton* fullScreenButton();
+-	QToolButton* settingsButton();
+-	QToolButton* muteButton();
+-};
+-
+-#endif // MEDIAOVERLAY_H
+diff --git Quazaa/UI/mediacontrols.ui Quazaa/UI/mediacontrols.ui
+deleted file mode 100644
+index e3c6133a..00000000
+--- Quazaa/UI/mediacontrols.ui
++++ /dev/null
+@@ -1,495 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<ui version="4.0">
+- <class>MediaControls</class>
+- <widget class="QWidget" name="MediaControls">
+-  <property name="geometry">
+-   <rect>
+-    <x>0</x>
+-    <y>0</y>
+-    <width>646</width>
+-    <height>70</height>
+-   </rect>
+-  </property>
+-  <property name="mouseTracking">
+-   <bool>true</bool>
+-  </property>
+-  <property name="windowTitle">
+-   <string>Form</string>
+-  </property>
+-  <property name="styleSheet">
+-   <string notr="true">QWidget#MediaControls {
+-	background-color: black;
+-}</string>
+-  </property>
+-  <layout class="QGridLayout" name="gridLayout">
+-   <property name="leftMargin">
+-    <number>4</number>
+-   </property>
+-   <property name="topMargin">
+-    <number>4</number>
+-   </property>
+-   <property name="rightMargin">
+-    <number>4</number>
+-   </property>
+-   <property name="bottomMargin">
+-    <number>4</number>
+-   </property>
+-   <item row="0" column="0">
+-    <widget class="QFrame" name="frameMediaControls">
+-     <property name="mouseTracking">
+-      <bool>true</bool>
+-     </property>
+-     <property name="styleSheet">
+-      <string notr="true">QFrame#frameMediaControls {
+-	background-color: rgba(180, 180, 180, 140);
+-	border-radius: 10px;
+-}</string>
+-     </property>
+-     <property name="frameShape">
+-      <enum>QFrame::StyledPanel</enum>
+-     </property>
+-     <property name="frameShadow">
+-      <enum>QFrame::Raised</enum>
+-     </property>
+-     <layout class="QGridLayout" name="gridLayout_2">
+-      <property name="leftMargin">
+-       <number>6</number>
+-      </property>
+-      <property name="topMargin">
+-       <number>6</number>
+-      </property>
+-      <property name="rightMargin">
+-       <number>6</number>
+-      </property>
+-      <property name="bottomMargin">
+-       <number>6</number>
+-      </property>
+-      <property name="spacing">
+-       <number>6</number>
+-      </property>
+-      <item row="0" column="0" colspan="2">
+-       <layout class="QHBoxLayout" name="horizontalLayout_2">
+-        <item>
+-         <widget class="QToolButton" name="toolButtonPlayPause">
+-          <property name="enabled">
+-           <bool>true</bool>
+-          </property>
+-          <property name="styleSheet">
+-           <string notr="true">QToolButton {
+-	background: transparent;
+-	border: 0px solid transparent;
+-	image: url(:/Resource/Media/PlayMedia.png);
+-}
+-
+-QToolButton:hover {
+-	image: url(:/Resource/Media/PlayMediaH.png);
+-}
+-
+-QToolButton:pressed {
+-	image: url(:/Resource/Media/PlayMediaP.png);
+-}
+-
+-QToolButton:disabled {
+-	image: url(:/Resource/Media/PlayMediaD.png);
+-}
+-
+-QToolButton:checked {
+-	image: url(:/Resource/Media/PauseMedia.png);
+-}
+-
+-QToolButton:checked:hover {
+-	image: url(:/Resource/Media/PauseMediaH.png);
+-}
+-
+-QToolButton:checked:pressed {
+-	image: url(:/Resource/Media/PauseMediaP.png);
+-}
+-
+-QToolButton:checked:disabled {
+-	image: url(:/Resource/Media/PauseMediaD.png);
+-}
+-</string>
+-          </property>
+-          <property name="text">
+-           <string/>
+-          </property>
+-          <property name="iconSize">
+-           <size>
+-            <width>32</width>
+-            <height>32</height>
+-           </size>
+-          </property>
+-          <property name="checkable">
+-           <bool>true</bool>
+-          </property>
+-          <property name="checked">
+-           <bool>false</bool>
+-          </property>
+-         </widget>
+-        </item>
+-        <item>
+-         <widget class="QToolButton" name="toolButtonPrevious">
+-          <property name="styleSheet">
+-           <string notr="true">QToolButton {
+-	background: transparent;
+-	border: 0px solid transparent;
+-	image: url(:/Resource/Media/PreviousMediaTrack.png);
+-}
+-
+-QToolButton:hover {
+-	image: url(:/Resource/Media/PreviousMediaTrackH.png);
+-}
+-
+-QToolButton:pressed {
+-	image: url(:/Resource/Media/PreviousMediaTrackP.png);
+-}
+-
+-QToolButton:disabled {
+-	image: url(:/Resource/Media/PreviousMediaTrackD.png);
+-}
+-</string>
+-          </property>
+-          <property name="text">
+-           <string/>
+-          </property>
+-          <property name="iconSize">
+-           <size>
+-            <width>26</width>
+-            <height>26</height>
+-           </size>
+-          </property>
+-         </widget>
+-        </item>
+-        <item>
+-         <widget class="QToolButton" name="toolButtonStop">
+-          <property name="styleSheet">
+-           <string notr="true">QToolButton {
+-	background: transparent;
+-	border: 0px solid transparent;
+-	image: url(:/Resource/Media/StopMedia.png);
+-}
+-
+-QToolButton:hover {
+-	image: url(:/Resource/Media/StopMediaH.png);
+-}
+-
+-QToolButton:pressed {
+-	image: url(:/Resource/Media/StopMediaP.png);
+-}
+-
+-QToolButton:disabled {
+-	image: url(:/Resource/Media/StopMediaD.png);
+-}
+-</string>
+-          </property>
+-          <property name="text">
+-           <string/>
+-          </property>
+-          <property name="iconSize">
+-           <size>
+-            <width>26</width>
+-            <height>26</height>
+-           </size>
+-          </property>
+-         </widget>
+-        </item>
+-        <item>
+-         <widget class="QToolButton" name="toolButtonNext">
+-          <property name="styleSheet">
+-           <string notr="true">QToolButton {
+-	background: transparent;
+-	border: 0px solid transparent;
+-	image: url(:/Resource/Media/NextMediaTrack.png);
+-}
+-
+-QToolButton:hover {
+-	image: url(:/Resource/Media/NextMediaTrackH.png);
+-}
+-
+-QToolButton:pressed {
+-	image: url(:/Resource/Media/NextMediaTrackP.png);
+-}
+-
+-QToolButton:disabled {
+-	image: url(:/Resource/Media/NextMediaTrackD.png);
+-}
+-</string>
+-          </property>
+-          <property name="text">
+-           <string/>
+-          </property>
+-          <property name="iconSize">
+-           <size>
+-            <width>26</width>
+-            <height>26</height>
+-           </size>
+-          </property>
+-         </widget>
+-        </item>
+-        <item>
+-         <widget class="Line" name="line">
+-          <property name="orientation">
+-           <enum>Qt::Vertical</enum>
+-          </property>
+-         </widget>
+-        </item>
+-        <item>
+-         <widget class="QToolButton" name="toolButtonOpen">
+-          <property name="styleSheet">
+-           <string notr="true">QToolButton {
+-	background: transparent;
+-	border: 0px solid transparent;
+-	image: url(:/Resource/Media/OpenMedia.png);
+-}
+-
+-QToolButton:hover {
+-	image: url(:/Resource/Media/OpenMediaH.png);
+-}
+-
+-QToolButton:pressed {
+-	image: url(:/Resource/Media/OpenMediaP.png);
+-}
+-
+-QToolButton:disabled {
+-	image: url(:/Resource/Media/OpenMediaD.png);
+-}
+-</string>
+-          </property>
+-          <property name="text">
+-           <string/>
+-          </property>
+-          <property name="iconSize">
+-           <size>
+-            <width>26</width>
+-            <height>26</height>
+-           </size>
+-          </property>
+-         </widget>
+-        </item>
+-        <item>
+-         <widget class="Line" name="line_2">
+-          <property name="orientation">
+-           <enum>Qt::Vertical</enum>
+-          </property>
+-         </widget>
+-        </item>
+-        <item>
+-         <widget class="QToolButton" name="toolButtonReplay">
+-          <property name="styleSheet">
+-           <string notr="true">QToolButton {
+-	background: transparent;
+-	border: 0px solid transparent;
+-	image: url(:/Resource/Media/Repeat.png);
+-}
+-
+-QToolButton:hover {
+-	image: url(:/Resource/Media/RepeatH.png);
+-}
+-
+-QToolButton:pressed {
+-	image: url(:/Resource/Media/RepeatP.png);
+-}
+-
+-QToolButton:disabled {
+-	image: url(:/Resource/Media/RepeatD.png);
+-}
+-</string>
+-          </property>
+-          <property name="text">
+-           <string/>
+-          </property>
+-          <property name="iconSize">
+-           <size>
+-            <width>26</width>
+-            <height>26</height>
+-           </size>
+-          </property>
+-         </widget>
+-        </item>
+-        <item>
+-         <widget class="QToolButton" name="toolButtonShuffle">
+-          <property name="styleSheet">
+-           <string notr="true">QToolButton {
+-	background: transparent;
+-	border: 0px solid transparent;
+-	image: url(:/Resource/Media/Shuffle.png);
+-}
+-
+-QToolButton:hover {
+-	image: url(:/Resource/Media/ShuffleH.png);
+-}
+-
+-QToolButton:pressed {
+-	image: url(:/Resource/Media/ShuffleP.png);
+-}
+-
+-QToolButton:disabled {
+-	image: url(:/Resource/Media/ShuffleD.png);
+-}
+-</string>
+-          </property>
+-          <property name="text">
+-           <string/>
+-          </property>
+-          <property name="iconSize">
+-           <size>
+-            <width>26</width>
+-            <height>26</height>
+-           </size>
+-          </property>
+-         </widget>
+-        </item>
+-        <item>
+-         <spacer name="horizontalSpacer_3">
+-          <property name="orientation">
+-           <enum>Qt::Horizontal</enum>
+-          </property>
+-          <property name="sizeHint" stdset="0">
+-           <size>
+-            <width>40</width>
+-            <height>20</height>
+-           </size>
+-          </property>
+-         </spacer>
+-        </item>
+-        <item>
+-         <widget class="QToolButton" name="toolButtonFullScreen">
+-          <property name="text">
+-           <string/>
+-          </property>
+-          <property name="icon">
+-           <iconset resource="../Resource.qrc">
+-            <normaloff>:/Resource/Media/FullScreen.png</normaloff>:/Resource/Media/FullScreen.png</iconset>
+-          </property>
+-          <property name="iconSize">
+-           <size>
+-            <width>26</width>
+-            <height>26</height>
+-           </size>
+-          </property>
+-         </widget>
+-        </item>
+-        <item>
+-         <widget class="QToolButton" name="toolButtonSettings">
+-          <property name="text">
+-           <string/>
+-          </property>
+-          <property name="icon">
+-           <iconset resource="../Resource.qrc">
+-            <normaloff>:/Resource/Generic/Settings.png</normaloff>:/Resource/Generic/Settings.png</iconset>
+-          </property>
+-          <property name="iconSize">
+-           <size>
+-            <width>26</width>
+-            <height>26</height>
+-           </size>
+-          </property>
+-         </widget>
+-        </item>
+-        <item>
+-         <spacer name="horizontalSpacer_4">
+-          <property name="orientation">
+-           <enum>Qt::Horizontal</enum>
+-          </property>
+-          <property name="sizeHint" stdset="0">
+-           <size>
+-            <width>40</width>
+-            <height>20</height>
+-           </size>
+-          </property>
+-         </spacer>
+-        </item>
+-        <item>
+-         <widget class="QToolButton" name="toolButtonMute">
+-          <property name="mouseTracking">
+-           <bool>true</bool>
+-          </property>
+-          <property name="styleSheet">
+-           <string notr="true">QToolButton {
+-	background: transparent;
+-	border: 0px solid transparent;
+-	image: url(:/Resource/Media/Mute.png);
+-}
+-
+-QToolButton:hover {
+-	image: url(:/Resource/Media/MuteH.png);
+-}
+-
+-QToolButton:pressed {
+-	image: url(:/Resource/Media/MuteP.png);
+-}
+-
+-QToolButton:checked {
+-	image: url(:/Resource/Media/Unmute.png);
+-}
+-
+-QToolButton:checked:hover {
+-	image: url(:/Resource/Media/UnmuteH.png);
+-}
+-
+-QToolButton:checked:pressed {
+-	image: url(:/Resource/Media/UnmuteP.png);
+-}</string>
+-          </property>
+-          <property name="text">
+-           <string/>
+-          </property>
+-          <property name="iconSize">
+-           <size>
+-            <width>26</width>
+-            <height>26</height>
+-           </size>
+-          </property>
+-          <property name="checkable">
+-           <bool>true</bool>
+-          </property>
+-          <property name="checked">
+-           <bool>true</bool>
+-          </property>
+-         </widget>
+-        </item>
+-        <item>
+-         <widget class="QSlider" name="horizontalSliderVolume">
+-          <property name="minimumSize">
+-           <size>
+-            <width>75</width>
+-            <height>15</height>
+-           </size>
+-          </property>
+-          <property name="maximumSize">
+-           <size>
+-            <width>75</width>
+-            <height>15</height>
+-           </size>
+-          </property>
+-          <property name="orientation">
+-           <enum>Qt::Horizontal</enum>
+-          </property>
+-         </widget>
+-        </item>
+-       </layout>
+-      </item>
+-      <item row="1" column="0">
+-       <widget class="QSlider" name="horizontalSliderSeek">
+-        <property name="orientation">
+-         <enum>Qt::Horizontal</enum>
+-        </property>
+-       </widget>
+-      </item>
+-      <item row="1" column="1">
+-       <widget class="QLabel" name="labelTime">
+-        <property name="text">
+-         <string>0:00 / 0:00</string>
+-        </property>
+-       </widget>
+-      </item>
+-     </layout>
+-    </widget>
+-   </item>
+-  </layout>
+- </widget>
+- <resources>
+-  <include location="../Resource.qrc"/>
+- </resources>
+- <connections/>
+-</ui>
+diff --git Quazaa/UI/mediaoverlay.cpp Quazaa/UI/mediaoverlay.cpp
+new file mode 100644
+index 00000000..11722657
+--- /dev/null
++++ Quazaa/UI/mediaoverlay.cpp
+@@ -0,0 +1,116 @@
++/*
++* Copyright (C) 2008-2013 The Communi Project
++*
++* This program is free software; you can redistribute it and/or modify
++* it under the terms of the GNU General Public License as published by
++* the Free Software Foundation; either version 2 of the License, or
++* (at your option) any later version.
++*
++* This program is distributed in the hope that it will be useful,
++* but WITHOUT ANY WARRANTY; without even the implied warranty of
++* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++* GNU General Public License for more details.
++*/
++
++#include "mediaoverlay.h"
++#include <QResizeEvent>
++#include <QMovie>
++#include <QDebug>
++
++MediaOverlay::MediaOverlay(QWidget* parent) : QLabel(parent)
++{
++	d.dark = false;
++	d.button = 0;
++	d.prevParent = 0;
++
++	d.button = new QToolButton(this);
++	d.button->setObjectName("reconnectButton");
++	d.button->setFixedSize(32, 32);
++	connect(d.button, SIGNAL(clicked()), this, SIGNAL(refresh()));
++
++	setFocusProxy(d.button);
++	setFocusPolicy(Qt::StrongFocus);
++
++	setVisible(false);
++	setAlignment(Qt::AlignCenter);
++	setAttribute(Qt::WA_TransparentForMouseEvents);
++}
++
++bool MediaOverlay::isBusy() const
++{
++	return movie();
++}
++
++void MediaOverlay::setBusy(bool busy)
++{
++	QMovie* mov = movie();
++	if (busy) {
++		if (!mov) {
++			mov = new QMovie(QString(":/Resource/ajax-loader-%1.gif").arg(d.dark ? "dark" : "light"), QByteArray(), this);
++			qDebug() << "QMovie supported formats: " << movie()->supportedFormats();
++			setMovie(mov);
++		}
++		mov->start();
++	} else {
++		delete mov;
++	}
++}
++
++bool MediaOverlay::isDark() const
++{
++	return d.dark;
++}
++
++void MediaOverlay::setDark(bool dark)
++{
++	if (d.dark != dark) {
++		d.dark = dark;
++		if (movie()) {
++			qDebug() << "QMovie supported formats: " << movie()->supportedFormats();
++			movie()->setFileName(QString(":/Resource/ajax-loader-%1.gif").arg(d.dark ? "dark" : "light"));
++		}
++	}
++}
++
++bool MediaOverlay::hasRefresh() const
++{
++	return d.button;
++}
++
++void MediaOverlay::setRefresh(bool enabled)
++{
++	d.button->setVisible(enabled);
++}
++
++bool MediaOverlay::event(QEvent* event)
++{
++	if (event->type() == QEvent::ParentChange)
++		reparent();
++	return QLabel::event(event);
++}
++
++bool MediaOverlay::eventFilter(QObject* object, QEvent* event)
++{
++	Q_UNUSED(object);
++	if (event->type() == QEvent::Resize)
++		relayout();
++	return false;
++}
++
++void MediaOverlay::relayout()
++{
++	resize(parentWidget()->size());
++	if (d.button)
++		d.button->move(rect().center() - d.button->rect().center());
++}
++
++void MediaOverlay::reparent()
++{
++	if (d.prevParent)
++		d.prevParent->removeEventFilter(this);
++	Q_ASSERT(parentWidget());
++	parentWidget()->installEventFilter(this);
++	d.button->setParent(parentWidget());
++	d.prevParent = parentWidget();
++	relayout();
++}
+diff --git Quazaa/UI/mediaoverlay.h Quazaa/UI/mediaoverlay.h
+new file mode 100644
+index 00000000..f5250143
+--- /dev/null
++++ Quazaa/UI/mediaoverlay.h
+@@ -0,0 +1,60 @@
++/*
++* Copyright (C) 2008-2013 The Communi Project
++*
++* This program is free software; you can redistribute it and/or modify
++* it under the terms of the GNU General Public License as published by
++* the Free Software Foundation; either version 2 of the License, or
++* (at your option) any later version.
++*
++* This program is distributed in the hope that it will be useful,
++* but WITHOUT ANY WARRANTY; without even the implied warranty of
++* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++* GNU General Public License for more details.
++*/
++
++#ifndef OVERLAY_H
++#define OVERLAY_H
++
++#include <QLabel>
++#include <QPointer>
++#include <QToolButton>
++
++class MediaOverlay : public QLabel
++{
++	Q_OBJECT
++	Q_PROPERTY(bool busy READ isBusy WRITE setBusy)
++	Q_PROPERTY(bool dark READ isDark WRITE setDark)
++	Q_PROPERTY(bool refresh READ hasRefresh WRITE setRefresh)
++
++public:
++	explicit MediaOverlay(QWidget* parent);
++
++	bool isBusy() const;
++	void setBusy(bool busy);
++
++	bool isDark() const;
++	void setDark(bool dark);
++
++	bool hasRefresh() const;
++	void setRefresh(bool enabled);
++
++signals:
++	void refresh();
++
++protected:
++	bool event(QEvent* event);
++	bool eventFilter(QObject* object, QEvent* event);
++
++private slots:
++	void relayout();
++	void reparent();
++
++private:
++	struct Private {
++		bool dark;
++		QToolButton* button;
++		QPointer<QWidget> prevParent;
++	} d;
++};
++
++#endif // OVERLAY_H
+diff --git Quazaa/UI/videocontainer.cpp Quazaa/UI/videocontainer.cpp
+deleted file mode 100644
+index afefa08a..00000000
+--- Quazaa/UI/videocontainer.cpp
++++ /dev/null
+@@ -1,77 +0,0 @@
+-#include "videocontainer.h"
+-#include "ui_videocontainer.h"
+-
+-#include <QKeyEvent>
+-#include <QMouseEvent>
+-#include <QDebug>
+-
+-VideoContainer::VideoContainer(QWidget *parent) :
+-	QWidget(parent),
+-	ui(new Ui::VideoContainer)
+-{
+-	ui->setupUi(this);
+-
+-	m_oVideoWidget = new VideoWidget();
+-	ui->verticalLayoutContents->addWidget(m_oVideoWidget);
+-
+-	m_oMediaControls = new MediaControls(this);
+-	ui->verticalLayoutContents->addWidget(m_oMediaControls);
+-	m_oMediaControls->hide();
+-
+-	m_tMediaControls = new QTimer(this);
+-	m_tMediaControls->setSingleShot(true);
+-	connect(m_tMediaControls, SIGNAL(timeout()), m_oMediaControls, SLOT(hide()));
+-}
+-
+-VideoContainer::~VideoContainer()
+-{
+-	delete ui;
+-}
+-
+-void VideoContainer::keyPressEvent(QKeyEvent *event)
+-{
+-	if (event->key() == Qt::Key_Escape && isFullScreen()) {
+-//		setFullScreen(false);
+-		event->accept();
+-	} else if (event->key() == Qt::Key_Enter && event->modifiers() & Qt::Key_Alt) {
+-//		setFullScreen(!isFullScreen());
+-		event->accept();
+-	} else {
+-		QWidget::keyPressEvent(event);
+-	}
+-}
+-
+-void VideoContainer::mouseDoubleClickEvent(QMouseEvent *event)
+-{
+-	emit doubleClicked();
+-	event->accept();
+-}
+-
+-void VideoContainer::mousePressEvent(QMouseEvent *event)
+-{
+-	QWidget::mousePressEvent(event);
+-}
+-
+-void VideoContainer::mouseMoveEvent(QMouseEvent *event)
+-{
+-	if(underMouse() || m_oVideoWidget->underMouse() || m_oMediaControls->underMouse()) {
+-		if(!m_oMediaControls->isVisible())
+-			m_oMediaControls->show();
+-
+-		m_tMediaControls->start(5000);
+-	}
+-
+-	QWidget::mouseMoveEvent(event);
+-}
+-
+-VideoWidget *VideoContainer::videoWidget()
+-{
+-	return m_oVideoWidget;
+-}
+-
+-MediaControls *VideoContainer::mediaControls()
+-{
+-	return m_oMediaControls;
+-}
+-
+-
+diff --git Quazaa/UI/videocontainer.h Quazaa/UI/videocontainer.h
+deleted file mode 100644
+index 0ff5fca4..00000000
+--- Quazaa/UI/videocontainer.h
++++ /dev/null
+@@ -1,40 +0,0 @@
+-#ifndef VIDEOCONTAINER_H
+-#define VIDEOCONTAINER_H
+-
+-#include <QWidget>
+-#include <QEvent>
+-
+-#include "videowidget.h"
+-#include "mediacontrols.h"
+-
+-namespace Ui {
+-class VideoContainer;
+-}
+-
+-class VideoContainer : public QWidget
+-{
+-	Q_OBJECT
+-
+-public:
+-	explicit VideoContainer(QWidget *parent = 0);
+-	~VideoContainer();
+-	VideoWidget* videoWidget();
+-	MediaControls* mediaControls();
+-
+-protected:
+-	void keyPressEvent(QKeyEvent *event);
+-	void mouseDoubleClickEvent(QMouseEvent *event);
+-	void mousePressEvent(QMouseEvent *event);
+-	void mouseMoveEvent(QMouseEvent *event);
+-
+-signals:
+-	void doubleClicked();
+-
+-private:
+-	Ui::VideoContainer *ui;
+-	VideoWidget *m_oVideoWidget;
+-	MediaControls *m_oMediaControls;
+-	QTimer* m_tMediaControls;
+-};
+-
+-#endif // VIDEOCONTAINER_H
+diff --git Quazaa/UI/videocontainer.ui Quazaa/UI/videocontainer.ui
+deleted file mode 100644
+index 06263548..00000000
+--- Quazaa/UI/videocontainer.ui
++++ /dev/null
+@@ -1,44 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<ui version="4.0">
+- <class>VideoContainer</class>
+- <widget class="QWidget" name="VideoContainer">
+-  <property name="geometry">
+-   <rect>
+-    <x>0</x>
+-    <y>0</y>
+-    <width>661</width>
+-    <height>410</height>
+-   </rect>
+-  </property>
+-  <property name="mouseTracking">
+-   <bool>true</bool>
+-  </property>
+-  <property name="windowTitle">
+-   <string>Form</string>
+-  </property>
+-  <property name="styleSheet">
+-   <string notr="true">QWidget#VideoContainer {
+-	background-color: black;
+-}</string>
+-  </property>
+-  <layout class="QVBoxLayout" name="verticalLayoutContents">
+-   <property name="spacing">
+-    <number>0</number>
+-   </property>
+-   <property name="leftMargin">
+-    <number>0</number>
+-   </property>
+-   <property name="topMargin">
+-    <number>0</number>
+-   </property>
+-   <property name="rightMargin">
+-    <number>0</number>
+-   </property>
+-   <property name="bottomMargin">
+-    <number>0</number>
+-   </property>
+-  </layout>
+- </widget>
+- <resources/>
+- <connections/>
+-</ui>
+diff --git Quazaa/UI/videowidget.cpp Quazaa/UI/videowidget.cpp
+deleted file mode 100644
+index 1d546969..00000000
+--- Quazaa/UI/videowidget.cpp
++++ /dev/null
+@@ -1,21 +0,0 @@
+-#include "videowidget.h"
+-
+-#include <QDebug>
+-
+-VideoWidget::VideoWidget(QWidget *parent) :
+-	QVideoWidget(parent)
+-{
+-	setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+-
+-	QPalette p = palette();
+-	p.setColor(QPalette::Window, Qt::black);
+-	setPalette(p);
+-
+-	setAttribute(Qt::WA_OpaquePaintEvent);
+-	setAttribute(Qt::WA_TransparentForMouseEvents);
+-}
+-
+-VideoWidget::~VideoWidget()
+-{
+-
+-}
+diff --git Quazaa/UI/videowidget.h Quazaa/UI/videowidget.h
+deleted file mode 100644
+index 0804a502..00000000
+--- Quazaa/UI/videowidget.h
++++ /dev/null
+@@ -1,21 +0,0 @@
+-#ifndef VIDEOWIDGET_H
+-#define VIDEOWIDGET_H
+-
+-#include <QVideoWidget>
+-#include "mediacontrols.h"
+-
+-class VideoWidget : public QVideoWidget
+-{
+-	Q_OBJECT
+-public:
+-	explicit VideoWidget(QWidget *parent = 0);
+-	~VideoWidget();
+-
+-protected:
+-
+-private:
+-
+-public slots:
+-};
+-
+-#endif // VIDEOWIDGET_H
+diff --git Quazaa/UI/widgetmedia.cpp Quazaa/UI/widgetmedia.cpp
+index b24dd7bd..bc331648 100644
+--- Quazaa/UI/widgetmedia.cpp
++++ Quazaa/UI/widgetmedia.cpp
+@@ -31,10 +31,6 @@
+ #include "debug_new.h"
+ 
+ #include <QDebug>
+-#include <QtMultimedia>
+-#include <QDesktopWidget>
+-
+-#include <QFileDialog>
+ 
+ // The Media Tab's Base Widget
+ 
+@@ -43,24 +39,22 @@ CWidgetMedia::CWidgetMedia(QWidget* parent) :
+ 	ui(new Ui::CWidgetMedia)
+ {
+ 	ui->setupUi(this);
+-
++	m_tMediaControls = new QTimer(this);
++	m_tMediaControls->setSingleShot(true);
++	connect(m_tMediaControls, SIGNAL(timeout()), ui->frameMediaControls, SLOT(hide()));
++
++	m_tVolumeControl = new QTimer(this);
++	m_tVolumeControl->setSingleShot(true);
++	connect(m_tVolumeControl, SIGNAL(timeout()), ui->horizontalSliderVolume, SLOT(hide()));
++
++	seekSlider = new QSlider();
++	seekSlider->setOrientation(Qt::Horizontal);
++	volumeSlider = new QSlider();
++	volumeSlider->setOrientation(Qt::Horizontal);
++	volumeSlider->setMaximumWidth(100);
+ 	ui->splitterMedia->restoreState(quazaaSettings.WinMain.MediaSplitter);
+-
+-	player = new QMediaPlayer(this);
+-	// owned by PlaylistModel
+-	playlist = new QMediaPlaylist();
+-	player->setPlaylist(playlist);
+-	videoContainer = new VideoContainer(this);
+-
+-	player->setVideoOutput(videoContainer->videoWidget());
+-
+-	connect(videoContainer, SIGNAL(doubleClicked()), SLOT(toggleFullScreen()));
+-	connect(videoContainer->mediaControls()->fullScreenButton(), SIGNAL(clicked()), SLOT(toggleFullScreen()));
+-
+-	ui->verticalLayoutMedia->addWidget(videoContainer);
+-
+-	connect(videoContainer->mediaControls()->openButton(), SIGNAL(clicked()), SLOT(openMedia()));
+-
++	ui->frameMediaControls->hide();
++	ui->horizontalSliderVolume->hide();
+ 	setSkin();
+ }
+ 
+@@ -82,11 +76,50 @@ void CWidgetMedia::changeEvent(QEvent* e)
+ 	}
+ }
+ 
++void CWidgetMedia::mouseMoveEvent(QMouseEvent *e)
++{
++	Q_UNUSED(e);
++
++	if(ui->frameMediaWindow->underMouse()) {
++		if(!ui->frameMediaControls->isVisible())
++			ui->frameMediaControls->show();
++
++		m_tMediaControls->start(10000);
++	}
++
++	if(ui->toolButtonMute->underMouse()) {
++		if(!ui->horizontalSliderVolume->isVisible())
++			ui->horizontalSliderVolume->show();
++
++		m_tVolumeControl->start(10000);
++	}
++}
++
+ void CWidgetMedia::saveWidget()
+ {
+ 	quazaaSettings.WinMain.MediaSplitter = ui->splitterMedia->saveState();
+ }
+ 
++/*void WidgetMedia::on_actionMediaOpen_triggered()
++{
++	mediaPlayer->openFile();
++}
++
++void WidgetMedia::on_volumeSlider_valueChanged(int value)
++{
++	quazaaSettings.Media.Volume = value;
++}*/
++
++void CWidgetMedia::on_actionMediaRepeat_triggered(bool checked)
++{
++	quazaaSettings.Media.Repeat = checked;
++}
++
++void CWidgetMedia::on_actionMediaShuffle_triggered(bool checked)
++{
++	quazaaSettings.Media.Shuffle = checked;
++}
++
+ void CWidgetMedia::on_splitterMedia_customContextMenuRequested(QPoint pos)
+ {
+ 	Q_UNUSED(pos);
+@@ -134,31 +167,9 @@ void CWidgetMedia::on_toolButtonMediaPlaylistTaskHeader_clicked()
+ 
+ void CWidgetMedia::setSkin()
+ {
++	seekSlider->setStyleSheet(skinSettings.seekSlider);
++	volumeSlider->setStyleSheet(skinSettings.volumeSlider);
+ 	ui->toolButtonMediaPlaylistTaskHeader->setStyleSheet(skinSettings.taskHeader);
+ 	ui->frameMediaPlaylistTask->setStyleSheet(skinSettings.sidebarBackground);
+ 	ui->listViewMediaPlaylist->setStyleSheet(skinSettings.listViews);
+ }
+-
+-void CWidgetMedia::openMedia()
+-{
+-	QString file = QFileDialog::getOpenFileName(this, tr("Open File"));
+-
+-	QUrl url = QUrl::fromLocalFile(file);
+-
+-	playlist->addMedia(url);
+-
+-	player->play();
+-}
+-
+-void CWidgetMedia::toggleFullScreen()
+-{
+-	if(!ui->videoContainerWidget->isFullScreen()) {
+-		ui->videoContainerWidget->setParent(0);
+-		ui->videoContainerWidget->showFullScreen();
+-		videoContainer->mediaControls()->fullScreenButton()->setIcon(QIcon(":/Resource/Media/NoFullScreen.png"));
+-	} else {
+-		ui->videoContainerWidget->setParent(this);
+-		ui->splitterMedia->insertWidget(0,ui->videoContainerWidget);
+-		videoContainer->mediaControls()->fullScreenButton()->setIcon(QIcon(":/Resource/Media/FullScreen.png"));
+-	}
+-}
+diff --git Quazaa/UI/widgetmedia.h Quazaa/UI/widgetmedia.h
+index 385beded..dc5874bb 100644
+--- Quazaa/UI/widgetmedia.h
++++ Quazaa/UI/widgetmedia.h
+@@ -22,13 +22,12 @@
+ #ifndef WIDGETMEDIA_H
+ #define WIDGETMEDIA_H
+ 
+-#include "videocontainer.h"
++#include "mediaoverlay.h"
+ 
+ #include <QWidget>
+ #include <QSlider>
+ #include <QEvent>
+-#include <QMediaPlayer>
+-#include <QMediaPlaylist>
++#include <QTimer>
+ 
+ namespace Ui
+ {
+@@ -41,10 +40,13 @@ class CWidgetMedia : public QWidget
+ public:
+ 	CWidgetMedia(QWidget* parent = 0);
+ 	~CWidgetMedia();
++	QSlider* seekSlider;
++	QSlider* volumeSlider;
+ 	void saveWidget();
+ 
+ protected:
+ 	void changeEvent(QEvent* e);
++	void mouseMoveEvent(QMouseEvent *e);
+ 
+ private:
+ 	Ui::CWidgetMedia* ui;
+@@ -52,14 +54,13 @@ private:
+ private slots:
+ 	void on_toolButtonMediaPlaylistTaskHeader_clicked();
+ 	void on_splitterMedia_customContextMenuRequested(QPoint pos);
++	void on_actionMediaShuffle_triggered(bool checked);
++	void on_actionMediaRepeat_triggered(bool checked);
+ 	void setSkin();
+-	void openMedia();
+-	void toggleFullScreen();
+ 
+ private:
+-	QMediaPlayer *player;
+-	QMediaPlaylist *playlist;
+-	VideoContainer *videoContainer;
++	QTimer* m_tMediaControls;
++	QTimer* m_tVolumeControl;
+ };
+ 
+ #endif // WIDGETMEDIA_H
+diff --git Quazaa/UI/widgetmedia.ui Quazaa/UI/widgetmedia.ui
+index d92da2da..f05a7c13 100644
+--- Quazaa/UI/widgetmedia.ui
++++ Quazaa/UI/widgetmedia.ui
+@@ -50,7 +50,7 @@
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+-     <widget class="QWidget" name="videoContainerWidget" native="true">
++     <widget class="QFrame" name="frameMediaWindow">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <horstretch>1</horstretch>
+@@ -64,26 +64,520 @@
+        <bool>false</bool>
+       </property>
+       <property name="styleSheet">
+-       <string notr="true">QWidget#videoContainerWidget {
+-	background-color: black;
++       <string notr="true">QFrame#frameMediaWindow {
++	background-color: rgb(0, 0, 0);
+ }</string>
+       </property>
+-      <layout class="QVBoxLayout" name="verticalLayoutMedia">
+-       <property name="spacing">
+-        <number>0</number>
+-       </property>
+-       <property name="leftMargin">
+-        <number>0</number>
+-       </property>
+-       <property name="topMargin">
+-        <number>0</number>
+-       </property>
+-       <property name="rightMargin">
+-        <number>0</number>
+-       </property>
+-       <property name="bottomMargin">
+-        <number>0</number>
+-       </property>
++      <layout class="QGridLayout" name="gridLayout_3">
++       <item row="0" column="1">
++        <spacer name="verticalSpacer">
++         <property name="orientation">
++          <enum>Qt::Vertical</enum>
++         </property>
++         <property name="sizeHint" stdset="0">
++          <size>
++           <width>20</width>
++           <height>82</height>
++          </size>
++         </property>
++        </spacer>
++       </item>
++       <item row="1" column="1">
++        <widget class="QLabel" name="labelBusy">
++         <property name="minimumSize">
++          <size>
++           <width>32</width>
++           <height>32</height>
++          </size>
++         </property>
++         <property name="maximumSize">
++          <size>
++           <width>32</width>
++           <height>32</height>
++          </size>
++         </property>
++         <property name="text">
++          <string/>
++         </property>
++        </widget>
++       </item>
++       <item row="2" column="1">
++        <spacer name="verticalSpacer_2">
++         <property name="orientation">
++          <enum>Qt::Vertical</enum>
++         </property>
++         <property name="sizeHint" stdset="0">
++          <size>
++           <width>20</width>
++           <height>81</height>
++          </size>
++         </property>
++        </spacer>
++       </item>
++       <item row="1" column="2">
++        <spacer name="horizontalSpacer_2">
++         <property name="orientation">
++          <enum>Qt::Horizontal</enum>
++         </property>
++         <property name="sizeHint" stdset="0">
++          <size>
++           <width>51</width>
++           <height>20</height>
++          </size>
++         </property>
++        </spacer>
++       </item>
++       <item row="1" column="0">
++        <spacer name="horizontalSpacer">
++         <property name="orientation">
++          <enum>Qt::Horizontal</enum>
++         </property>
++         <property name="sizeHint" stdset="0">
++          <size>
++           <width>112</width>
++           <height>20</height>
++          </size>
++         </property>
++        </spacer>
++       </item>
++       <item row="3" column="0" colspan="3">
++        <widget class="QFrame" name="frameMediaControls">
++         <property name="mouseTracking">
++          <bool>true</bool>
++         </property>
++         <property name="styleSheet">
++          <string notr="true">QFrame {
++	background-color: rgba(180, 180, 180, 140);
++	border: 1px solid transparent;
++	border-radius: 10px;
++}</string>
++         </property>
++         <property name="frameShape">
++          <enum>QFrame::StyledPanel</enum>
++         </property>
++         <property name="frameShadow">
++          <enum>QFrame::Raised</enum>
++         </property>
++         <layout class="QGridLayout" name="gridLayout_2">
++          <item row="0" column="0" colspan="2">
++           <layout class="QHBoxLayout" name="horizontalLayout_2">
++            <item>
++             <widget class="QToolButton" name="toolButtonPlayPause">
++              <property name="enabled">
++               <bool>true</bool>
++              </property>
++              <property name="styleSheet">
++               <string notr="true">QToolButton {
++	background: transparent;
++	border: 0px solid transparent;
++	image: url(:/Resource/Media/PlayMedia.png);
++}
++
++QToolButton:hover {
++	image: url(:/Resource/Media/PlayMediaH.png);
++}
++
++QToolButton:pressed {
++	image: url(:/Resource/Media/PlayMediaP.png);
++}
++
++QToolButton:disabled {
++	image: url(:/Resource/Media/PlayMediaD.png);
++}
++
++QToolButton:checked {
++	image: url(:/Resource/Media/PauseMedia.png);
++}
++
++QToolButton:checked:hover {
++	image: url(:/Resource/Media/PauseMediaH.png);
++}
++
++QToolButton:checked:pressed {
++	image: url(:/Resource/Media/PauseMediaP.png);
++}
++
++QToolButton:checked:disabled {
++	image: url(:/Resource/Media/PauseMediaD.png);
++}
++</string>
++              </property>
++              <property name="text">
++               <string/>
++              </property>
++              <property name="iconSize">
++               <size>
++                <width>32</width>
++                <height>32</height>
++               </size>
++              </property>
++              <property name="checkable">
++               <bool>true</bool>
++              </property>
++              <property name="checked">
++               <bool>false</bool>
++              </property>
++             </widget>
++            </item>
++            <item>
++             <widget class="QToolButton" name="toolButtonPrevious">
++              <property name="styleSheet">
++               <string notr="true">QToolButton {
++	background: transparent;
++	border: 0px solid transparent;
++	image: url(:/Resource/Media/PreviousMediaTrack.png);
++}
++
++QToolButton:hover {
++	image: url(:/Resource/Media/PreviousMediaTrackH.png);
++}
++
++QToolButton:pressed {
++	image: url(:/Resource/Media/PreviousMediaTrackP.png);
++}
++
++QToolButton:disabled {
++	image: url(:/Resource/Media/PreviousMediaTrackD.png);
++}
++</string>
++              </property>
++              <property name="text">
++               <string/>
++              </property>
++              <property name="iconSize">
++               <size>
++                <width>26</width>
++                <height>26</height>
++               </size>
++              </property>
++             </widget>
++            </item>
++            <item>
++             <widget class="QToolButton" name="toolButtonStop">
++              <property name="styleSheet">
++               <string notr="true">QToolButton {
++	background: transparent;
++	border: 0px solid transparent;
++	image: url(:/Resource/Media/StopMedia.png);
++}
++
++QToolButton:hover {
++	image: url(:/Resource/Media/StopMediaH.png);
++}
++
++QToolButton:pressed {
++	image: url(:/Resource/Media/StopMediaP.png);
++}
++
++QToolButton:disabled {
++	image: url(:/Resource/Media/StopMediaD.png);
++}
++</string>
++              </property>
++              <property name="text">
++               <string/>
++              </property>
++              <property name="iconSize">
++               <size>
++                <width>26</width>
++                <height>26</height>
++               </size>
++              </property>
++             </widget>
++            </item>
++            <item>
++             <widget class="QToolButton" name="toolButtonNext">
++              <property name="styleSheet">
++               <string notr="true">QToolButton {
++	background: transparent;
++	border: 0px solid transparent;
++	image: url(:/Resource/Media/NextMediaTrack.png);
++}
++
++QToolButton:hover {
++	image: url(:/Resource/Media/NextMediaTrackH.png);
++}
++
++QToolButton:pressed {
++	image: url(:/Resource/Media/NextMediaTrackP.png);
++}
++
++QToolButton:disabled {
++	image: url(:/Resource/Media/NextMediaTrackD.png);
++}
++</string>
++              </property>
++              <property name="text">
++               <string/>
++              </property>
++              <property name="iconSize">
++               <size>
++                <width>26</width>
++                <height>26</height>
++               </size>
++              </property>
++             </widget>
++            </item>
++            <item>
++             <widget class="Line" name="line">
++              <property name="orientation">
++               <enum>Qt::Vertical</enum>
++              </property>
++             </widget>
++            </item>
++            <item>
++             <widget class="QToolButton" name="toolButtonOpen">
++              <property name="styleSheet">
++               <string notr="true">QToolButton {
++	background: transparent;
++	border: 0px solid transparent;
++	image: url(:/Resource/Media/OpenMedia.png);
++}
++
++QToolButton:hover {
++	image: url(:/Resource/Media/OpenMediaH.png);
++}
++
++QToolButton:pressed {
++	image: url(:/Resource/Media/OpenMediaP.png);
++}
++
++QToolButton:disabled {
++	image: url(:/Resource/Media/OpenMediaD.png);
++}
++</string>
++              </property>
++              <property name="text">
++               <string/>
++              </property>
++              <property name="iconSize">
++               <size>
++                <width>26</width>
++                <height>26</height>
++               </size>
++              </property>
++             </widget>
++            </item>
++            <item>
++             <widget class="Line" name="line_2">
++              <property name="orientation">
++               <enum>Qt::Vertical</enum>
++              </property>
++             </widget>
++            </item>
++            <item>
++             <widget class="QToolButton" name="toolButtonReplay">
++              <property name="styleSheet">
++               <string notr="true">QToolButton {
++	background: transparent;
++	border: 0px solid transparent;
++	image: url(:/Resource/Media/Repeat.png);
++}
++
++QToolButton:hover {
++	image: url(:/Resource/Media/RepeatH.png);
++}
++
++QToolButton:pressed {
++	image: url(:/Resource/Media/RepeatP.png);
++}
++
++QToolButton:disabled {
++	image: url(:/Resource/Media/RepeatD.png);
++}
++</string>
++              </property>
++              <property name="text">
++               <string/>
++              </property>
++              <property name="iconSize">
++               <size>
++                <width>26</width>
++                <height>26</height>
++               </size>
++              </property>
++             </widget>
++            </item>
++            <item>
++             <widget class="QToolButton" name="toolButtonShuffle">
++              <property name="styleSheet">
++               <string notr="true">QToolButton {
++	background: transparent;
++	border: 0px solid transparent;
++	image: url(:/Resource/Media/Shuffle.png);
++}
++
++QToolButton:hover {
++	image: url(:/Resource/Media/ShuffleH.png);
++}
++
++QToolButton:pressed {
++	image: url(:/Resource/Media/ShuffleP.png);
++}
++
++QToolButton:disabled {
++	image: url(:/Resource/Media/ShuffleD.png);
++}
++</string>
++              </property>
++              <property name="text">
++               <string/>
++              </property>
++              <property name="iconSize">
++               <size>
++                <width>26</width>
++                <height>26</height>
++               </size>
++              </property>
++             </widget>
++            </item>
++            <item>
++             <spacer name="horizontalSpacer_3">
++              <property name="orientation">
++               <enum>Qt::Horizontal</enum>
++              </property>
++              <property name="sizeHint" stdset="0">
++               <size>
++                <width>40</width>
++                <height>20</height>
++               </size>
++              </property>
++             </spacer>
++            </item>
++            <item>
++             <widget class="QToolButton" name="toolButtonFullScreen">
++              <property name="text">
++               <string/>
++              </property>
++              <property name="icon">
++               <iconset resource="../Resource.qrc">
++                <normaloff>:/Resource/Media/FullScreen.png</normaloff>:/Resource/Media/FullScreen.png</iconset>
++              </property>
++              <property name="iconSize">
++               <size>
++                <width>26</width>
++                <height>26</height>
++               </size>
++              </property>
++             </widget>
++            </item>
++            <item>
++             <widget class="QToolButton" name="toolButtonSettings">
++              <property name="text">
++               <string/>
++              </property>
++              <property name="icon">
++               <iconset resource="../Resource.qrc">
++                <normaloff>:/Resource/Generic/Settings.png</normaloff>:/Resource/Generic/Settings.png</iconset>
++              </property>
++              <property name="iconSize">
++               <size>
++                <width>26</width>
++                <height>26</height>
++               </size>
++              </property>
++             </widget>
++            </item>
++            <item>
++             <spacer name="horizontalSpacer_4">
++              <property name="orientation">
++               <enum>Qt::Horizontal</enum>
++              </property>
++              <property name="sizeHint" stdset="0">
++               <size>
++                <width>40</width>
++                <height>20</height>
++               </size>
++              </property>
++             </spacer>
++            </item>
++            <item>
++             <widget class="QToolButton" name="toolButtonMute">
++              <property name="mouseTracking">
++               <bool>true</bool>
++              </property>
++              <property name="styleSheet">
++               <string notr="true">QToolButton {
++	background: transparent;
++	border: 0px solid transparent;
++	image: url(:/Resource/Media/Mute.png);
++}
++
++QToolButton:hover {
++	image: url(:/Resource/Media/MuteH.png);
++}
++
++QToolButton:pressed {
++	image: url(:/Resource/Media/MuteP.png);
++}
++
++QToolButton:checked {
++	image: url(:/Resource/Media/Unmute.png);
++}
++
++QToolButton:checked:hover {
++	image: url(:/Resource/Media/UnmuteH.png);
++}
++
++QToolButton:checked:pressed {
++	image: url(:/Resource/Media/UnmuteP.png);
++}</string>
++              </property>
++              <property name="text">
++               <string/>
++              </property>
++              <property name="iconSize">
++               <size>
++                <width>26</width>
++                <height>26</height>
++               </size>
++              </property>
++              <property name="checkable">
++               <bool>true</bool>
++              </property>
++              <property name="checked">
++               <bool>true</bool>
++              </property>
++             </widget>
++            </item>
++            <item>
++             <widget class="QSlider" name="horizontalSliderVolume">
++              <property name="minimumSize">
++               <size>
++                <width>75</width>
++                <height>15</height>
++               </size>
++              </property>
++              <property name="maximumSize">
++               <size>
++                <width>75</width>
++                <height>15</height>
++               </size>
++              </property>
++              <property name="orientation">
++               <enum>Qt::Horizontal</enum>
++              </property>
++             </widget>
++            </item>
++           </layout>
++          </item>
++          <item row="1" column="0">
++           <widget class="QSlider" name="horizontalSliderSeek">
++            <property name="orientation">
++             <enum>Qt::Horizontal</enum>
++            </property>
++           </widget>
++          </item>
++          <item row="1" column="1">
++           <widget class="QLabel" name="labelTime">
++            <property name="text">
++             <string>0:00 / 0:00</string>
++            </property>
++           </widget>
++          </item>
++         </layout>
++        </widget>
++       </item>
+       </layout>
+      </widget>
+      <widget class="QFrame" name="frameMediaPlaylistTask">
+diff --git Quazaa/main.cpp Quazaa/main.cpp
+index 2664de02..031c2cac 100644
+--- Quazaa/main.cpp
++++ Quazaa/main.cpp
+@@ -191,12 +191,6 @@ int main(int argc, char *argv[])
+ 	quazaaSettings.translator.load( quazaaSettings.Language.File );
+ 	qApp->installTranslator( &quazaaSettings.translator );
+ 
+-	// If the MainWindow object is not created and shown before any other dialogs,
+-	// the media player will break input event processing
+-	MainWindow = new CWinMain();
+-	MainWindow->show();
+-	MainWindow->hide();
+-
+ 	//Create splash window
+ 	CDialogSplash* dlgSplash = new CDialogSplash();
+ 	dlgSplash->show();
+@@ -267,6 +261,7 @@ int main(int argc, char *argv[])
+ 	dlgSplash->updateProgress( 80, QObject::tr( "Loading User Interface..." ) );
+ 	qApp->processEvents();
+ 
++	MainWindow = new CWinMain();
+ 	if ( quazaaSettings.WinMain.Visible )
+ 	{
+ 		if(bFirstRun)
+-- 
+2.41.0
+

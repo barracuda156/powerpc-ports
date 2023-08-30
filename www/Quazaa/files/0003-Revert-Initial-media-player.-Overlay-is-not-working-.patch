@@ -1,0 +1,239 @@
+From 978f016437b85287e93636834e33f9b8e11d9a73 Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Sat, 1 Jul 2023 23:05:14 +0800
+Subject: [PATCH 3/7] Revert "Initial media player. Overlay is not working
+ properly. Open button does work for the first file."
+
+This reverts commit 2078b47cbb53bd9be4f2563ac90f6dd471f2ecec.
+---
+ Quazaa/UI/mediaoverlay.cpp | 56 +-------------------------------------
+ Quazaa/UI/mediaoverlay.h   | 11 --------
+ Quazaa/UI/mediaoverlay.ui  |  5 ----
+ Quazaa/UI/videowidget.cpp  |  7 +----
+ Quazaa/UI/videowidget.h    |  1 -
+ Quazaa/UI/widgetmedia.cpp  | 21 +++++++-------
+ Quazaa/UI/widgetmedia.h    |  4 +--
+ 7 files changed, 15 insertions(+), 90 deletions(-)
+
+diff --git Quazaa/UI/mediaoverlay.cpp Quazaa/UI/mediaoverlay.cpp
+index 077fd082..53428861 100644
+--- Quazaa/UI/mediaoverlay.cpp
++++ Quazaa/UI/mediaoverlay.cpp
+@@ -8,11 +8,6 @@ MediaOverlay::MediaOverlay(QWidget *parent) :
+ 	ui(new Ui::MediaOverlay)
+ {
+ 	ui->setupUi(this);
+-
+-	setPalette(Qt::transparent);
+-	setAttribute(Qt::WA_OpaquePaintEvent, false);
+-	setAttribute(Qt::WA_NoSystemBackground);
+-
+ 	m_tMediaControls = new QTimer(this);
+ 	m_tMediaControls->setSingleShot(true);
+ 	connect(m_tMediaControls, SIGNAL(timeout()), ui->frameMediaControls, SLOT(hide()));
+@@ -31,6 +26,7 @@ MediaOverlay::~MediaOverlay()
+ 
+ void MediaOverlay::mouseMoveEvent(QMouseEvent *e)
+ {
++	qDebug() << "MediaOverlay mouse move detected.";
+ 	if(underMouse()) {
+ 		if(!ui->frameMediaControls->isVisible())
+ 			ui->frameMediaControls->show();
+@@ -55,53 +51,3 @@ void MediaOverlay::showControls()
+ 
+ 	m_tMediaControls->start(5000);
+ }
+-
+-QToolButton *MediaOverlay::playPauseButton()
+-{
+-	return ui->toolButtonPlayPause;
+-}
+-
+-QToolButton *MediaOverlay::previousButton()
+-{
+-	return ui->toolButtonPrevious;
+-}
+-
+-QToolButton *MediaOverlay::stopButton()
+-{
+-	return ui->toolButtonStop;
+-}
+-
+-QToolButton *MediaOverlay::nextButton()
+-{
+-	return ui->toolButtonNext;
+-}
+-
+-QToolButton *MediaOverlay::openButton()
+-{
+-	return ui->toolButtonOpen;
+-}
+-
+-QToolButton *MediaOverlay::replayButton()
+-{
+-	return ui->toolButtonReplay;
+-}
+-
+-QToolButton *MediaOverlay::shuffleButton()
+-{
+-	return ui->toolButtonShuffle;
+-}
+-
+-QToolButton *MediaOverlay::fullScreenButton()
+-{
+-	return ui->toolButtonFullScreen;
+-}
+-
+-QToolButton *MediaOverlay::settingsButton()
+-{
+-	return ui->toolButtonSettings;
+-}
+-
+-QToolButton *MediaOverlay::muteButton()
+-{
+-	return ui->toolButtonMute;
+-}
+diff --git Quazaa/UI/mediaoverlay.h Quazaa/UI/mediaoverlay.h
+index 51dc0c1f..7abcd63e 100644
+--- Quazaa/UI/mediaoverlay.h
++++ Quazaa/UI/mediaoverlay.h
+@@ -3,7 +3,6 @@
+ 
+ #include <QWidget>
+ #include <QTimer>
+-#include <QToolButton>
+ 
+ namespace Ui {
+ class MediaOverlay;
+@@ -27,16 +26,6 @@ protected:
+ 
+ public slots:
+ 	void showControls();
+-	QToolButton* playPauseButton();
+-	QToolButton* previousButton();
+-	QToolButton* stopButton();
+-	QToolButton* nextButton();
+-	QToolButton* openButton();
+-	QToolButton* replayButton();
+-	QToolButton* shuffleButton();
+-	QToolButton* fullScreenButton();
+-	QToolButton* settingsButton();
+-	QToolButton* muteButton();
+ };
+ 
+ #endif // MEDIAOVERLAY_H
+diff --git Quazaa/UI/mediaoverlay.ui Quazaa/UI/mediaoverlay.ui
+index d53df426..a3ec7875 100644
+--- Quazaa/UI/mediaoverlay.ui
++++ Quazaa/UI/mediaoverlay.ui
+@@ -16,11 +16,6 @@
+   <property name="windowTitle">
+    <string>Form</string>
+   </property>
+-  <property name="styleSheet">
+-   <string notr="true">QWidget#MediaOverlay {
+-	background-color: transparent;
+-}</string>
+-  </property>
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+     <spacer name="verticalSpacer">
+diff --git Quazaa/UI/videowidget.cpp Quazaa/UI/videowidget.cpp
+index 277091fe..ea9500b0 100644
+--- Quazaa/UI/videowidget.cpp
++++ Quazaa/UI/videowidget.cpp
+@@ -50,7 +50,7 @@ void VideoWidget::mousePressEvent(QMouseEvent *event)
+ 
+ void VideoWidget::resizeEvent(QResizeEvent *event)
+ {
+-	//mediaOverlay->resize(event->size());
++	mediaOverlay->resize(event->size());
+ 	event->accept();
+ }
+ 
+@@ -58,8 +58,3 @@ void VideoWidget::raiseControls()
+ {
+ 	mediaOverlay->raise();
+ }
+-
+-MediaOverlay *VideoWidget::controls()
+-{
+-	return mediaOverlay;
+-}
+diff --git Quazaa/UI/videowidget.h Quazaa/UI/videowidget.h
+index d16a4192..a12185ce 100644
+--- Quazaa/UI/videowidget.h
++++ Quazaa/UI/videowidget.h
+@@ -24,7 +24,6 @@ signals:
+ 
+ public slots:
+ 	void raiseControls();
+-	MediaOverlay* controls();
+ };
+ 
+ #endif // VIDEOWIDGET_H
+diff --git Quazaa/UI/widgetmedia.cpp Quazaa/UI/widgetmedia.cpp
+index cb607517..52b6a55a 100644
+--- Quazaa/UI/widgetmedia.cpp
++++ Quazaa/UI/widgetmedia.cpp
+@@ -56,9 +56,7 @@ CWidgetMedia::CWidgetMedia(QWidget* parent) :
+ 	videoWidget->raiseControls(); // This corrects the controls being put under the video widget during setVideoWidget
+ 
+ 	ui->verticalLayoutMedia->addWidget(videoWidget);
+-	connect(videoWidget, SIGNAL(fullScreenChanged(bool)), SLOT(fullScreenChanged(bool)));
+ 
+-	connect(videoWidget->controls()->openButton(), SIGNAL(clicked()), SLOT(openMedia()));
+ 
+ 	setSkin();
+ }
+@@ -86,6 +84,16 @@ void CWidgetMedia::saveWidget()
+ 	quazaaSettings.WinMain.MediaSplitter = ui->splitterMedia->saveState();
+ }
+ 
++/*void WidgetMedia::on_actionMediaOpen_triggered()
++{
++	mediaPlayer->openFile();
++}
++
++void WidgetMedia::on_volumeSlider_valueChanged(int value)
++{
++	quazaaSettings.Media.Volume = value;
++}*/
++
+ void CWidgetMedia::on_actionMediaRepeat_triggered(bool checked)
+ {
+ 	quazaaSettings.Media.Repeat = checked;
+@@ -148,14 +156,7 @@ void CWidgetMedia::setSkin()
+ 	ui->listViewMediaPlaylist->setStyleSheet(skinSettings.listViews);
+ }
+ 
+-void CWidgetMedia::fullScreenChanged(bool fullScreen)
+-{
+-	qDebug() << "Full screen change caught.";
+-	if(!fullScreen)
+-		ui->verticalLayoutMedia->addWidget(videoWidget);
+-}
+-
+-void CWidgetMedia::openMedia()
++void CWidgetMedia::on_toolButtonOpen_clicked()
+ {
+ 	QString file = QFileDialog::getOpenFileName(this, tr("Open File"));
+ 
+diff --git Quazaa/UI/widgetmedia.h Quazaa/UI/widgetmedia.h
+index 9dec97df..a33c801c 100644
+--- Quazaa/UI/widgetmedia.h
++++ Quazaa/UI/widgetmedia.h
+@@ -55,8 +55,8 @@ private slots:
+ 	void on_actionMediaShuffle_triggered(bool checked);
+ 	void on_actionMediaRepeat_triggered(bool checked);
+ 	void setSkin();
+-	void fullScreenChanged(bool fullScreen);
+-	void openMedia();
++
++	void on_toolButtonOpen_clicked();
+ 
+ private:
+ 	QMediaPlayer *player;
+-- 
+2.41.0
+

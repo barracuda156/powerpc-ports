@@ -1,0 +1,51 @@
+From 69413d54cc962a788a0d5917295a581599e473ec Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Sat, 1 Jul 2023 23:06:13 +0800
+Subject: [PATCH 5/7] Revert "Added a workaround for splash dialog causing the
+ media player to lock the GUI."
+
+This reverts commit 148b3706e8360f77a6e09fd54c822c61b258d31c.
+---
+ Quazaa/UI/widgetmedia.cpp | 2 +-
+ Quazaa/main.cpp           | 5 +----
+ 2 files changed, 2 insertions(+), 5 deletions(-)
+
+diff --git Quazaa/UI/widgetmedia.cpp Quazaa/UI/widgetmedia.cpp
+index f4314995..532e5282 100644
+--- Quazaa/UI/widgetmedia.cpp
++++ Quazaa/UI/widgetmedia.cpp
+@@ -52,7 +52,7 @@ CWidgetMedia::CWidgetMedia(QWidget* parent) :
+ 	player->setPlaylist(playlist);
+ 
+ 	videoWidget = new VideoWidget(ui->videoContainerWidget);
+-	player->setVideoOutput(videoWidget);
++	//player->setVideoOutput(videoWidget);
+ 
+ 	ui->verticalLayoutMedia->addWidget(videoWidget);
+ 
+diff --git Quazaa/main.cpp Quazaa/main.cpp
+index 91583be9..031c2cac 100644
+--- Quazaa/main.cpp
++++ Quazaa/main.cpp
+@@ -191,10 +191,6 @@ int main(int argc, char *argv[])
+ 	quazaaSettings.translator.load( quazaaSettings.Language.File );
+ 	qApp->installTranslator( &quazaaSettings.translator );
+ 
+-	MainWindow = new CWinMain();
+-	MainWindow->show();
+-	MainWindow->hide();
+-
+ 	//Create splash window
+ 	CDialogSplash* dlgSplash = new CDialogSplash();
+ 	dlgSplash->show();
+@@ -265,6 +261,7 @@ int main(int argc, char *argv[])
+ 	dlgSplash->updateProgress( 80, QObject::tr( "Loading User Interface..." ) );
+ 	qApp->processEvents();
+ 
++	MainWindow = new CWinMain();
+ 	if ( quazaaSettings.WinMain.Visible )
+ 	{
+ 		if(bFirstRun)
+-- 
+2.41.0
+

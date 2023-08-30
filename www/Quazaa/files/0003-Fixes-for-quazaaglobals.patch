@@ -1,0 +1,833 @@
+From 0714a0b0705248db1fd51d2ab1c36c4ba13e3c65 Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Sun, 2 Jul 2023 02:18:55 +0800
+Subject: [PATCH 3/3] Fixes for quazaaglobals
+
+---
+ .../communi-desktop/src/gui/messageview.cpp   |  2 +-
+ Quazaa/Chat/chatsessiong2.cpp                 |  6 +--
+ Quazaa/Discovery/discovery.cpp                |  8 +--
+ Quazaa/Discovery/gwc.cpp                      |  8 +--
+ Quazaa/HostCache/hostcache.cpp                |  4 +-
+ Quazaa/NetworkCore/datagrams.cpp              |  4 +-
+ Quazaa/NetworkCore/g2node.cpp                 | 10 ++--
+ Quazaa/NetworkCore/handshake.cpp              | 12 ++---
+ Quazaa/NetworkCore/neighboursg2.cpp           |  2 +-
+ Quazaa/Security/securitymanager.cpp           |  4 +-
+ Quazaa/ShareManager/sharemanager.cpp          | 12 ++---
+ Quazaa/UI/dialogabout.cpp                     |  2 +-
+ Quazaa/UI/suggestedlineedit.cpp               |  8 +--
+ Quazaa/UI/widgetdownloads.cpp                 |  2 +-
+ Quazaa/main.cpp                               | 10 ++--
+ Quazaa/quazaaglobals.cpp                      | 50 +++++++++----------
+ Quazaa/quazaaglobals.h                        |  8 +--
+ Quazaa/quazaasettings.cpp                     | 44 ++++++++--------
+ 18 files changed, 98 insertions(+), 98 deletions(-)
+
+diff --git Quazaa/3rdparty/communi-desktop/src/gui/messageview.cpp Quazaa/3rdparty/communi-desktop/src/gui/messageview.cpp
+index 21514670..6be2a465 100644
+--- Quazaa/3rdparty/communi-desktop/src/gui/messageview.cpp
++++ Quazaa/3rdparty/communi-desktop/src/gui/messageview.cpp
+@@ -379,7 +379,7 @@ void MessageView::sendMessageLine() {
+                 else if (command == "SYSINFO")
+                 {
+                     CQuazaaSysInfo *sysInfo = new CQuazaaSysInfo();
+-                    sendMessage(tr("Application:%1 %2 OS:%3 Qt Version:%4").arg(QApplication::applicationName(), CQuazaaGlobals::APPLICATION_VERSION_STRING(), sysInfo->osVersionToString(), qVersion()));
++                    sendMessage(tr("Application:%1 %2 OS:%3 Qt Version:%4").arg(QApplication::applicationName(), QuazaaGlobals::APPLICATION_VERSION_STRING(), sysInfo->osVersionToString(), qVersion()));
+                     //onSend(tr("CPU:%1 Cores:%2 Memory:%3").arg(QApplication::applicationName(), QuazaaGlobals::APPLICATION_VERSION_STRING()));
+                 }
+                 else if (command == "CTCP")
+diff --git Quazaa/Chat/chatsessiong2.cpp Quazaa/Chat/chatsessiong2.cpp
+index d691ad1f..bbad41cb 100644
+--- Quazaa/Chat/chatsessiong2.cpp
++++ Quazaa/Chat/chatsessiong2.cpp
+@@ -87,7 +87,7 @@ void CChatSessionG2::onConnectNode()
+ 
+ 	baHs = "CHAT CONNECT/0.2\r\n";
+ 	baHs+= "Accept: application/x-gnutella2\r\n";
+-		baHs+= "User-Agent: " + CQuazaaGlobals::USER_AGENT_STRING() + "\r\n";
++		baHs+= "User-Agent: " + QuazaaGlobals::USER_AGENT_STRING() + "\r\n";
+ 	baHs+= "Listen-IP: " + Network.getLocalAddress().toStringWithPort() + "\r\n\r\n";
+ 
+ 	write(baHs);
+@@ -192,7 +192,7 @@ void CChatSessionG2::send_ChatOK(bool bReply)
+ 	{
+ 		// 2nd header
+ 		sHs+= "Accept: application/x-gnutella2\r\n";
+-				sHs+= "User-Agent: " + CQuazaaGlobals::USER_AGENT_STRING() + "\r\n";
++				sHs+= "User-Agent: " + QuazaaGlobals::USER_AGENT_STRING() + "\r\n";
+ 		sHs+= "Listen-IP: " + Network.getLocalAddress().toStringWithPort() + "\r\n";
+ 	}
+ 	sHs+= "Content-Type: application/x-gnutella2\r\n\r\n";
+@@ -208,7 +208,7 @@ void CChatSessionG2::send_ChatError(QString sReason)
+ 	QByteArray sHs;
+ 
+ 	sHs = "CHAT/0.2 " + sReason.toLocal8Bit() + "\r\n";
+-		sHs+= "User-Agent: " + CQuazaaGlobals::USER_AGENT_STRING() + "\r\n\r\n";
++		sHs+= "User-Agent: " + QuazaaGlobals::USER_AGENT_STRING() + "\r\n\r\n";
+ 
+ 	write(sHs);
+ }
+diff --git Quazaa/Discovery/discovery.cpp Quazaa/Discovery/discovery.cpp
+index d91e7d2a..dd8a9129 100644
+--- Quazaa/Discovery/discovery.cpp
++++ Quazaa/Discovery/discovery.cpp
+@@ -487,8 +487,8 @@ bool CDiscovery::asyncSyncSavingHelper()
+ 
+ 	postLog( LogSeverity::Notice, tr( "Saving Discovery Services Manager state." ) );
+ 
+-	QString sPath          = CQuazaaGlobals::DATA_PATH() + "discovery.dat";
+-	QString sBackupPath    = CQuazaaGlobals::DATA_PATH() + "discovery_backup.dat";
++	QString sPath          = QuazaaGlobals::DATA_PATH() + "discovery.dat";
++	QString sBackupPath    = QuazaaGlobals::DATA_PATH() + "discovery_backup.dat";
+ 	QString sTemporaryPath = sBackupPath + "_tmp";
+ 
+ #if ENABLE_DISCOVERY_DEBUGGING
+@@ -909,7 +909,7 @@ bool CDiscovery::doRemove(TServiceID nID)
+ // Called only from within startup sequence
+ void CDiscovery::load()
+ {
+-	QString sPath = CQuazaaGlobals::DATA_PATH() + "discovery.dat";
++	QString sPath = QuazaaGlobals::DATA_PATH() + "discovery.dat";
+ 
+ #if ENABLE_DISCOVERY_DEBUGGING
+ 	postLog( LogSeverity::Debug, "Started loading services.", true );
+@@ -925,7 +925,7 @@ void CDiscovery::load()
+ 	postLog( LogSeverity::Debug, "Failed primary attempt on loading services.", true );
+ #endif
+ 
+-		sPath = CQuazaaGlobals::DATA_PATH() + "discovery_backup.dat";
++		sPath = QuazaaGlobals::DATA_PATH() + "discovery_backup.dat";
+ 
+ 		postLog( LogSeverity::Warning,
+ 				 tr( "Failed to load discovery services from primary file. Switching to backup: " )
+diff --git Quazaa/Discovery/gwc.cpp Quazaa/Discovery/gwc.cpp
+index d7247bfc..4babd0d8 100644
+--- Quazaa/Discovery/gwc.cpp
++++ Quazaa/Discovery/gwc.cpp
+@@ -79,7 +79,7 @@ void CGWC::doQuery() throw()
+ 		query.addQueryItem( "ping", "1" );
+ 		query.addQueryItem( "get", "1" );
+ 		query.addQueryItem( "net", "gnutella2" );
+-		query.addQueryItem( "client", CQuazaaGlobals::VENDOR_CODE() );
++		query.addQueryItem( "client", QuazaaGlobals::VENDOR_CODE() );
+ 		query.addQueryItem( "version", sVersion.toLocal8Bit().data() );
+ 		oURL.setQuery(query);
+ 	}
+@@ -98,7 +98,7 @@ void CGWC::doQuery() throw()
+ 
+ 	// generate request
+ 	m_pRequest = new QNetworkRequest( oURL );
+-	m_pRequest->setRawHeader( "User-Agent", CQuazaaGlobals::USER_AGENT_STRING().toLocal8Bit() );
++	m_pRequest->setRawHeader( "User-Agent", QuazaaGlobals::USER_AGENT_STRING().toLocal8Bit() );
+ 
+ 	// obtain network access manager for query
+ 	m_pNAMgr = discoveryManager.requestNAM();
+@@ -134,7 +134,7 @@ void CGWC::doUpdate() throw()
+ 		query.addQueryItem( "update", "1" );
+ 		query.addQueryItem( "net", "gnutella2" );
+ 		query.addQueryItem( "ip", sOwnIP );
+-		query.addQueryItem( "client", CQuazaaGlobals::VENDOR_CODE() );
++		query.addQueryItem( "client", QuazaaGlobals::VENDOR_CODE() );
+ 		query.addQueryItem( "version", sVersion );
+ 
+ 		if ( !sPromoteURL.isEmpty() )
+@@ -165,7 +165,7 @@ void CGWC::doUpdate() throw()
+ 
+ 	// generate request
+ 	m_pRequest = new QNetworkRequest( oURL );
+-	m_pRequest->setRawHeader( "User-Agent", CQuazaaGlobals::USER_AGENT_STRING().toLocal8Bit() );
++	m_pRequest->setRawHeader( "User-Agent", QuazaaGlobals::USER_AGENT_STRING().toLocal8Bit() );
+ 
+ 	// obtain network access manager for update
+ 	m_pNAMgr = discoveryManager.requestNAM();
+diff --git Quazaa/HostCache/hostcache.cpp Quazaa/HostCache/hostcache.cpp
+index f187fdea..5fc373fb 100644
+--- Quazaa/HostCache/hostcache.cpp
++++ Quazaa/HostCache/hostcache.cpp
+@@ -331,7 +331,7 @@ bool CHostCache::save(const quint32 tNow)
+ 
+ 	bool bReturn;
+ 
+-	quint32 nCount = common::securedSaveFile( CQuazaaGlobals::DATA_PATH(), "hostcache.dat", m_sMessage,
++	quint32 nCount = common::securedSaveFile( QuazaaGlobals::DATA_PATH(), "hostcache.dat", m_sMessage,
+ 											   this, &CHostCache::writeToFile );
+ 	if ( nCount )
+ 	{
+@@ -355,7 +355,7 @@ void CHostCache::load()
+ 
+ 	ASSUME_LOCK( hostCache.m_pSection );
+ 
+-	QFile file( CQuazaaGlobals::DATA_PATH() + "hostcache.dat" );
++	QFile file( QuazaaGlobals::DATA_PATH() + "hostcache.dat" );
+ 
+ 	if ( !file.exists() || !file.open( QIODevice::ReadOnly ) )
+ 		return;
+diff --git Quazaa/NetworkCore/datagrams.cpp Quazaa/NetworkCore/datagrams.cpp
+index 4acefe5d..1538e80e 100644
+--- Quazaa/NetworkCore/datagrams.cpp
++++ Quazaa/NetworkCore/datagrams.cpp
+@@ -764,8 +764,8 @@ void CDatagrams::onCRAWLR(CEndPoint& addr, G2Packet* pPacket)
+ 		pTmp->writePacket("LEAF", 0);
+ 	}
+ 	pTmp->writePacket("NA", ((Network.m_oAddress.protocol() == 0) ? 6 : 18))->writeHostAddress(&Network.m_oAddress);
+-	pTmp->writePacket("CV", CQuazaaGlobals::USER_AGENT_STRING().toUtf8().size())->writeString(CQuazaaGlobals::USER_AGENT_STRING(), false);
+-	pTmp->writePacket("V", 4)->writeString(CQuazaaGlobals::VENDOR_CODE(), false);;
++	pTmp->writePacket("CV", QuazaaGlobals::USER_AGENT_STRING().toUtf8().size())->writeString(QuazaaGlobals::USER_AGENT_STRING(), false);
++	pTmp->writePacket("V", 4)->writeString(QuazaaGlobals::VENDOR_CODE(), false);;
+ 	quint16 nLeaves = Neighbours.m_nLeavesConnectedG2;
+ 	pTmp->writePacket("HS", 2)->writeIntLE(nLeaves);
+ 	if(!quazaaSettings.Profile.GnutellaScreenName.isEmpty())
+diff --git Quazaa/NetworkCore/g2node.cpp Quazaa/NetworkCore/g2node.cpp
+index ca35ab73..faf16705 100644
+--- Quazaa/NetworkCore/g2node.cpp
++++ Quazaa/NetworkCore/g2node.cpp
+@@ -134,7 +134,7 @@ void CG2Node::onConnectNode()
+ 
+ 	sHs += "GNUTELLA CONNECT/0.6\r\n";
+ 	sHs += "Accept: application/x-gnutella2\r\n";
+-	sHs += "User-Agent: " + CQuazaaGlobals::USER_AGENT_STRING() + "\r\n";
++	sHs += "User-Agent: " + QuazaaGlobals::USER_AGENT_STRING() + "\r\n";
+ 	sHs += "Remote-IP: " + m_oAddress.toString() + "\r\n";
+ 	sHs += "Listen-IP: " + Network.getLocalAddress().toStringWithPort() + "\r\n";
+ 	if(Neighbours.isG2Hub())
+@@ -633,7 +633,7 @@ void CG2Node::send_ConnectError(QString sReason)
+ 	QByteArray sHs;
+ 
+ 	sHs += "GNUTELLA/0.6 " + sReason + "\r\n";
+-	sHs += "User-Agent: " + CQuazaaGlobals::USER_AGENT_STRING() + "\r\n";
++	sHs += "User-Agent: " + QuazaaGlobals::USER_AGENT_STRING() + "\r\n";
+ 	sHs += "Accept: application/x-gnutella2\r\n";
+ 	sHs += "Content-Type: application/x-gnutella2\r\n";
+ 
+@@ -667,7 +667,7 @@ void CG2Node::send_ConnectOK(bool bReply, bool bDeflated)
+ 	QByteArray sHs;
+ 
+ 	sHs += "GNUTELLA/0.6 200 OK\r\n";
+-	sHs += "User-Agent: " + CQuazaaGlobals::USER_AGENT_STRING() + "\r\n";
++	sHs += "User-Agent: " + QuazaaGlobals::USER_AGENT_STRING() + "\r\n";
+ 	if(Neighbours.isG2Hub())
+ 	{
+ 		sHs += "X-Ultrapeer: True\r\n";
+@@ -747,7 +747,7 @@ void CG2Node::sendLNI()
+ 		pLNI->writePacket("NA", 18)->writeHostAddress(&Network.m_oAddress);
+ 	}
+ 	pLNI->writePacket("GU", 16)->writeGUID(quazaaSettings.Profile.GUID);
+-	pLNI->writePacket("V", 4)->writeString(CQuazaaGlobals::VENDOR_CODE(), false);
++	pLNI->writePacket("V", 4)->writeString(QuazaaGlobals::VENDOR_CODE(), false);
+ 
+ 	if(Neighbours.isG2Hub())
+ 	{
+@@ -1477,7 +1477,7 @@ void CG2Node::sendHAW()
+ 	pPacket->writeHostAddress(&Network.m_oAddress);
+ 
+ 	pPacket->writePacket("V", 4);
+-	pPacket->writeString(CQuazaaGlobals::VENDOR_CODE());
++	pPacket->writeString(QuazaaGlobals::VENDOR_CODE());
+ 
+ 	pPacket->writePacket("HS", 2);
+ 	pPacket->writeIntLE<quint16>(Neighbours.m_nLeavesConnectedG2);
+diff --git Quazaa/NetworkCore/handshake.cpp Quazaa/NetworkCore/handshake.cpp
+index c3158181..e49541df 100644
+--- Quazaa/NetworkCore/handshake.cpp
++++ Quazaa/NetworkCore/handshake.cpp
+@@ -88,7 +88,7 @@ void CHandshake::onRead()
+ 
+ 		QByteArray baResp;
+ 		baResp += "HTTP/1.1 501 Not Implemented\r\n";
+-		baResp += "Server: " + CQuazaaGlobals::USER_AGENT_STRING() + "\r\n";
++		baResp += "Server: " + QuazaaGlobals::USER_AGENT_STRING() + "\r\n";
+ 		baResp += "\r\n";
+ 
+ 		write(baResp);
+@@ -133,13 +133,13 @@ void CHandshake::onWebRequest()
+ 		QByteArray baResp;
+ 
+ 		baResp += "HTTP/1.1 200 OK\r\n";
+-		baResp += "Server: " + CQuazaaGlobals::USER_AGENT_STRING() + "\r\n";
++		baResp += "Server: " + QuazaaGlobals::USER_AGENT_STRING() + "\r\n";
+ 		baResp += "Connection: close\r\n";
+ 		baResp += "Content-Type: text/html; charset=utf-8\r\n";
+ 
+ 
+ 		QByteArray baHtml;
+-		baHtml += "<!DOCTYPE html><html><head><title>Quazaa " + CQuazaaGlobals::APPLICATION_VERSION_STRING() + " : Node Information</title>";
++		baHtml += "<!DOCTYPE html><html><head><title>Quazaa " + QuazaaGlobals::APPLICATION_VERSION_STRING() + " : Node Information</title>";
+ 		baHtml += "<link href=\"/res/favicon.ico\" rel=\"shortcut icon\" type=\"image/vnd.microsoft.icon\" />";
+ 		baHtml += "<meta name=\"robots\" content=\"noindex,nofollow\"></head>";
+ 		baHtml += "<body style=\"color:white;background-color:rgb(12,26,43);padding-left:12px;padding-right:12px;\">";
+@@ -147,7 +147,7 @@ void CHandshake::onWebRequest()
+ 		baHtml += "<div style=\"height:130px;border:1px solid rgb(197,197,197);border-bottom:0px;border-radius:6px 6px 0px 0px;background:url('/res/header_background.png') no-repeat scroll left top rgb(0,102,152);\">";
+ 		baHtml += "<a href=\"http://quazaa.sf.net\"><img src=\"/res/QuazaaLogo.png\"></a></div>";
+ 		baHtml += "<div style=\"color:rgb(51,51,51);background-color:white;border:1px solid rgb(197,197,197);border-top:0px;border-radius:0px 0px 6px 6px;padding:14px 20px 12px;\">";
+-		baHtml += "This node is powered by <a href=\"http://quazaa.sf.net\">Quazaa " + CQuazaaGlobals::APPLICATION_VERSION_STRING() + "</a>.</div></div>";
++		baHtml += "This node is powered by <a href=\"http://quazaa.sf.net\">Quazaa " + QuazaaGlobals::APPLICATION_VERSION_STRING() + "</a>.</div></div>";
+ 		baHtml += "<div style=\"border:1px solid rgb(197,197,197);box-shadow:0px 0px 8px rgb(189,189,189);border-radius:6px;margin-bottom:15px;margin-left:15px;margin-right:15px;\">";
+ 		baHtml += "<div style=\"text-align:center;color:white;background-color:rgb(34,34,34);border-radius:6px 6px 0px 0px;padding:14px 20px 12px;\">";
+ 		baHtml += "What is <a href=\"http://quazaa.sf.net\">Quazaa</a>?</div>";
+@@ -228,7 +228,7 @@ void CHandshake::onWebRequest()
+ 					bFound = true;
+ 
+ 					baResp += "HTTP/1.1 200 OK\r\n";
+-					baResp += "Server: " + CQuazaaGlobals::USER_AGENT_STRING() + "\r\n";
++					baResp += "Server: " + QuazaaGlobals::USER_AGENT_STRING() + "\r\n";
+ 					baResp += "Connection: close\r\n";
+ 					baResp += "Content-Length: " + QString::number(f.size()) + "\r\n";
+ 					baResp += "\r\n";
+@@ -246,7 +246,7 @@ void CHandshake::onWebRequest()
+ 		if( !bFound )
+ 		{
+ 			baResp += "HTTP/1.1 404 Not found\r\n";
+-			baResp += "Server: " + CQuazaaGlobals::USER_AGENT_STRING() + "\r\n";
++			baResp += "Server: " + QuazaaGlobals::USER_AGENT_STRING() + "\r\n";
+ 			baResp += "Connection: close\r\n";
+ 			baResp += "Content-Type: text/plain\r\n";
+ 			baResp += "\r\n";
+diff --git Quazaa/NetworkCore/neighboursg2.cpp Quazaa/NetworkCore/neighboursg2.cpp
+index 44d54220..8218fca2 100644
+--- Quazaa/NetworkCore/neighboursg2.cpp
++++ Quazaa/NetworkCore/neighboursg2.cpp
+@@ -418,7 +418,7 @@ G2Packet* CNeighboursG2::createQueryAck(QUuid oGUID, bool bWithHubs, CNeighbour*
+ 	pPacket->writePacket("TS", 4)->writeIntLE<quint32>( common::getTNowUTC() );
+ 	pPacket->writePacket("FR", (Network.m_oAddress.protocol() == QAbstractSocket::IPv4Protocol ? 6 : 18))->writeHostAddress(&Network.m_oAddress);
+ 	pPacket->writePacket("RA", 4)->writeIntLE<quint32>(30 + 30 * m_nHubsConnectedG2);
+-	pPacket->writePacket("V", 4)->writeString(CQuazaaGlobals::VENDOR_CODE(), false);
++	pPacket->writePacket("V", 4)->writeString(QuazaaGlobals::VENDOR_CODE(), false);
+ 
+ 	if(bDone)
+ 	{
+diff --git Quazaa/Security/securitymanager.cpp Quazaa/Security/securitymanager.cpp
+index 96aa204b..87748c6d 100644
+--- Quazaa/Security/securitymanager.cpp
++++ Quazaa/Security/securitymanager.cpp
+@@ -1230,7 +1230,7 @@ bool CSecurity::stop()
+   */
+ bool CSecurity::load()
+ {
+-	QString sPath = CQuazaaGlobals::DATA_PATH() + "security.dat";
++	QString sPath = QuazaaGlobals::DATA_PATH() + "security.dat";
+ 
+ 	if ( load( sPath ) )
+ 	{
+@@ -1365,7 +1365,7 @@ bool CSecurity::save(bool bForceSaving) const
+ 
+ 	bool bReturn;
+ 
+-	if ( !common::securedSaveFile( CQuazaaGlobals::DATA_PATH(), "security.dat", "[Security] ",
++	if ( !common::securedSaveFile( QuazaaGlobals::DATA_PATH(), "security.dat", "[Security] ",
+ 									this, &CSecurity::writeToFile ) )
+ 	{
+ 		bReturn = false;
+diff --git Quazaa/ShareManager/sharemanager.cpp Quazaa/ShareManager/sharemanager.cpp
+index 54c33618..9dda68d5 100644
+--- Quazaa/ShareManager/sharemanager.cpp
++++ Quazaa/ShareManager/sharemanager.cpp
+@@ -68,17 +68,17 @@ void CShareManager::setupThread()
+ 	systemLog.postLog(LogSeverity::Debug, QString("Setting up ShareManager thread"));
+ 	m_oDatabase = QSqlDatabase::addDatabase("QSQLITE", "Shares");
+ #if QT_VERSION >= 0x050000
+-	QDir path = QDir(CQuazaaGlobals::SETTINGS_PATH());
++	QDir path = QDir(QuazaaGlobals::SETTINGS_PATH());
+ 	if(!path.exists())
+-		path.mkpath(CQuazaaGlobals::SETTINGS_PATH());
++		path.mkpath(QuazaaGlobals::SETTINGS_PATH());
+ 
+-	m_oDatabase.setDatabaseName(QString("%1shares.sdb").arg(CQuazaaGlobals::SETTINGS_PATH()));
++	m_oDatabase.setDatabaseName(QString("%1shares.sdb").arg(QuazaaGlobals::SETTINGS_PATH()));
+ #else
+-	QDir path = QDir(CQuazaaGlobals::SETTINGS_PATH());
++	QDir path = QDir(QuazaaGlobals::SETTINGS_PATH());
+ 	if(!path.exists())
+-		path.mkpath(CQuazaaGlobals::SETTINGS_PATH());
++		path.mkpath(QuazaaGlobals::SETTINGS_PATH());
+ 
+-	m_oDatabase.setDatabaseName(QString("%1shares.sdb").arg(CQuazaaGlobals::SETTINGS_PATH());
++	m_oDatabase.setDatabaseName(QString("%1shares.sdb").arg(QuazaaGlobals::SETTINGS_PATH());
+ #endif
+ 
+ 	if(!m_oDatabase.open())
+diff --git Quazaa/UI/dialogabout.cpp Quazaa/UI/dialogabout.cpp
+index 6cc654fc..1a44f3aa 100644
+--- Quazaa/UI/dialogabout.cpp
++++ Quazaa/UI/dialogabout.cpp
+@@ -37,7 +37,7 @@ CDialogAbout::CDialogAbout(QWidget* parent) :
+ 	ui(new Ui::CDialogAbout)
+ {
+ 	ui->setupUi(this);
+-	ui->labelVersion->setText(ui->labelVersion->text().replace("&lt;version&gt;", CQuazaaGlobals::APPLICATION_VERSION_STRING()));
++	ui->labelVersion->setText(ui->labelVersion->text().replace("&lt;version&gt;", QuazaaGlobals::APPLICATION_VERSION_STRING()));
+ 	setSkin();
+ }
+ 
+diff --git Quazaa/UI/suggestedlineedit.cpp Quazaa/UI/suggestedlineedit.cpp
+index 3e20a22d..7a9006b0 100644
+--- Quazaa/UI/suggestedlineedit.cpp
++++ Quazaa/UI/suggestedlineedit.cpp
+@@ -90,9 +90,9 @@ CSuggestedLineEdit::~CSuggestedLineEdit()
+ void CSuggestedLineEdit::load()
+ {
+ #if QT_VERSION >= 0x050000
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ #else
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ #endif
+ 
+ 	m_qSettings.beginGroup(objectName());
+@@ -104,9 +104,9 @@ void CSuggestedLineEdit::load()
+ void CSuggestedLineEdit::save()
+ {
+ #if QT_VERSION >= 0x050000
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ #else
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ #endif
+ 
+ 	m_qSettings.beginGroup(objectName());
+diff --git Quazaa/UI/widgetdownloads.cpp Quazaa/UI/widgetdownloads.cpp
+index b7d2a607..9b2ab7b5 100644
+--- Quazaa/UI/widgetdownloads.cpp
++++ Quazaa/UI/widgetdownloads.cpp
+@@ -72,7 +72,7 @@ CWidgetDownloads::CWidgetDownloads(QWidget* parent) :
+ 		header->resizeSection(CDownloadsTreeModel::SIZE, fm.width(" 123.45 MB "));
+ 		header->resizeSection(CDownloadsTreeModel::COMPLETED, fm.width(" 1234.45 MB "));
+ 		header->resizeSection(CDownloadsTreeModel::BANDWIDTH, fm.width(" 1234.45 MB/s "));
+-		header->resizeSection(CDownloadsTreeModel::CLIENT, fm.width(CQuazaaGlobals::USER_AGENT_STRING()));
++		header->resizeSection(CDownloadsTreeModel::CLIENT, fm.width(QuazaaGlobals::USER_AGENT_STRING()));
+ 		header->resizeSection(CDownloadsTreeModel::PROGRESS, 200);
+ 		header->resizeSection(CDownloadsTreeModel::PRIORITY, fm.width("    Priority    "));
+ 		header->resizeSection(CDownloadsTreeModel::STATUS, fm.width("Tracker Down"));
+diff --git Quazaa/main.cpp Quazaa/main.cpp
+index 031c2cac..7e9d7eec 100644
+--- Quazaa/main.cpp
++++ Quazaa/main.cpp
+@@ -77,7 +77,7 @@ static void setApplicationProxy(QUrl url)
+ 	}
+ }
+ 
+-CQuazaaGlobals quazaaGlobals;
++QuazaaGlobals quazaaGlobals;
+ 
+ int main(int argc, char *argv[])
+ {
+@@ -165,10 +165,10 @@ int main(int argc, char *argv[])
+ 
+ #endif // Q_OS_LINUX
+ 
+-	theApp.setApplicationName(    CQuazaaGlobals::APPLICATION_NAME() );
+-	theApp.setApplicationVersion( CQuazaaGlobals::APPLICATION_VERSION_STRING() );
+-	theApp.setOrganizationDomain( CQuazaaGlobals::APPLICATION_ORGANIZATION_DOMAIN() );
+-	theApp.setOrganizationName(   CQuazaaGlobals::APPLICATION_ORGANIZATION_NAME() );
++	theApp.setApplicationName(    QuazaaGlobals::APPLICATION_NAME() );
++	theApp.setApplicationVersion( QuazaaGlobals::APPLICATION_VERSION_STRING() );
++	theApp.setOrganizationDomain( QuazaaGlobals::APPLICATION_ORGANIZATION_DOMAIN() );
++	theApp.setOrganizationName(   QuazaaGlobals::APPLICATION_ORGANIZATION_NAME() );
+ 	theApp.setApplicationSlogan( QObject::tr("World class file sharing.") );
+ 
+ 	QIcon icon;
+diff --git Quazaa/quazaaglobals.cpp Quazaa/quazaaglobals.cpp
+index 1c4c321d..e297c9fc 100644
+--- Quazaa/quazaaglobals.cpp
++++ Quazaa/quazaaglobals.cpp
+@@ -27,37 +27,38 @@
+ 
+ #include "debug_new.h"
+ 
++#include <QDir>
++#include <QObject>
++
+ #if QT_VERSION >= 0x050000
+ #include <QStandardPaths>
+ #else
+ #include <QDesktopServices>
+ #endif
+ 
+-#include <QDir>
+-
+ /*!
+ 	\file quazaaglobals.h
+ 	\brief \#include &qout;quazaaglobals.h&quot;
+  */
+ 
+ /*!
+-	\class CQuazaaGlobals quazaaglobals.h
++	\class QuazaaGlobals quazaaglobals.h
+ 	\ingroup base
+-	\brief Miscellaneous identifiers used throughout quazaa.
++	\brief Miscellaneous identifiers used throughout Quazaa.
+ 
+-	The CQuazaaGlobals class provides a single place to provide global
++	The QuazaaGlobals class provides a single place to provide global
+ 	variables used throughout Quazaa.
+ 
+-	\section Accessing CQuazaaGlobals
++	\section Accessing QuazaaGlobals
+ 
+-	It is recommended to access CQuazaaGlobals instances via static
+-	CQuazaaGlobals::FUNCTION_NAME() methods.
++	It is recommended to access QuazaaGlobals instances via static
++	QuazaaGlobals::FUNCTION_NAME() methods.
+  */
+ 
+ /*!
+ 	Returns the application name of Quazaa at run-time as a string.
+  */
+-QString CQuazaaGlobals::APPLICATION_NAME()
++QString QuazaaGlobals::APPLICATION_NAME()
+ {
+ 	return "Quazaa";
+ }
+@@ -66,12 +67,12 @@ QString CQuazaaGlobals::APPLICATION_NAME()
+ 	Returns the version of Quazaa at run-time as a string.
+  */
+ #ifdef QT_DEBUG
+-QString CQuazaaGlobals::APPLICATION_VERSION()
++QString QuazaaGlobals::APPLICATION_VERSION()
+ {
+ 	return QString().sprintf("%d.%d Git:%s (debug build)", Version::MAJOR, Version::MINOR, Version::REVISION);
+ }
+ #else
+-QString CQuazaaGlobals::APPLICATION_VERSION()
++QString QuazaaGlobals::APPLICATION_VERSION()
+ {
+ 	return QString().sprintf("%d.%d Git:%s", Version::MAJOR, Version::MINOR, Version::REVISION);
+ }
+@@ -80,7 +81,7 @@ QString CQuazaaGlobals::APPLICATION_VERSION()
+ /*!
+ 	Returns the version of Quazaa including build date at run-time as a string.
+  */
+-QString CQuazaaGlobals::APPLICATION_VERSION_STRING()
++QString QuazaaGlobals::APPLICATION_VERSION_STRING()
+ {
+ 	return QString().sprintf("%d.%d Git:%s (%s)", Version::MAJOR, Version::MINOR, Version::REVISION, Version::BUILD_DATE);
+ }
+@@ -88,7 +89,7 @@ QString CQuazaaGlobals::APPLICATION_VERSION_STRING()
+ /*!
+ 	Returns the application fingerprint at run-time as a string.
+  */
+-QString CQuazaaGlobals::APPLICATION_FINGERPRINT()
++QString QuazaaGlobals::APPLICATION_FINGERPRINT()
+ {
+ 	return "QZ" + APPLICATION_VERSION();
+ }
+@@ -96,7 +97,7 @@ QString CQuazaaGlobals::APPLICATION_FINGERPRINT()
+ /*!
+ 	Returns the organization name of Quazaa at run-time as a string.
+  */
+-QString CQuazaaGlobals::APPLICATION_ORGANIZATION_NAME()
++QString QuazaaGlobals::APPLICATION_ORGANIZATION_NAME()
+ {
+ 	return "Quazaa Development Team";
+ }
+@@ -104,7 +105,7 @@ QString CQuazaaGlobals::APPLICATION_ORGANIZATION_NAME()
+ /*!
+ 	Returns the Quazaa website domain at run-time as a string.
+  */
+-QString CQuazaaGlobals::APPLICATION_ORGANIZATION_DOMAIN()
++QString QuazaaGlobals::APPLICATION_ORGANIZATION_DOMAIN()
+ {
+ 	return "quazaa.sourceforge.net";
+ }
+@@ -113,7 +114,7 @@ QString CQuazaaGlobals::APPLICATION_ORGANIZATION_DOMAIN()
+ 	Returns the user agent of Quazaa at run-time as a string.
+ 	This is used by most of the network protocols in user agent pakets.
+  */
+-QString CQuazaaGlobals::USER_AGENT_STRING()
++QString QuazaaGlobals::USER_AGENT_STRING()
+ {
+ 	return APPLICATION_NAME() + "/" + APPLICATION_VERSION().replace(",", ".");
+ }
+@@ -123,12 +124,12 @@ QString CQuazaaGlobals::USER_AGENT_STRING()
+ 	This is used by most of the network protocols in vendor code pakets.
+  */
+ #ifdef QT_DEBUG
+-QString CQuazaaGlobals::VENDOR_CODE()
++QString QuazaaGlobals::VENDOR_CODE()
+ {
+ 	return "QAZB";
+ }
+ #else
+-QString CQuazaaGlobals::VENDOR_CODE()
++QString QuazaaGlobals::VENDOR_CODE()
+ {
+ 	return "QAZA";
+ }
+@@ -137,12 +138,12 @@ QString CQuazaaGlobals::VENDOR_CODE()
+ /*!
+ 	Returns the media open filter used by file open dialogs when opening media files.
+  */
+-QString CQuazaaGlobals::MEDIA_OPEN_FILTER()
++QString QuazaaGlobals::MEDIA_OPEN_FILTER()
+ {
+ 	return tr("All Media Files ") + "(*.3g2 *.3gp *.3gp2 *.3gpp *.d2v *.divx *.amr *.amv *.asf *.avi *.bik *.drc *.dsa *.dsm *.dss *.dsv *.evo *.flc *.fli *.flic *.flv *.hdmov *.ifo *.ivf *.m1v *.m2p *.m2t *.m2ts *.m2v *.m4v *.mkv *.mov *.mp2v *.mp4 *.mp4v *.mpe *.mpeg *.mpg *.mpv2 *.mpv4 *.mts *.ogm *.ogv *.pss *.pva *.ram *.ratdvd *.rm *.rmm *.roq *.rp *.rmvb *.rpm *.rt *.smi *.smil *.smk *.swf *.tp *.tpr *.ts *.tta *.vob *.vp6 *.wm *.wmp *.wmv *.aac *.ac3 *.aif *.aifc *.aiff *.alac *.au *.cda *.dts *.flac *.mid *.midi *.m1a *.m2a *.m4a *.m4b *.mka *.mpa *.mpc *.mp2 *.mp3 *.oga *.ogg *.ra *.rmi *.snd *.wav *.wma);;" + tr("All Files ") + "(*.*);;" + tr("Video Files ") + "(*.3g2 *.3gp *.3gp2 *.3gpp *.d2v *.divx *.amr *.amv *.asf *.avi *.bik *.drc *.dsa *.dsm *.dss *.dsv *.evo *.flc *.fli *.flic *.flv *.hdmov *.ifo *.ivf *.m1v *.m2p *.m2t *.m2ts *.m2v *.m4v *.mkv *.mov *.mp2v *.mp4 *.mp4v *.mpe *.mpeg *.mpg *.mpv2 *.mpv4 *.mts *.ogm *.ogv *.pss *.pva *.ram *.ratdvd *.rm *.rmm *.roq *.rp *.rmvb *.rpm *.rt *.smi *.smil *.smk *.swf *.tp *.tpr *.ts *.tta *.vob *.vp6 *.wm *.wmp *.wmv);;" + tr("Audio Files") + " (*.aac *.ac3 *.aif *.aifc *.aiff *.alac *.au *.cda *.dts *.flac *.mid *.midi *.m1a *.m2a *.m4a *.m4b *.mka *.mpa *.mpc *.mp2 *.mp3 *.oga *.ogg *.ra *.rmi *.snd *.wav *.wma)";
+ }
+ 
+-QString CQuazaaGlobals::SETTINGS_PATH()
++QString QuazaaGlobals::SETTINGS_PATH()
+ {
+ #if QT_VERSION >= 0x050000
+ 	QDir path;
+@@ -158,14 +159,14 @@ QString CQuazaaGlobals::SETTINGS_PATH()
+ /*!
+ 	Returns the path to store Quazaa data files.
+ */
+-QString CQuazaaGlobals::DATA_PATH()
++QString QuazaaGlobals::DATA_PATH()
+ {
+ 	QDir path;
+ 	path.mkpath(QString( "%1Data/" ).arg( SETTINGS_PATH()));
+ 	return QDir::toNativeSeparators( QString( "%1Data/" ).arg( SETTINGS_PATH() ) );
+ }
+ 
+-QString CQuazaaGlobals::STORAGE_PATH()
++QString QuazaaGlobals::STORAGE_PATH()
+ {
+ #if QT_VERSION >= 0x050000
+ 	QDir path;
+@@ -178,7 +179,7 @@ QString CQuazaaGlobals::STORAGE_PATH()
+ #endif
+ }
+ 
+-QString CQuazaaGlobals::INI_FILE()
++QString QuazaaGlobals::INI_FILE()
+ {
+ #if QT_VERSION >= 0x050000
+ 	return QString("%1quazaa.ini").arg( SETTINGS_PATH() );
+@@ -186,6 +187,3 @@ QString CQuazaaGlobals::INI_FILE()
+ 	return QString("%1quazaa.ini").arg( SETTINGS_PATH() );
+ #endif
+ }
+-
+-
+-
+diff --git Quazaa/quazaaglobals.h Quazaa/quazaaglobals.h
+index 3faf22d8..5a3e06e3 100644
+--- Quazaa/quazaaglobals.h
++++ Quazaa/quazaaglobals.h
+@@ -25,13 +25,15 @@
+ #ifndef QUAZAAGLOBALS_H
+ #define QUAZAAGLOBALS_H
+ 
+-#include <QObject>
++#include <QString>
+ 
+ #define LOG_QUERY_HANDLING 0
++#define LOG_MALFORMATTED_QUERIES 0
++#define LOG_ROUTED_PACKETS 0
++#define LOG_CONNECTIONS 0
+ 
+-class CQuazaaGlobals : public QObject
++class QuazaaGlobals
+ {
+-		Q_OBJECT
+ public:
+ 		static QString APPLICATION_NAME();
+ 		static QString APPLICATION_VERSION();
+diff --git Quazaa/quazaasettings.cpp Quazaa/quazaasettings.cpp
+index 1b902d7c..a91c004d 100644
+--- Quazaa/quazaasettings.cpp
++++ Quazaa/quazaasettings.cpp
+@@ -65,7 +65,7 @@ CQuazaaSettings::CQuazaaSettings()
+  */
+ void CQuazaaSettings::saveSettings()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.beginGroup("Ares");
+ 	m_qSettings.setValue("Enable", quazaaSettings.Ares.Enable);
+@@ -479,7 +479,7 @@ void CQuazaaSettings::saveSettings()
+  */
+ void CQuazaaSettings::loadSettings()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.beginGroup("Ares");
+ 	quazaaSettings.Ares.Enable = m_qSettings.value("Enable", true).toBool();
+@@ -513,7 +513,7 @@ void CQuazaaSettings::loadSettings()
+ 	quazaaSettings.BitTorrent.SourceExchangePeriod = m_qSettings.value("SourceExchangePeriod", 10).toInt();
+ 	quazaaSettings.BitTorrent.StartPaused = m_qSettings.value("StartPaused", false).toBool();
+ 	quazaaSettings.BitTorrent.TestPartials = m_qSettings.value("TestPartials", true).toBool();
+-	quazaaSettings.BitTorrent.TorrentPath = m_qSettings.value("TorrentPath", CQuazaaGlobals::STORAGE_PATH() + "Torrents").toString();
++	quazaaSettings.BitTorrent.TorrentPath = m_qSettings.value("TorrentPath", QuazaaGlobals::STORAGE_PATH() + "Torrents").toString();
+ 	quazaaSettings.BitTorrent.TrackerKey = m_qSettings.value("TrackerKey", true).toBool();
+ 	quazaaSettings.BitTorrent.UploadCount = m_qSettings.value("UploadCount", 4).toInt();
+ 	quazaaSettings.BitTorrent.UseKademlia = m_qSettings.value("UseKademlia", true).toBool();
+@@ -564,7 +564,7 @@ void CQuazaaSettings::loadSettings()
+ 	quazaaSettings.Downloads.DropFailedSourcesThreshold = m_qSettings.value("DropFailedSourcesThreshold", 20).toInt();
+ 	quazaaSettings.Downloads.ExpandDownloads = m_qSettings.value("ExpandDownloads", false).toBool();
+ 	quazaaSettings.Downloads.FlushSD = m_qSettings.value("FlushSD", true).toBool();
+-	quazaaSettings.Downloads.IncompletePath = m_qSettings.value("IncompletePath", CQuazaaGlobals::STORAGE_PATH() + "Incomplete").toString();
++	quazaaSettings.Downloads.IncompletePath = m_qSettings.value("IncompletePath", QuazaaGlobals::STORAGE_PATH() + "Incomplete").toString();
+ 	quazaaSettings.Downloads.MaxAllowedFailures = m_qSettings.value("MaxAllowedFailures", 10).toInt();
+ 	quazaaSettings.Downloads.MaxConnectingSources = m_qSettings.value("MaxConnectingSources", 8).toInt();
+ 	quazaaSettings.Downloads.MaxFiles = m_qSettings.value("MaxFiles", 26).toInt();
+@@ -916,7 +916,7 @@ void CQuazaaSettings::loadSettings()
+  */
+ void CQuazaaSettings::saveChatConnections()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.beginGroup("Chat");
+ 	m_qSettings.setValue("Connections", quazaaSettings.Chat.Connections);
+@@ -928,7 +928,7 @@ void CQuazaaSettings::saveChatConnections()
+  */
+ void CQuazaaSettings::loadChatConnections()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.beginGroup("Chat");
+ 	quazaaSettings.Chat.Connections = m_qSettings.value("Connections");
+@@ -940,7 +940,7 @@ void CQuazaaSettings::loadChatConnections()
+  */
+ void CQuazaaSettings::saveChatConnectionWizard()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.beginGroup("Chat");
+ 	m_qSettings.setValue("Hosts", quazaaSettings.Chat.Hosts);
+@@ -956,7 +956,7 @@ void CQuazaaSettings::saveChatConnectionWizard()
+  */
+ void CQuazaaSettings::loadChatConnectionWizard()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.beginGroup("Chat");
+ 	quazaaSettings.Chat.Hosts = m_qSettings.value("Hosts", QStringList() << "irc.paradoxirc.net" << "us.paradoxirc.net"
+@@ -975,7 +975,7 @@ void CQuazaaSettings::loadChatConnectionWizard()
+  */
+ void CQuazaaSettings::saveChat()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.beginGroup("Chat");
+ 	m_qSettings.setValue("Font", quazaaSettings.Chat.Font);
+@@ -1060,7 +1060,7 @@ void CQuazaaSettings::saveChat()
+  */
+ void CQuazaaSettings::loadChat()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.beginGroup("Chat");
+ 
+@@ -1173,7 +1173,7 @@ void CQuazaaSettings::loadChat()
+  */
+ void CQuazaaSettings::saveProfile()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.beginGroup("Profile");
+ 	m_qSettings.setValue("Age", quazaaSettings.Profile.Age);
+@@ -1209,7 +1209,7 @@ void CQuazaaSettings::saveProfile()
+  */
+ void CQuazaaSettings::loadProfile()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.beginGroup("Profile");
+ 
+@@ -1261,7 +1261,7 @@ void CQuazaaSettings::loadProfile()
+  */
+ void CQuazaaSettings::saveWindowSettings(QMainWindow* window)
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.setValue("WindowGeometry", window->saveGeometry());
+ 	m_qSettings.setValue("WindowState", window->saveState());
+@@ -1344,7 +1344,7 @@ void CQuazaaSettings::saveWindowSettings(QMainWindow* window)
+  */
+ void CQuazaaSettings::loadWindowSettings(QMainWindow* window)
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	QList<QVariant> intListInitializer;
+ 	intListInitializer << 0 << 0;
+@@ -1426,7 +1426,7 @@ void CQuazaaSettings::loadWindowSettings(QMainWindow* window)
+  */
+ void CQuazaaSettings::saveLanguageSettings()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.beginGroup("Language");
+ 	m_qSettings.setValue("LanguageFile", quazaaSettings.Language.File);
+@@ -1438,7 +1438,7 @@ void CQuazaaSettings::saveLanguageSettings()
+  */
+ void CQuazaaSettings::loadLanguageSettings()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.beginGroup("Language");
+ 	quazaaSettings.Language.File = m_qSettings.value("LanguageFile", ("quazaa_default_en")).toString();
+@@ -1450,7 +1450,7 @@ void CQuazaaSettings::loadLanguageSettings()
+  */
+ void CQuazaaSettings::saveFirstRun(bool firstRun)
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.setValue("FirstRun", firstRun);
+ }
+@@ -1460,7 +1460,7 @@ void CQuazaaSettings::saveFirstRun(bool firstRun)
+  */
+ bool CQuazaaSettings::isFirstRun()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	return m_qSettings.value("FirstRun", true).toBool();
+ }
+@@ -1470,7 +1470,7 @@ bool CQuazaaSettings::isFirstRun()
+  */
+ void CQuazaaSettings::saveSkinSettings()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.setValue("SkinFile", Skin.File);
+ }
+@@ -1480,7 +1480,7 @@ void CQuazaaSettings::saveSkinSettings()
+  */
+ void CQuazaaSettings::loadSkinSettings()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	Skin.File = m_qSettings.value("SkinFile", qApp->applicationDirPath() + "/Skin/Greenery/Greenery.qsk").toString();
+ }
+@@ -1490,7 +1490,7 @@ void CQuazaaSettings::loadSkinSettings()
+  */
+ void CQuazaaSettings::saveLogSettings()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.beginGroup("Logging");
+ 	m_qSettings.setValue("SaveLog", Logging.SaveLog);
+@@ -1511,7 +1511,7 @@ void CQuazaaSettings::saveLogSettings()
+  */
+ void CQuazaaSettings::loadLogSettings()
+ {
+-	QSettings m_qSettings(CQuazaaGlobals::INI_FILE(), QSettings::IniFormat);
++	QSettings m_qSettings(QuazaaGlobals::INI_FILE(), QSettings::IniFormat);
+ 
+ 	m_qSettings.beginGroup("Logging");
+ 	Logging.SaveLog = m_qSettings.value("SaveLog", false).toBool();
+-- 
+2.41.0
+

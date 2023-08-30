@@ -1,0 +1,147 @@
+From 482fe1809a82fcfd4e64fd73b5d3ed627fcf56a2 Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Sat, 1 Jul 2023 23:05:54 +0800
+Subject: [PATCH 4/7] Revert "Workaround for QMediaPlayer::setVideoOutput
+ screwing up the video widget's sub control zorder."
+
+This reverts commit e10c1067b3312bcb749a0d6a6d093c58137c9c68.
+---
+ Quazaa/UI/mediaoverlay.cpp | 11 -----------
+ Quazaa/UI/mediaoverlay.h   |  3 ---
+ Quazaa/UI/videowidget.cpp  |  7 -------
+ Quazaa/UI/videowidget.h    |  2 +-
+ Quazaa/UI/widgetmedia.cpp  |  1 -
+ Quazaa/UI/widgetmedia.ui   |  2 +-
+ Quazaa/main.cpp            |  2 --
+ 7 files changed, 2 insertions(+), 26 deletions(-)
+
+diff --git Quazaa/UI/mediaoverlay.cpp Quazaa/UI/mediaoverlay.cpp
+index 53428861..dab9dd6d 100644
+--- Quazaa/UI/mediaoverlay.cpp
++++ Quazaa/UI/mediaoverlay.cpp
+@@ -1,8 +1,6 @@
+ #include "mediaoverlay.h"
+ #include "ui_mediaoverlay.h"
+ 
+-#include <QDebug>
+-
+ MediaOverlay::MediaOverlay(QWidget *parent) :
+ 	QWidget(parent),
+ 	ui(new Ui::MediaOverlay)
+@@ -26,7 +24,6 @@ MediaOverlay::~MediaOverlay()
+ 
+ void MediaOverlay::mouseMoveEvent(QMouseEvent *e)
+ {
+-	qDebug() << "MediaOverlay mouse move detected.";
+ 	if(underMouse()) {
+ 		if(!ui->frameMediaControls->isVisible())
+ 			ui->frameMediaControls->show();
+@@ -43,11 +40,3 @@ void MediaOverlay::mouseMoveEvent(QMouseEvent *e)
+ 
+ 	QWidget::mouseMoveEvent(e);
+ }
+-
+-void MediaOverlay::showControls()
+-{
+-	if(!ui->frameMediaControls->isVisible())
+-		ui->frameMediaControls->show();
+-
+-	m_tMediaControls->start(5000);
+-}
+diff --git Quazaa/UI/mediaoverlay.h Quazaa/UI/mediaoverlay.h
+index 7abcd63e..fb5cc680 100644
+--- Quazaa/UI/mediaoverlay.h
++++ Quazaa/UI/mediaoverlay.h
+@@ -23,9 +23,6 @@ private:
+ 
+ protected:
+ 	void mouseMoveEvent(QMouseEvent *e);
+-
+-public slots:
+-	void showControls();
+ };
+ 
+ #endif // MEDIAOVERLAY_H
+diff --git Quazaa/UI/videowidget.cpp Quazaa/UI/videowidget.cpp
+index ea9500b0..85d8e49a 100644
+--- Quazaa/UI/videowidget.cpp
++++ Quazaa/UI/videowidget.cpp
+@@ -2,7 +2,6 @@
+ 
+ #include <QKeyEvent>
+ #include <QMouseEvent>
+-#include <QDebug>
+ 
+ VideoWidget::VideoWidget(QWidget *parent) :
+ 	QVideoWidget(parent)
+@@ -16,7 +15,6 @@ VideoWidget::VideoWidget(QWidget *parent) :
+ 	setAttribute(Qt::WA_OpaquePaintEvent);
+ 
+ 	mediaOverlay = new MediaOverlay(this);
+-	setMouseTracking(true);
+ }
+ 
+ VideoWidget::~VideoWidget()
+@@ -53,8 +51,3 @@ void VideoWidget::resizeEvent(QResizeEvent *event)
+ 	mediaOverlay->resize(event->size());
+ 	event->accept();
+ }
+-
+-void VideoWidget::raiseControls()
+-{
+-	mediaOverlay->raise();
+-}
+diff --git Quazaa/UI/videowidget.h Quazaa/UI/videowidget.h
+index a12185ce..78b3017c 100644
+--- Quazaa/UI/videowidget.h
++++ Quazaa/UI/videowidget.h
+@@ -23,7 +23,7 @@ private:
+ signals:
+ 
+ public slots:
+-	void raiseControls();
++
+ };
+ 
+ #endif // VIDEOWIDGET_H
+diff --git Quazaa/UI/widgetmedia.cpp Quazaa/UI/widgetmedia.cpp
+index 52b6a55a..f4314995 100644
+--- Quazaa/UI/widgetmedia.cpp
++++ Quazaa/UI/widgetmedia.cpp
+@@ -53,7 +53,6 @@ CWidgetMedia::CWidgetMedia(QWidget* parent) :
+ 
+ 	videoWidget = new VideoWidget(ui->videoContainerWidget);
+ 	player->setVideoOutput(videoWidget);
+-	videoWidget->raiseControls(); // This corrects the controls being put under the video widget during setVideoWidget
+ 
+ 	ui->verticalLayoutMedia->addWidget(videoWidget);
+ 
+diff --git Quazaa/UI/widgetmedia.ui Quazaa/UI/widgetmedia.ui
+index b6f954f8..198265ce 100644
+--- Quazaa/UI/widgetmedia.ui
++++ Quazaa/UI/widgetmedia.ui
+@@ -58,7 +58,7 @@
+        </sizepolicy>
+       </property>
+       <property name="mouseTracking">
+-       <bool>true</bool>
++       <bool>false</bool>
+       </property>
+       <property name="autoFillBackground">
+        <bool>false</bool>
+diff --git Quazaa/main.cpp Quazaa/main.cpp
+index 2664de02..91583be9 100644
+--- Quazaa/main.cpp
++++ Quazaa/main.cpp
+@@ -191,8 +191,6 @@ int main(int argc, char *argv[])
+ 	quazaaSettings.translator.load( quazaaSettings.Language.File );
+ 	qApp->installTranslator( &quazaaSettings.translator );
+ 
+-	// If the MainWindow object is not created and shown before any other dialogs,
+-	// the media player will break input event processing
+ 	MainWindow = new CWinMain();
+ 	MainWindow->show();
+ 	MainWindow->hide();
+-- 
+2.41.0
+

@@ -1,0 +1,85 @@
+From b3f37df1bf4792cd6a787cac261e332966fec45b Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Sat, 1 Jul 2023 23:07:10 +0800
+Subject: [PATCH 6/7] Revert "Returning to the inherited class's mouse move
+ event after custom"
+
+This reverts commit e16baa1003cf40ff4f995b2ed989dd77d0aa9b18.
+---
+ Quazaa/Quazaa.pro          | 17 ++++++++---------
+ Quazaa/UI/mediaoverlay.cpp |  4 ++--
+ 2 files changed, 10 insertions(+), 11 deletions(-)
+
+diff --git Quazaa/Quazaa.pro Quazaa/Quazaa.pro
+index 8c2db54c..9b0caa15 100644
+--- Quazaa/Quazaa.pro
++++ Quazaa/Quazaa.pro
+@@ -29,11 +29,10 @@ QT_VER_MAJ = $$member(QT_VERSION, 0)
+ QT_VER_MIN = $$member(QT_VERSION, 1)
+ 
+ greaterThan(QT_VER_MAJ, 4) {
+-		QT +=	widgets \
++		QT += widgets \
++				gui \
+ 				multimedia \
+-				multimediawidgets \
+-				network \
+-				xml
++				multimediawidgets
+ }
+ 
+ QT += network \
+@@ -396,8 +395,8 @@ HEADERS += \
+ 		Models/securityfiltermodel.h \
+ 		UI/dialogimportsecurity.h \
+ 	UI/dialogmodifyrule.h \
+-	UI/mediaoverlay.h \
+-	UI/videowidget.h
++    UI/mediaoverlay.h \
++    UI/videowidget.h
+ 
+ # Sources
+ SOURCES += \
+@@ -558,8 +557,8 @@ SOURCES += \
+ 		Models/securityfiltermodel.cpp \
+ 		UI/dialogimportsecurity.cpp \
+ 	UI/dialogmodifyrule.cpp \
+-	UI/mediaoverlay.cpp \
+-	UI/videowidget.cpp
++    UI/mediaoverlay.cpp \
++    UI/videowidget.cpp
+ 
+ FORMS += \
+ 		UI/dialogabout.ui \
+@@ -620,7 +619,7 @@ FORMS += \
+ 	UI/wizardircconnection.ui \
+ 	UI/dialogimportsecurity.ui \
+ 	UI/dialogmodifyrule.ui \
+-	UI/mediaoverlay.ui
++    UI/mediaoverlay.ui
+ 
+ TRANSLATIONS = \
+ 		Language/quazaa_af.ts \
+diff --git Quazaa/UI/mediaoverlay.cpp Quazaa/UI/mediaoverlay.cpp
+index dab9dd6d..24f3ea02 100644
+--- Quazaa/UI/mediaoverlay.cpp
++++ Quazaa/UI/mediaoverlay.cpp
+@@ -24,6 +24,8 @@ MediaOverlay::~MediaOverlay()
+ 
+ void MediaOverlay::mouseMoveEvent(QMouseEvent *e)
+ {
++	Q_UNUSED(e);
++
+ 	if(underMouse()) {
+ 		if(!ui->frameMediaControls->isVisible())
+ 			ui->frameMediaControls->show();
+@@ -37,6 +39,4 @@ void MediaOverlay::mouseMoveEvent(QMouseEvent *e)
+ 
+ 		m_tVolumeControl->start(5000);
+ 	}
+-
+-	QWidget::mouseMoveEvent(e);
+ }
+-- 
+2.41.0
+
