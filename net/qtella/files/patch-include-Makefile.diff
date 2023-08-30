@@ -1,0 +1,20 @@
+--- include/Makefile.am.orig	2004-05-28 03:45:00.000000000 +0800
++++ include/Makefile.am	2023-08-22 20:37:59.000000000 +0800
+@@ -51,7 +51,6 @@
+ PongCache.h \
+ Push.h \
+ QtellaSub.h \
+-#QtellaSubMisc.h \
+ Query.h \
+ QueryHit.h \
+ QueryHitEntry.h \
+@@ -76,7 +75,8 @@
+ UploadManager.h \
+ SHA1Computer.h \
+ sha1.h \
+-GWebCacheManager.h GWebCache.h \
++GWebCacheManager.h \
++GWebCache.h \
+ HttpTransactor.h \
+ qtella_mini_xpm.h \
+ BWidgetConfig.h \
