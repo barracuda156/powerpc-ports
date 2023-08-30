@@ -1,0 +1,80 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
+
+PortSystem      1.0
+PortGroup       boost 1.0
+PortGroup       cmake 1.1
+PortGroup       compiler_blacklist_versions 1.0
+PortGroup       github 1.0
+PortGroup       openssl 1.0
+PortGroup       qt4 1.0
+#PortGroup       legacysupport 1.1
+
+categories      net
+name            qBittorrent-qt4
+conflicts       qBittorrent qBittorrent-qt5
+maintainers     {@barracuda156 gmail.com:vital.had} openmaintainer
+license         {GPL-2+ OpenSSLException}
+
+description     The qBittorrent project aims to provide an open-source software alternative to µTorrent.
+long_description \
+                qBittorrent is a bittorrent client programmed in C++ / Qt that uses \
+                libtorrent (sometimes called libtorrent-rasterbar) by Arvid Norberg. \
+                It aims to be a good alternative to all other bittorrent clients out \
+                there. qBittorrent is fast, stable and provides unicode support as well \
+                as many features.
+
+homepage        https://www.qbittorrent.org
+
+github.setup    qbittorrent qBittorrent 3.3.16 release-
+revision        0
+checksums       rmd160  b85e023c74564223e8d4312c7f904a326fa89670 \
+                sha256  e922412627289e12625bc149486946324e5c5871593c202245a952c906e1a642 \
+                size    5496325
+github.tarball_from archive
+
+compiler.cxx_standard 2014
+
+#legacysupport.newest_darwin_requires_legacy 18
+boost.version   1.81
+
+depends_build-append \
+                port:pkgconfig
+
+depends_lib-append \
+                port:libtorrent-rasterbar \
+                port:zlib
+
+boost.depends_type  \
+                build
+
+configure.args-append \
+                -DGUI=OFF \
+                -DQT5=OFF \
+                -DWEBUI=OFF
+
+configure.cxxflags-append \
+                -std=gnu++14
+
+destroot {
+    if {[variant_isset gui]} {
+        set appname "qbittorrent"
+    } else {
+        set appname "qbittorrent-nox"
+    }
+    reinplace "s|Plugins = PlugIns|Plugins = ${qt_dir}/plugins|g" ${worksrcpath}/src/${appname}.app/Contents/Resources/qt.conf
+    copy ${worksrcpath}/src/${appname}.app ${destroot}${applications_dir}
+    if {![variant_isset gui]} {
+        ln -s ${applications_dir}/${appname}.app/Contents/MacOS/${appname} ${destroot}${prefix}/bin
+    }
+}
+
+variant gui description {Enable GUI} {
+                configure.args-delete -DGUI=OFF
+}
+
+variant webui description {Enable WebUI} {
+                configure.args-delete -DWEBUI=OFF
+}
+
+default_variants \
+                +gui +webui
