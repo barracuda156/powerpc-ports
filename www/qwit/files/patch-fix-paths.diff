@@ -1,0 +1,14 @@
+--- CMakeLists.txt.orig	2011-02-05 10:39:21.000000000 +0800
++++ CMakeLists.txt	2023-08-25 11:11:51.000000000 +0800
+@@ -14,8 +14,9 @@
+ 
+ include_directories( 
+ 	${QT_INCLUDES} 
+-	/usr/include/QtOAuth
+-	/usr/include/qca2/QtCrypto
++	@PREFIX@/include/QtOAuth
++	@PREFIX@/include/QProgressIndicator
++	@PREFIX@/libexec/qt4/include/QtCrypto
+ 	${CMAKE_CURRENT_SOURCE_DIR}
+ 	${CMAKE_CURRENT_BINARY_DIR}
+ 	)

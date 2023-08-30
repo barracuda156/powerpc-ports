@@ -1,0 +1,47 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           cmake 1.0
+PortGroup           github 1.0
+PortGroup           qt4 1.0
+
+github.setup        artikz qwit dd9a341daa8cb000335f50ebc53000b8f0d58a84
+version             20110205
+revision            0
+
+categories          www
+license             GPL-3
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+
+description         Free cross-platform Qt4-based Twitter client
+long_description    {*}${description}
+homepage            https://code.google.com/archive/p/qwit
+checksums           rmd160  4de8c74034b23a60c1de696b48369396eff5f5f3 \
+                    sha256  08e162fcda112d1a8dd5834eb7d2871157df31673cd42b32ff91cd38b88f932f \
+                    size    291059
+github.tarball_from archive
+
+depends_build-append \
+                    port:automoc
+depends_lib-append  port:desktop-file-utils \
+                    port:qoauth \
+                    port:QProgressIndicator
+
+patchfiles          patch-fix-paths.diff
+
+post-patch {
+    reinplace "s,@PREFIX@,${prefix},g" ${worksrcpath}/CMakeLists.txt
+}
+
+configure.ldflags-append \
+                    -lQProgressIndicator
+
+post-destroot {
+    system "install_name_tool -change libQProgressIndicator.1.dylib ${prefix}/lib/libQProgressIndicator.dylib ${destroot}${qt_bins_dir}/${name}"
+}
+
+post-activate {
+    system "${prefix}/bin/update-desktop-database ${prefix}/share/applications"
+}
+
+# https://github.com/artikz/qwit/issues/1
