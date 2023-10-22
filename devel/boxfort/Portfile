@@ -1,0 +1,25 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           meson 1.0
+
+name                boxfort
+github.setup        Snaipe BoxFort c91d7181734ab2fd6d1299e8aa927297f0ddb754
+version             2023.03.22
+revision            0
+categories          devel
+license             MIT
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+description         Convenient & cross-platform sandboxing C library
+long_description    {*}${description}. BoxFort provides a simple API to run user code in isolated processes.
+checksums           rmd160  cd861558c9a8e8cded71718d660d2f26ecb29791 \
+                    sha256  e48cdc4973a20d5efd68c6a00b42df4d664953bb8778ca5d9b7e9e2b1a3cd527 \
+                    size    43291
+github.tarball_from archive
+
+configure.args-append \
+                    -Dtests=true
+
+# Tests are broken on Sonoma: https://github.com/Snaipe/BoxFort/issues/50
+test.run            yes
