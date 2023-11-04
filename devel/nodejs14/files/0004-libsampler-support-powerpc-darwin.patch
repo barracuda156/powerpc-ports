@@ -1,0 +1,25 @@
+From 34b62b39ede3a582f567086bfe0f4e6d5476ccdd Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Fri, 3 Nov 2023 18:26:37 +0800
+Subject: [PATCH 04/17] libsampler: support powerpc-darwin
+
+---
+ deps/v8/src/libsampler/sampler.cc | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git deps/v8/src/libsampler/sampler.cc deps/v8/src/libsampler/sampler.cc
+index e2091ceb32a..24fe588bd1c 100644
+--- deps/v8/src/libsampler/sampler.cc
++++ deps/v8/src/libsampler/sampler.cc
+@@ -475,6 +475,11 @@
+       reinterpret_cast<void*>(arm_thread_state64_get_sp(mcontext->__ss));
+   state->fp =
+       reinterpret_cast<void*>(arm_thread_state64_get_fp(mcontext->__ss));
++#elif V8_HOST_ARCH_PPC || V8_HOST_ARCH_PPC64
++  state->pc = reinterpret_cast<void*>(mcontext->__ss.__srr0);
++  state->sp = reinterpret_cast<void*>(mcontext->__ss.__r1);
++  state->fp = reinterpret_cast<void*>(mcontext->__ss.__r30);
++  state->lr = reinterpret_cast<void*>(mcontext->__ss.__lr);
+ #endif  // V8_HOST_ARCH_*
+ #elif V8_OS_FREEBSD
+ #if V8_HOST_ARCH_IA32

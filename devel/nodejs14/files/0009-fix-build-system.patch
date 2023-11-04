@@ -1,0 +1,232 @@
+From a105bf8a58b6f5233988a16be1b5c78a839ce337 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Thu, 2 Nov 2023 06:32:13 +0800
+Subject: [PATCH 5/8] Misc fixes for Darwin PowerPC
+
+diff --git common.gypi common.gypi
+index d5328f39b2..00b97ca0ab 100644
+--- common.gypi
++++ common.gypi
+@@ -103,11 +103,16 @@
+       }, {
+         'openssl_product': '<(STATIC_LIB_PREFIX)openssl<(STATIC_LIB_SUFFIX)',
+       }],
+-      ['OS=="mac"', {
++      ['OS=="mac" and target_arch!="ppc" and target_arch!="ppc64"', {
+         'clang%': 1,
++      }],
++      ['OS=="mac"', {
+         'obj_dir%': '<(PRODUCT_DIR)/obj.target',
+         'v8_base': '<(PRODUCT_DIR)/libv8_snapshot.a',
+       }],
++      ['target_arch in "arm mips ppc"', {
++        'ldflags': [ '-latomic' ]
++      }],
+       ['target_arch in "ppc64 s390x"', {
+         'v8_enable_backtrace': 1,
+       }],
+@@ -476,7 +481,7 @@
+         ],
+       }],
+       ['OS=="mac"', {
+-        'defines': ['_DARWIN_USE_64_BIT_INODE=1'],
++        'defines': ['__STDC_FORMAT_MACROS', '_DARWIN_C_SOURCE'],
+         'xcode_settings': {
+           'ALWAYS_SEARCH_USER_PATHS': 'NO',
+           'GCC_CW_ASM_SYNTAX': 'NO',                # No -fasm-blocks
+@@ -486,10 +491,16 @@
+           'GCC_ENABLE_CPP_RTTI': 'NO',              # -fno-rtti
+           'GCC_ENABLE_PASCAL_STRINGS': 'NO',        # No -mpascal-strings
+           'PREBINDING': 'NO',                       # No -Wl,-prebind
+-          'MACOSX_DEPLOYMENT_TARGET': '10.13',      # -mmacosx-version-min=10.13
++          'MACOSX_DEPLOYMENT_TARGET': '@DEPLOYMENT_TARGET@', # -mmacosx-version-min=@DEPLOYMENT_TARGET@
+           'USE_HEADERMAP': 'NO',
+           'OTHER_CFLAGS': [
+             '-fno-strict-aliasing',
++            '-fpermissive',
++            '-isystem@PREFIX@/include/LegacySupport',
++          ],
++          'OTHER_LDFLAGS': [
++            '-L@PREFIX@/lib',
++            '-lMacportsLegacysupport',
+           ],
+           'WARNING_CFLAGS': [
+             '-Wall',
+@@ -515,6 +526,12 @@
+           ['target_arch=="x64"', {
+             'xcode_settings': {'ARCHS': ['x86_64']},
+           }],
++          ['target_arch=="ppc"', {
++            'xcode_settings': {'ARCHS': ['ppc']},
++          }],
++          ['target_arch=="ppc64"', {
++            'xcode_settings': {'ARCHS': ['ppc64']},
++          }],
+           ['target_arch=="arm64"', {
+             'xcode_settings': {
+               'ARCHS': ['arm64'],
+@@ -523,13 +540,6 @@
+               ],
+             },
+           }],
+-          ['clang==1', {
+-            'xcode_settings': {
+-              'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
+-              'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++1y',  # -std=gnu++1y
+-              'CLANG_CXX_LIBRARY': 'libc++',
+-            },
+-          }],
+         ],
+       }],
+       ['OS=="freebsd" and node_use_dtrace=="true"', {
+
+diff --git configure.py configure.py
+index 8be9e9ca5c..1b66d1b078 100755
+--- configure.py
++++ configure.py
+@@ -1127,7 +1127,9 @@ def host_arch_cc():
+     '__MIPSEL__'  : 'mipsel',
+     '__mips__'    : 'mips',
+     '__PPC64__'   : 'ppc64',
+-    '__PPC__'     : 'ppc64',
++    '__ppc64__'   : 'ppc64',
++    '__PPC__'     : 'ppc',
++    '__ppc__'     : 'ppc',
+     '__x86_64__'  : 'x64',
+     '__s390x__'   : 's390x',
+     '__riscv'     : 'riscv',
+diff --git deps/cares/config/darwin/ares_config.h deps/cares/config/darwin/ares_config.h
+index e127c27abc..7c0021afb2 100644
+--- deps/cares/config/darwin/ares_config.h
++++ deps/cares/config/darwin/ares_config.h
+@@ -354,7 +354,7 @@
+ /* #undef NEED_THREAD_SAFE */
+ 
+ /* cpu-machine-OS */
+-#define OS "x86_64-apple-darwin16.7.0"
++#define OS "@ARCH@-apple-darwin@MACOS@"
+ 
+ /* Name of package */
+ #define PACKAGE "c-ares"
+
+diff --git tools/v8_gypfiles/toolchain.gypi tools/v8_gypfiles/toolchain.gypi
+index bcecdb21ae..1de6a240a4 100644
+--- tools/v8_gypfiles/toolchain.gypi
++++ tools/v8_gypfiles/toolchain.gypi
+@@ -1001,8 +1001,7 @@
+       ['(OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris" \
+          or OS=="netbsd" or OS=="mac" or OS=="android" or OS=="qnx") and \
+         (v8_target_arch=="arm" or v8_target_arch=="ia32" or \
+-         v8_target_arch=="mips" or v8_target_arch=="mipsel" or \
+-         v8_target_arch=="ppc")', {
++         v8_target_arch=="mips" or v8_target_arch=="mipsel")', {
+         'target_conditions': [
+           ['_toolset=="host"', {
+             'conditions': [
+@@ -1042,9 +1041,51 @@
+           }],
+         ],
+       }],
++      ['(OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris" \
++         or OS=="netbsd" or OS=="mac" or OS=="qnx") and \
++        (v8_target_arch=="ppc")', {
++        'target_conditions': [
++          ['_toolset=="host"', {
++            'conditions': [
++              ['host_cxx_is_biarch==1', {
++                'conditions': [
++                  ['host_arch=="s390x"', {
++                    'cflags': [ '-m31' ],
++                    'ldflags': [ '-m31' ]
++                  },{
++                   'cflags': [ '-m32' ],
++                   'ldflags': [ '-m32' ]
++                  }],
++                ],
++              }],
++            ],
++            'xcode_settings': {
++              'ARCHS': [ 'ppc' ],
++            },
++          }],
++          ['_toolset=="target"', {
++            'conditions': [
++              ['target_cxx_is_biarch==1', {
++                'conditions': [
++                  ['host_arch=="s390x"', {
++                    'cflags': [ '-m31' ],
++                    'ldflags': [ '-m31' ]
++                  },{
++                   'cflags': [ '-m32' ],
++                   'ldflags': [ '-m32' ],
++                  }],
++                ],
++              }],
++            ],
++            'xcode_settings': {
++              'ARCHS': [ 'ppc' ],
++            },
++          }],
++        ],
++      }],
+       ['(OS=="linux" or OS=="android") and \
+         (v8_target_arch=="x64" or v8_target_arch=="arm64" or \
+-         v8_target_arch=="ppc64" or v8_target_arch=="s390x")', {
++         v8_target_arch=="s390x")', {
+         'target_conditions': [
+           ['_toolset=="host"', {
+             'conditions': [
+@@ -1064,6 +1105,30 @@
+            }],
+          ],
+       }],
++      ['(OS=="linux" or OS=="mac" or OS=="freebsd") and \
++        (v8_target_arch=="ppc64")', {
++        'target_conditions': [
++          ['_toolset=="host"', {
++            'conditions': [
++              ['host_cxx_is_biarch==1', {
++                'cflags': [ '-m64' ],
++                'ldflags': [ '-m64' ]
++              }],
++             ],
++           }],
++          ['_toolset=="target"', {
++             'conditions': [
++               ['target_cxx_is_biarch==1', {
++                 'cflags': [ '-m64' ],
++                 'ldflags': [ '-m64' ],
++               }],
++             ],
++            'xcode_settings': {
++              'ARCHS': [ 'ppc64' ],
++            },
++           }],
++         ],
++      }],
+       ['OS=="android" and v8_android_log_stdout==1', {
+         'defines': [
+           'V8_ANDROID_LOG_STDOUT',
+
+--- node.gyp	2023-02-16 23:32:29.000000000 +0800
++++ node.gyp	2023-11-04 04:36:30.000000000 +0800
+@@ -97,7 +97,6 @@
+         '-Wendif-labels',
+         '-W',
+         '-Wno-unused-parameter',
+-        '-Werror=undefined-inline',
+       ],
+     },
+ 
+--- node.gypi	2023-02-16 23:32:29.000000000 +0800
++++ node.gypi	2023-11-04 04:35:24.000000000 +0800
+@@ -26,9 +26,6 @@
+   },
+ 
+   'conditions': [
+-    [ 'clang==1', {
+-      'cflags': [ '-Werror=undefined-inline', ]
+-    }],
+     [ 'node_shared=="false" and "<(_type)"=="executable"', {
+       'msvs_settings': {
+         'VCManifestTool': {

@@ -16,8 +16,11 @@ openssl.configure       pkgconfig build_flags
 
 # on macOS nodejs only builds against libc++
 # this force is OK as node does not link against any other c++ libs
-depends_lib-append      port:libcxx
-configure.cxx_stdlib    libc++
+if {${os.arch} ne "powerpc"} {
+    depends_lib-append      port:libcxx
+    configure.cxx_stdlib    libc++
+    use_xcode               yes
+}
 compiler.cxx_standard   2014
 
 name                    nodejs14
@@ -25,7 +28,6 @@ version                 14.21.3
 revision                1
 
 categories              devel net
-platforms               darwin
 license                 {MIT BSD}
 maintainers             {ciserlohn @ci42} openmaintainer
 
@@ -57,8 +59,6 @@ depends_lib-append      path:lib/pkgconfig/icu-uc.pc:icu \
                         port:python${py_ver_nodot} \
                         port:zlib
 
-use_xcode               yes
-
 proc rec_glob {basedir pattern} {
     set files [glob -directory $basedir -nocomplain -type f $pattern]
     foreach dir [glob -directory $basedir -nocomplain -type d *] {
@@ -68,7 +68,39 @@ proc rec_glob {basedir pattern} {
 }
 
 configure.python        ${prefix}/bin/python${py_ver}
-patchfiles              patch-common.gypi.diff
+
+if {${os.platform} eq "darwin" && (${configure.build_arch} in [list ppc ppc64])} {
+    patchfiles-append   0001-Restore-ppc32-patches-from-upstream.patch \
+                        0002-inspector-unbreak-build-with-gcc.patch \
+                        0003-platform-posix.cc-fix-macOS.patch \
+                        0004-libsampler-support-powerpc-darwin.patch \
+                        0005-cpu.cc-support-powerpc-darwin.patch \
+                        0006-semaphore-use-libdispatch-only-where-it-is-available.patch \
+                        0007-register-ppc.h-amend-register-specification-for-Darw.patch \
+                        0008-c-linkage.cc-amend-register-specification-for-Darwin.patch \
+                        0009-fix-build-system.patch \
+                        0010-cpu.cc-fix-for-8.4.patch \
+                        0011-runtime-utils.h-fix-a-typo.patch \
+                        0012-logging.h-v8-string-conversions.h-add-missing-includ.patch \
+                        0013-instruction-selector-ppc.cc-add-omitted-fix.patch \
+                        0014-code-generator-ppc.cc-some-ppc-assembler-fixes.patch \
+                        0015-code-generator-ppc.cc-fallback-for-clrldi.patch \
+                        0016-Experimental-fixes-for-ppc.patch \
+                        0017-semaphores-temporary-hack-for-sem_timedwait.patch \
+                        0018-Do-not-try-using-unsupported-simd.patch
+    post-patch {
+        reinplace "s|@DEPLOYMENT_TARGET@|${macosx_deployment_target}|g" ${worksrcpath}/common.gypi
+        reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/common.gypi
+        reinplace "s|@MACOS@|${os.major}|" ${worksrcpath}/deps/cares/config/darwin/ares_config.h
+        if {${configure.build_arch} eq "ppc64"} {
+            reinplace "s|@ARCH@|powerpc64|" ${worksrcpath}/deps/cares/config/darwin/ares_config.h
+        } else {
+            reinplace "s|@ARCH@|powerpc|" ${worksrcpath}/deps/cares/config/darwin/ares_config.h
+        }
+    }
+} else {
+    patchfiles-append   patch-common.gypi.diff
+}
 
 post-patch {
     foreach f [concat ${worksrcpath}/configure \
@@ -108,8 +140,23 @@ configure.args-append   --shared-zlib
 configure.args-append   --shared-zlib-includes=${workpath}/zlib-inc
 configure.args-append   --shared-zlib-libpath=${prefix}/lib
 
-# V8 only supports ARM and IA-32 processors
-supported_archs         i386 x86_64 arm64
+if {${configure.build_arch} eq "ppc"} {
+    # The problem we face now is insufficient address space:
+    # fatal error: libtool: can't vm_allocate() buffer for output file:
+    # /opt/local/var/macports/build/_opt_PPCSnowLeopardPorts_devel_nodejs14/nodejs14/work/node-v14.21.3/out/Release/libv8_initializers.a
+    # of size 1513436264 ((os/kern) no space available)
+    depends_lib-append  port:brotli \
+                        port:c-ares
+    configure.args-append \
+                        --enable-lto=False \
+                        --enable-static=False \
+                        --shared-brotli \
+                        --shared-cares \
+                        --v8-enable-object-print=False \
+                        --v8-lite-mode \
+                        --v8-non-optimized-debug=True \
+                        --without-dtrace
+}
 
 universal_variant       no
 
@@ -128,6 +175,12 @@ switch $build_arch {
     }
     arm64 {
         configure.args-append   --dest-cpu=arm64
+    }
+    ppc {
+        configure.args-append   --dest-cpu=ppc
+    }
+    ppc64 {
+        configure.args-append   --dest-cpu=ppc64
     }
 }
 

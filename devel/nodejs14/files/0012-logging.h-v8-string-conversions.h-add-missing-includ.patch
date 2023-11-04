@@ -1,0 +1,38 @@
+From b24a8fb6a6372972ce8b830c99920e48978257e7 Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Sat, 4 Nov 2023 04:52:32 +0800
+Subject: [PATCH 12/17] logging.h, v8-string-conversions.h: add missing
+ includes
+
+---
+ deps/v8/src/base/logging.h                    | 1 +
+ deps/v8/src/inspector/v8-string-conversions.h | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git deps/v8/src/base/logging.h deps/v8/src/base/logging.h
+index 790018c98e9..7840c02de9e 100644
+--- deps/v8/src/base/logging.h
++++ deps/v8/src/base/logging.h
+@@ -8,6 +8,7 @@
+ #include <cstring>
+ #include <sstream>
+ #include <string>
++#include <cstdint>
+ 
+ #include "deps/v8/src/base/base-export.h"
+ #include "deps/v8/src/base/build_config.h"
+diff --git deps/v8/src/inspector/v8-string-conversions.h deps/v8/src/inspector/v8-string-conversions.h
+index c1d69c18f0a..66b3564ccad 100644
+--- deps/v8/src/inspector/v8-string-conversions.h
++++ deps/v8/src/inspector/v8-string-conversions.h
+@@ -6,6 +6,7 @@
+ #define V8_INSPECTOR_V8_STRING_CONVERSIONS_H_
+ 
+ #include <string>
++#include <cstdint>
+ 
+ // Conversion routines between UT8 and UTF16, used by string-16.{h,cc}. You may
+ // want to use string-16.h directly rather than these.
+-- 
+2.42.0
+

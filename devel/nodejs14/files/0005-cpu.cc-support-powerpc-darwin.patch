@@ -1,0 +1,58 @@
+From 8accd6fc9b8c0357a4f0a3f22a17d403f3155e17 Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Fri, 3 Nov 2023 18:41:09 +0800
+Subject: [PATCH 05/17] cpu.cc: support powerpc-darwin
+
+---
+ deps/v8/src/base/cpu.cc | 28 +++++++++++++++++++++++++++-
+ 1 file changed, 27 insertions(+), 1 deletion(-)
+
+diff --git deps/v8/src/base/cpu.cc deps/v8/src/base/cpu.cc
+index bbdae525e30..9f0ffa7791a 100644
+--- deps/v8/src/base/cpu.cc
++++ deps/v8/src/base/cpu.cc
+@@ -28,6 +28,15 @@
+ #define POWER_9 0x20000
+ #endif
+ #endif
++#if V8_OS_MACOSX
++#include <sys/sysctl.h>  // sysctlbyname
++#if V8_HOST_ARCH_PPC || V8_HOST_ARCH_PPC64
++#include <mach/mach.h>
++#include <mach/mach_host.h>
++#include <mach/host_info.h>
++#include <mach/machine.h>
++#endif
++#endif
+ #if V8_OS_POSIX
+ #include <unistd.h>  // sysconf()
+ #endif
+@@ -683,7 +692,24 @@ CPU::CPU()
+       part_ = PPC_POWER5;
+       break;
+   }
+-#endif  // V8_OS_AIX
++
++#elif V8_OS_MACOSX
++
++struct host_basic_info host_basic_info;
++  switch(host_basic_info.cpu_subtype) {
++    case CPU_SUBTYPE_POWERPC_970:
++    default:
++      part_ = kPPCG5;
++      break;
++    case CPU_SUBTYPE_POWERPC_7450:
++      part_ = kPPCG4;
++      break;
++    case CPU_SUBTYPE_POWERPC_7400:
++      part_ = kPPCG4;
++      break;
++   }
++
++#endif  // V8_OS_MACOSX
+ #endif  // !USE_SIMULATOR
+ #endif  // V8_HOST_ARCH_PPC || V8_HOST_ARCH_PPC64
+ }
+-- 
+2.42.0
+

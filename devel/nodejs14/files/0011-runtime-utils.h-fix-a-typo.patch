@@ -1,0 +1,25 @@
+From 8ad3475269cc4b166064d717d909c2ee46b84f61 Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Sat, 4 Nov 2023 06:36:57 +0800
+Subject: [PATCH 11/17] runtime-utils.h: fix a typo
+
+---
+ deps/v8/src/runtime/runtime-utils.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git deps/v8/src/runtime/runtime-utils.h deps/v8/src/runtime/runtime-utils.h
+index 170c0bcdbcc..a7e02aee1a8 100644
+--- deps/v8/src/runtime/runtime-utils.h
++++ deps/v8/src/runtime/runtime-utils.h
+@@ -136,7 +136,7 @@ static inline ObjectPair MakePair(Object x, Object y) {
+ #if defined(V8_TARGET_LITTLE_ENDIAN)
+   return x.ptr() | (static_cast<ObjectPair>(y.ptr()) << 32);
+ #elif defined(V8_TARGET_BIG_ENDIAN)
+-  return y->ptr() | (static_cast<ObjectPair>(x->ptr()) << 32);
++  return y.ptr() | (static_cast<ObjectPair>(x.ptr()) << 32);
+ #else
+ #error Unknown endianness
+ #endif
+-- 
+2.42.0
+

@@ -1,0 +1,52 @@
+From bb475c42df75d56e379da7cbaa8048f697710573 Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Fri, 3 Nov 2023 18:39:01 +0800
+Subject: [PATCH 03/17] platform-posix.cc: fix macOS
+
+---
+ deps/v8/src/base/platform/platform-posix.cc | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git deps/v8/src/base/platform/platform-posix.cc deps/v8/src/base/platform/platform-posix.cc
+index c3f0b08ddde..3f467ccaa1d 100644
+--- deps/v8/src/base/platform/platform-posix.cc
++++ deps/v8/src/base/platform/platform-posix.cc
+@@ -393,7 +393,7 @@
+ 
+   // MacOS 11.2 on Apple Silicon refuses to switch permissions from
+   // rwx to none. Just use madvise instead.
+-#if defined(V8_OS_MACOSX)
++#if defined(V8_OS_MACOSX) && !(V8_TARGET_ARCH_PPC || V8_TARGET_ARCH_PPC64)
+   if (ret != 0 && access == OS::MemoryPermission::kNoAccess) {
+     ret = madvise(address, size, MADV_FREE_REUSABLE);
+     return ret == 0;
+@@ -411,7 +411,7 @@
+ // The cost is a syscall that effectively no-ops.
+ // TODO(erikchen): Fix this to only call MADV_FREE_REUSE when necessary.
+ // https://crbug.com/823915
+-#if defined(OS_MACOSX)
++#if defined(OS_MACOSX) && !(V8_TARGET_ARCH_PPC || V8_TARGET_ARCH_PPC64)
+   if (access != OS::MemoryPermission::kNoAccess)
+     madvise(address, size, MADV_FREE_REUSE);
+ #endif
+@@ -422,7 +422,7 @@
+ bool OS::DiscardSystemPages(void* address, size_t size) {
+   DCHECK_EQ(0, reinterpret_cast<uintptr_t>(address) % CommitPageSize());
+   DCHECK_EQ(0, size % CommitPageSize());
+-#if defined(OS_MACOSX)
++#if defined(OS_MACOSX) && !(V8_TARGET_ARCH_PPC || V8_TARGET_ARCH_PPC64)
+   // On OSX, MADV_FREE_REUSABLE has comparable behavior to MADV_FREE, but also
+   // marks the pages with the reusable bit, which allows both Activity Monitor
+   // and memory-infra to correctly track the pages.
+@@ -487,7 +487,11 @@
+ #elif V8_HOST_ARCH_MIPS64
+   asm("break");
+ #elif V8_HOST_ARCH_PPC || V8_HOST_ARCH_PPC64
++#if defined(V8_OS_MACOSX)
++  __asm__("twge r2,r2");
++#else // AIX, ELF
+   asm("twge 2,2");
++#endif
+ #elif V8_HOST_ARCH_IA32
+   asm("int $3");
+ #elif V8_HOST_ARCH_X64

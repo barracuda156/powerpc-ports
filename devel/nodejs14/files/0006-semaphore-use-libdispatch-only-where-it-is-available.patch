@@ -1,0 +1,67 @@
+From a964b184d18f69acc252a6e2df3adada3923c544 Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Fri, 3 Nov 2023 18:34:33 +0800
+Subject: [PATCH 06/17] semaphore: use libdispatch only where it is available
+
+---
+ deps/v8/src/base/platform/semaphore.cc | 8 +++++++-
+ deps/v8/src/base/platform/semaphore.h  | 8 +++++++-
+ 2 files changed, 14 insertions(+), 2 deletions(-)
+
+diff --git deps/v8/src/base/platform/semaphore.cc deps/v8/src/base/platform/semaphore.cc
+index 66464d8258d..80fe55b77c3 100644
+--- deps/v8/src/base/platform/semaphore.cc
++++ deps/v8/src/base/platform/semaphore.cc
+@@ -5,7 +5,13 @@
+ #include "deps/v8/src/base/platform/semaphore.h"
+ 
+ #if V8_OS_MACOSX
++#include <AvailabilityMacros.h>
++#if MAC_OS_X_VERSION_MIN_REQUIRED > 1050 && !defined(__ppc__)
+ #include <dispatch/dispatch.h>
++#else
++// TODO: verify which semaphores fallback better to use, there are several implementations in macOS.
++#include <semaphore.h>
++#endif
+ #endif
+ 
+ #include <errno.h>
+@@ -17,7 +23,7 @@
+ namespace v8 {
+ namespace base {
+ 
+-#if V8_OS_MACOSX
++#if V8_OS_MACOSX && (MAC_OS_X_VERSION_MIN_REQUIRED > 1050 && !defined(__ppc__))
+ 
+ Semaphore::Semaphore(int count) {
+   native_handle_ = dispatch_semaphore_create(count);
+diff --git deps/v8/src/base/platform/semaphore.h deps/v8/src/base/platform/semaphore.h
+index c4937acadd1..42e8965d753 100644
+--- deps/v8/src/base/platform/semaphore.h
++++ deps/v8/src/base/platform/semaphore.h
+@@ -12,7 +12,13 @@
+ #endif
+ 
+ #if V8_OS_MACOSX
++#include <AvailabilityMacros.h>
++#if MAC_OS_X_VERSION_MIN_REQUIRED > 1050 && !defined(__ppc__)
+ #include <dispatch/dispatch.h>  // NOLINT
++#else
++// TODO: verify which semaphores fallback better to use, there are several implementations in macOS.
++#include <semaphore.h>  // NOLINT
++#endif
+ #elif V8_OS_POSIX
+ #include <semaphore.h>  // NOLINT
+ #endif
+@@ -49,7 +55,7 @@ class V8_BASE_EXPORT Semaphore final {
+   // the semaphore counter is decremented and true is returned.
+   bool WaitFor(const TimeDelta& rel_time) V8_WARN_UNUSED_RESULT;
+ 
+-#if V8_OS_MACOSX
++#if V8_OS_MACOSX && (MAC_OS_X_VERSION_MIN_REQUIRED > 1050 && !defined(__ppc__))
+   using NativeHandle = dispatch_semaphore_t;
+ #elif V8_OS_POSIX
+   using NativeHandle = sem_t;
+-- 
+2.42.0
+

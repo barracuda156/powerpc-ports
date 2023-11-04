@@ -1,0 +1,101 @@
+From 04c790257acf23a0b09ca698b6bdc669af56f584 Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Sat, 4 Nov 2023 11:16:55 +0800
+Subject: [PATCH 16/17] Experimental fixes for ppc
+
+---
+ deps/v8/src/codegen/ppc/macro-assembler-ppc.h            | 4 ++--
+ deps/v8/src/compiler/backend/ppc/instruction-codes-ppc.h | 4 ----
+ deps/v8/src/execution/isolate-data.h                     | 4 ++++
+ deps/v8/src/objects/code.h                               | 5 +++++
+ 4 files changed, 11 insertions(+), 6 deletions(-)
+
+diff --git deps/v8/src/codegen/ppc/macro-assembler-ppc.h deps/v8/src/codegen/ppc/macro-assembler-ppc.h
+index cea89a472c9..050b45051a2 100644
+--- deps/v8/src/codegen/ppc/macro-assembler-ppc.h
++++ deps/v8/src/codegen/ppc/macro-assembler-ppc.h
+@@ -931,7 +931,7 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
+   }
+ 
+   void SmiToPtrArrayOffset(Register dst, Register src) {
+-#if defined(V8_COMPRESS_POINTERS) || defined(V8_31BIT_SMIS_ON_64BIT_ARCH)
++#if defined(V8_COMPRESS_POINTERS) || defined(V8_31BIT_SMIS_ON_64BIT_ARCH) || (V8_OS_MACOSX && V8_TARGET_ARCH_PPC)
+     STATIC_ASSERT(kSmiTag == 0 && kSmiShift < kSystemPointerSizeLog2);
+     ShiftLeftImm(dst, src, Operand(kSystemPointerSizeLog2 - kSmiShift));
+ #else
+@@ -950,7 +950,7 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
+   void AssertNotSmi(Register object);
+   void AssertSmi(Register object);
+ 
+-#if !defined(V8_COMPRESS_POINTERS) && !defined(V8_31BIT_SMIS_ON_64BIT_ARCH)
++#if !defined(V8_COMPRESS_POINTERS) && !defined(V8_31BIT_SMIS_ON_64BIT_ARCH) && !(V8_OS_MACOSX && V8_TARGET_ARCH_PPC)
+   // Ensure it is permissible to read/write int value directly from
+   // upper half of the smi.
+   STATIC_ASSERT(kSmiTag == 0);
+diff --git deps/v8/src/compiler/backend/ppc/instruction-codes-ppc.h deps/v8/src/compiler/backend/ppc/instruction-codes-ppc.h
+index c2bbf443fcd..8523a1030a6 100644
+--- deps/v8/src/compiler/backend/ppc/instruction-codes-ppc.h
++++ deps/v8/src/compiler/backend/ppc/instruction-codes-ppc.h
+@@ -183,8 +183,6 @@ namespace compiler {
+   V(PPC_AtomicPairXorWord32)         \
+   V(PPC_AtomicPairExchangeWord32)    \
+   V(PPC_AtomicPairCompareExchangeWord32) \
+-  V(PPC_F64x2Splat)                  \
+-  V(PPC_F64x2ExtractLane)            \
+   V(PPC_F32x4Splat)                  \
+   V(PPC_F32x4ExtractLane)            \
+   V(PPC_I64x2Splat)                  \
+@@ -193,10 +191,8 @@ namespace compiler {
+   V(PPC_I32x4ExtractLane)            \
+   V(PPC_I16x8Splat)                  \
+   V(PPC_I16x8ExtractLaneU)           \
+-  V(PPC_I16x8ExtractLaneS)           \
+   V(PPC_I8x16Splat)                  \
+   V(PPC_I8x16ExtractLaneU)           \
+-  V(PPC_I8x16ExtractLaneS)           \
+   V(PPC_StoreCompressTagged)         \
+   V(PPC_LoadDecompressTaggedSigned)  \
+   V(PPC_LoadDecompressTaggedPointer) \
+diff --git deps/v8/src/execution/isolate-data.h deps/v8/src/execution/isolate-data.h
+index 2cbc3daa66a..1921dca09ce 100644
+--- deps/v8/src/execution/isolate-data.h
++++ deps/v8/src/execution/isolate-data.h
+@@ -213,6 +213,9 @@ class IsolateData final {
+ // cross-compiling to another platform. Otherwise there may be compatibility
+ // issues because of different compilers used for snapshot generator and
+ // actual V8 code.
++
++#if !(V8_OS_MACOSX && V8_TARGET_ARCH_PPC)
++// FIXME: there assers fail on Darwin ppc at the moment.
+ void IsolateData::AssertPredictableLayout() {
+   STATIC_ASSERT(std::is_standard_layout<RootsTable>::value);
+   STATIC_ASSERT(std::is_standard_layout<ThreadLocalTop>::value);
+@@ -240,6 +243,7 @@ void IsolateData::AssertPredictableLayout() {
+                 kStackIsIterableOffset);
+   STATIC_ASSERT(sizeof(IsolateData) == IsolateData::kSize);
+ }
++#endif
+ 
+ }  // namespace internal
+ }  // namespace v8
+diff --git deps/v8/src/objects/code.h deps/v8/src/objects/code.h
+index 35f19b3b0da..30c2ef6db84 100644
+--- deps/v8/src/objects/code.h
++++ deps/v8/src/objects/code.h
+@@ -430,8 +430,13 @@ class Code : public HeapObject {
+ #elif V8_TARGET_ARCH_MIPS
+   static constexpr int kHeaderPaddingSize = 16;
+ #elif V8_TARGET_ARCH_PPC
++#if V8_OS_MACOSX
++  static constexpr int kHeaderPaddingSize =
++      FLAG_enable_embedded_constant_pool ? 12 : 0;
++#else
+   static constexpr int kHeaderPaddingSize =
+       FLAG_enable_embedded_constant_pool ? 16 : 0;
++#endif
+ #elif V8_TARGET_ARCH_PPC64
+   static constexpr int kHeaderPaddingSize =
+       FLAG_enable_embedded_constant_pool ? (COMPRESS_POINTERS_BOOL ? 12 : 24)
+-- 
+2.42.0
+

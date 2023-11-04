@@ -1,0 +1,29 @@
+From b196de7b0f72450482b0fe8854f1c5a0b8bd3457 Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Sat, 4 Nov 2023 07:41:35 +0800
+Subject: [PATCH 13/17] instruction-selector-ppc.cc: add omitted fix
+
+---
+ deps/v8/src/compiler/backend/ppc/instruction-selector-ppc.cc | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git deps/v8/src/compiler/backend/ppc/instruction-selector-ppc.cc deps/v8/src/compiler/backend/ppc/instruction-selector-ppc.cc
+index 95af66993fe..8b47cbf626b 100644
+--- deps/v8/src/compiler/backend/ppc/instruction-selector-ppc.cc
++++ deps/v8/src/compiler/backend/ppc/instruction-selector-ppc.cc
+@@ -353,10 +353,12 @@ void InstructionSelector::VisitStore(Node* node) {
+         mode = kInt16Imm_4ByteAligned;
+         opcode = kPPC_StoreCompressTagged;
+         break;
++#if V8_TARGET_ARCH_PPC64
+       case MachineRepresentation::kWord64:
+         opcode = kPPC_StoreWord64;
+         mode = kInt16Imm_4ByteAligned;
+         break;
++#endif
+       case MachineRepresentation::kSimd128:
+         opcode = kPPC_StoreSimd128;
+         // Vectors do not support MRI mode, only MRR is available.
+-- 
+2.42.0
+

@@ -1,0 +1,22 @@
+From 9beb51a6571350da729cc52ebb7b7494c8e475bc Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Fri, 3 Nov 2023 18:22:45 +0800
+Subject: [PATCH 02/17] inspector: unbreak build with gcc
+
+---
+ deps/v8/src/inspector/string-16.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git deps/v8/src/inspector/string-16.h deps/v8/src/inspector/string-16.h
+index 76c68498b2c..aed378d698f 100644
+--- deps/v8/src/inspector/string-16.h
++++ deps/v8/src/inspector/string-16.h
+@@ -147,7 +147,7 @@ String16 String16::concat(T... args) {
+ 
+ }  // namespace v8_inspector
+ 
+-#if !defined(__APPLE__) || defined(_LIBCPP_VERSION)
++#if !(defined(__APPLE__) && defined(__clang__)) || defined(_LIBCPP_VERSION)
+ 
+ namespace std {
+ template <>

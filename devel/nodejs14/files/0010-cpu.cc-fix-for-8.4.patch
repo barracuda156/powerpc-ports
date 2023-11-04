@@ -1,0 +1,33 @@
+From 4230ca5e1035426df6b02eb5975aa4cd3c40532c Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Sat, 4 Nov 2023 04:58:39 +0800
+Subject: [PATCH 10/17] cpu.cc: fix for 8.4
+
+---
+ deps/v8/src/base/cpu.cc | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git deps/v8/src/base/cpu.cc deps/v8/src/base/cpu.cc
+index 9f0ffa7791a..a9a2a264073 100644
+--- deps/v8/src/base/cpu.cc
++++ deps/v8/src/base/cpu.cc
+@@ -699,13 +699,13 @@ struct host_basic_info host_basic_info;
+   switch(host_basic_info.cpu_subtype) {
+     case CPU_SUBTYPE_POWERPC_970:
+     default:
+-      part_ = kPPCG5;
++      part_ = PPC_G5;
+       break;
+     case CPU_SUBTYPE_POWERPC_7450:
+-      part_ = kPPCG4;
++      part_ = PPC_G4;
+       break;
+     case CPU_SUBTYPE_POWERPC_7400:
+-      part_ = kPPCG4;
++      part_ = PPC_G4;
+       break;
+    }
+ 
+-- 
+2.42.0
+

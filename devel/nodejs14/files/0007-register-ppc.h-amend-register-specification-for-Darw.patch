@@ -1,0 +1,106 @@
+From f2cdc072226d0f59c9c0cad2ee2f522b1b874d7a Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Fri, 3 Nov 2023 18:24:06 +0800
+Subject: [PATCH 07/17] register-ppc.h: amend register specification for Darwin
+
+---
+ deps/v8/src/codegen/ppc/register-ppc.h | 46 +++++++++++++++++++++++++++++++---
+ 1 file changed, 42 insertions(+), 4 deletions(-)
+
+diff --git deps/v8/src/codegen/ppc/register-ppc.h deps/v8/src/codegen/ppc/register-ppc.h
+index cb15f3dda60..c05a0154ba6 100644
+--- deps/v8/src/codegen/ppc/register-ppc.h
++++ deps/v8/src/codegen/ppc/register-ppc.h
+@@ -19,19 +19,29 @@ namespace internal {
+   V(r24) V(r25) V(r26) V(r27) V(r28) V(r29) V(r30) V(fp)
+ 
+ #if V8_EMBEDDED_CONSTANT_POOL
+-#define ALLOCATABLE_GENERAL_REGISTERS(V)                  \
++#define ALWAYS_ALLOCATABLE_GENERAL_REGISTERS(V)           \
+   V(r3)  V(r4)  V(r5)  V(r6)  V(r7)                       \
+   V(r8)  V(r9)  V(r10) V(r14) V(r15)                      \
+   V(r16) V(r17) V(r18) V(r19) V(r20) V(r21) V(r22) V(r23) \
+   V(r24) V(r25) V(r26) V(r27) V(r30)
+ #else
+-#define ALLOCATABLE_GENERAL_REGISTERS(V)                  \
++#define ALWAYS_ALLOCATABLE_GENERAL_REGISTERS(V)           \
+   V(r3)  V(r4)  V(r5)  V(r6)  V(r7)                       \
+   V(r8)  V(r9)  V(r10) V(r14) V(r15)                      \
+   V(r16) V(r17) V(r18) V(r19) V(r20) V(r21) V(r22) V(r23) \
+   V(r24) V(r25) V(r26) V(r27) V(r28) V(r30)
+ #endif
+ 
++// In 32-bit Darwin ABI r13 is just a regular callee-saved register.
++#if V8_OS_MACOSX && V8_TARGET_ARCH_PPC
++#define MAYBE_ALLOCATABLE_R13(V) V(r13)
++#else
++#define MAYBE_ALLOCATABLE_R13(V)
++#endif
++
++#define ALLOCATABLE_GENERAL_REGISTERS(V)                  \
++   MAYBE_ALLOCATABLE_R13(V)
++
+ #define LOW_DOUBLE_REGISTERS(V)                           \
+   V(d0)  V(d1)  V(d2)  V(d3)  V(d4)  V(d5)  V(d6)  V(d7)  \
+   V(d8)  V(d9)  V(d10) V(d11) V(d12) V(d13) V(d14) V(d15)
+@@ -78,6 +88,32 @@ const int kNumJSCallerSaved = 9;
+ int JSCallerSavedCode(int n);
+ 
+ // Callee-saved registers preserved when switching from C to JavaScript
++#if V8_OS_MACOSX && V8_TARGET_ARCH_PPC
++
++const RegList kCalleeSaved = 1 << 13 |  // r13
++                             1 << 14 |  // r14
++                             1 << 15 |  // r15
++                             1 << 16 |  // r16
++                             1 << 17 |  // r17
++                             1 << 18 |  // r18
++                             1 << 19 |  // r19
++                             1 << 20 |  // r20
++                             1 << 21 |  // r21
++                             1 << 22 |  // r22
++                             1 << 23 |  // r23
++                             1 << 24 |  // r24
++                             1 << 25 |  // r25
++                             1 << 26 |  // r26
++                             1 << 27 |  // r27
++                             1 << 28 |  // r28
++                             1 << 29 |  // r29
++                             1 << 30 |  // r20
++                             1 << 31;   // r31
++
++const int kNumCalleeSaved = 19;
++
++#else
++
+ const RegList kCalleeSaved = 1 << 14 |  // r14
+                              1 << 15 |  // r15
+                              1 << 16 |  // r16
+@@ -99,6 +135,8 @@ const RegList kCalleeSaved = 1 << 14 |  // r14
+ 
+ const int kNumCalleeSaved = 18;
+ 
++#endif
++
+ const RegList kCallerSavedDoubles = 1 << 0 |   // d0
+                                     1 << 1 |   // d1
+                                     1 << 2 |   // d2
+@@ -159,13 +197,13 @@ const int kStackFrameExtraParamSlot = 2;
+ const int kNumRequiredStackFrameSlots = 12;
+ const int kStackFrameLRSlot = 2;
+ const int kStackFrameExtraParamSlot = 12;
+-#else  // AIX
++#else  // AIX and Darwin
+ // [0] back chain
+ // [1] condition register save area
+ // [2] link register save area
+ // [3] reserved for compiler
+ // [4] reserved by binder
+-// [5] TOC save area
++// [5] TOC save area on AIX; reserved on Darwin
+ // [6] Parameter1 save area
+ // ...
+ // [13] Parameter8 save area
+-- 
+2.42.0
+
