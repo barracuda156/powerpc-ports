@@ -1,0 +1,22 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           cmake 1.1
+PortGroup           github 1.0
+
+github.setup        plenluno libnode 9dea4f2390422e70544186df3f5c032cb4a7db08
+version             2019.01.03
+revision            0
+categories          devel
+license             BSD
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+description         libnode is a C++ implementation of Node.js
+long_description    {*}${description}
+
+fetch.type          git
+
+post-fetch {
+    system -W ${worksrcpath} "git submodule update --init --recursive"
+}
+
+compiler.cxx_standard 2011
