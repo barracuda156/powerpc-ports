@@ -1,0 +1,26 @@
+--- ../../zen/serialize.h	2023-10-24 01:11:01.000000000 +0800
++++ ../../zen/serialize.h	2023-11-04 18:33:04.000000000 +0800
+@@ -8,6 +8,8 @@
+ #define SERIALIZE_H_839405783574356
+ 
+ #include <functional>
++#include <string>
++#include <unistd.h>
+ #include "sys_error.h"
+ //keep header clean from specific stream implementations! (e.g.file_io.h)! used by abstract.h!
+  
+--- ../../zen/guid.h	2023-11-04 18:35:38.000000000 +0800
++++ ../../zen/guid.h	2023-11-04 18:35:51.000000000 +0800
+@@ -20,11 +20,7 @@
+ {
+     std::string guid(16, '\0');
+ 
+-#ifndef __GLIBC_PREREQ
+-#error Where is Glibc?
+-#endif
+-
+-#if __GLIBC_PREREQ(2, 25) //getentropy() requires Glibc 2.25 (ldd --version) PS: CentOS 7 is on 2.17
++#ifdef __linux__ //getentropy() requires Glibc 2.25 (ldd --version) PS: CentOS 7 is on 2.17
+     if (::getentropy(guid.data(), guid.size()) != 0)  //"The maximum permitted value for the length argument is 256"
+         throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." + "\n\n" +
+                                  utfTo<std::string>(formatSystemError("getentropy", errno)));

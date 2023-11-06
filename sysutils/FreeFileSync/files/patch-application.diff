@@ -1,0 +1,37 @@
+--- application.cpp	2023-10-24 01:11:01.000000000 +0800
++++ application.cpp	2023-11-04 19:18:42.000000000 +0800
+@@ -29,8 +29,15 @@
+ #include "base_tools.h"
+ #include "ffs_paths.h"
+ #include "return_codes.h"
++#include <signal.h>
+ 
+-    #include <gtk/gtk.h>
++#include <gtk/gtk.h>
++
++#ifdef __APPLE__
++#define sig_t old_sigint ;
++#else
++#define sighandler_t old_sigint ;
++#endif
+ 
+ using namespace zen;
+ using namespace fff;
+@@ -178,7 +185,7 @@
+     /* we're a GUI app: ignore SIGHUP when the parent terminal quits! (or process is killed!)
+         => the FFS launcher will still be killed => fine
+         => macOS: apparently not needed! interestingly the FFS launcher does receive SIGHUP and *is* killed  */
+-    if (sighandler_t oldHandler = ::signal(SIGHUP, SIG_IGN);
++    if (old_sigint oldHandler = ::signal(SIGHUP, SIG_IGN);
+         oldHandler == SIG_ERR)
+         logExtraError(_("Error during process initialization.") + L"\n\n" + formatSystemError("signal(SIGHUP)", getLastError()));
+     else assert(!oldHandler);
+@@ -246,7 +253,7 @@
+     try
+     {
+ #if wxUSE_EXCEPTIONS
+-#error why is wxWidgets uncaught exception handling enabled!?
++#warning why is wxWidgets uncaught exception handling enabled!?
+ #endif
+         [[maybe_unused]] const int rc = wxApp::OnRun();
+     }

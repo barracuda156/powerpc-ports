@@ -1,0 +1,39 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+
+github.setup        sfinktah ZenXml 1f587d6c80e87facc553409a81db227342342db9
+version             2.4.1
+revision            0
+categories          devel textproc
+maintainers         nomaintainer
+
+description         Simple C++ XML Processing
+long_description    zen::Xml is an XML library serializing structured user data in a convenient way. \
+                    Using compile-time information gathered by techniques of template metaprogramming \
+                    it minimizes the manual overhead required and frees the user from implementing \
+                    fundamental type conversions by himself.
+license             GPL-3
+homepage            https://zenxml.sourceforge.net
+checksums           rmd160  971f7fa68572f22baae1eed33c579705597fa2f2 \
+                    sha256  21df3019cdc3f47e1f4290f34dd4dd314fb132b94bce5411d0f0059e0658b33e \
+                    size    211869
+github.tarball_from archive
+supported_archs     noarch
+installs_libs       no
+
+compiler.cxx_standard 2014
+
+use_configure       no
+
+build               { }
+
+destroot {
+    copy ${worksrcpath}/zen ${destroot}${prefix}/include
+    copy ${worksrcpath}/zenxml ${destroot}${prefix}/include
+    set docdir ${prefix}/share/doc/${name}
+    xinstall -d ${destroot}${docdir}
+    xinstall -m 0644 -W ${worksrcpath} Changelog.txt License.txt README.md ${destroot}${docdir}
+    copy ${worksrcpath}/doc ${destroot}${docdir}
+}

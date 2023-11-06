@@ -1,0 +1,187 @@
+--- config.cpp	2023-10-24 01:11:01.000000000 +0800
++++ config.cpp	2023-11-04 19:28:27.000000000 +0800
+@@ -10,7 +10,7 @@
+ #include <zen/file_io.h>
+ #include <zen/time.h>
+ #include <zen/process_exec.h>
+-#include <wx/uilocale.h>
++#include <wx/xlocale.h>
+ #include "ffs_paths.h"
+ #include "base_tools.h"
+ #include "afs/native.h"
+@@ -83,18 +83,18 @@
+     //use description as unique wxLanguage identifier, see localization.cpp
+     //=> handle changes to wxLanguage enum between wxWidgets versions
+ 
+-    const wxString& canonicalName = wxUILocale::GetLanguageCanonicalName(value);
++    const wxString& canonicalName = wxLocale::GetLanguageCanonicalName(value);
+     assert(!canonicalName.empty());
+     if (!canonicalName.empty())
+         output = utfTo<std::string>(canonicalName);
+     else
+-        output = utfTo<std::string>(wxUILocale::GetLanguageCanonicalName(wxLANGUAGE_ENGLISH_US));
++        output = utfTo<std::string>(wxLocale::GetLanguageCanonicalName(wxLANGUAGE_ENGLISH_US));
+ }
+ 
+ template <> inline
+ bool readText(const std::string& input, wxLanguage& value)
+ {
+-    if (const wxLanguageInfo* lngInfo = wxUILocale::FindLanguageInfo(utfTo<wxString>(input)))
++    if (const wxLanguageInfo* lngInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(input)))
+     {
+         value = static_cast<wxLanguage>(lngInfo->Language);
+         return true;
+@@ -1351,17 +1351,13 @@
+ 
+         if (lngName == "English (US)")
+             cfg.programLanguage = wxLANGUAGE_ENGLISH_US;
+-        else if (lngName == "Chinese (Simplified)")
+-            cfg.programLanguage = wxLANGUAGE_CHINESE_CHINA;
+         else if (lngName == "Chinese (Traditional)")
+             cfg.programLanguage = wxLANGUAGE_CHINESE_TAIWAN;
+         else if (lngName == "English (U.K.)")
+             cfg.programLanguage = wxLANGUAGE_ENGLISH_UK;
+-        else if (lngName == "Norwegian (Bokmal)")
+-            cfg.programLanguage = wxLANGUAGE_NORWEGIAN;
+         else if (lngName == "Portuguese (Brazilian)")
+             cfg.programLanguage = wxLANGUAGE_PORTUGUESE_BRAZILIAN;
+-        else if (const wxLanguageInfo* lngInfo = wxUILocale::FindLanguageInfo(utfTo<wxString>(lngName)))
++        else if (const wxLanguageInfo* lngInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(lngName)))
+             cfg.programLanguage = static_cast<wxLanguage>(lngInfo->Language);
+     }
+     else
+
+--- localization.cpp	2023-11-04 19:00:30.000000000 +0800
++++ localization.cpp	2023-11-04 19:52:24.000000000 +0800
+@@ -10,7 +10,7 @@
+ #include <zen/file_io.h>
+ #include <wx/zipstrm.h>
+ #include <wx/mstream.h>
+-#include <wx/uilocale.h>
++#include <wx/xlocale.h>
+ #include "parse_plural.h"
+ #include "parse_lng.h"
+ 
+@@ -142,7 +142,7 @@
+             assert(!lngHeader.locale        .empty());
+             assert(!lngHeader.flagFile      .empty());
+ 
+-            const wxLanguageInfo* lngInfo = wxUILocale::FindLanguageInfo(utfTo<wxString>(lngHeader.locale));
++            const wxLanguageInfo* lngInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(lngHeader.locale));
+             assert(lngInfo && lngInfo->CanonicalName == utfTo<wxString>(lngHeader.locale));
+             if (lngInfo)
+                 translations.push_back(
+@@ -174,36 +174,36 @@
+ }
+ 
+ 
+-/* Some ISO codes are used by multiple wxLanguage IDs which can lead to incorrect mapping by wxUILocale::FindLanguageInfo()!!!
++/* Some ISO codes are used by multiple wxLanguage IDs which can lead to incorrect mapping by wxLocale::FindLanguageInfo()!!!
+     => Identify by description, e.g. "Chinese (Traditional)". The following IDs are affected:
+     - zh_TW: wxLANGUAGE_CHINESE_TAIWAN, wxLANGUAGE_CHINESE, wxLANGUAGE_CHINESE_TRADITIONAL_EXPLICIT
+     - en_GB: wxLANGUAGE_ENGLISH_UK, wxLANGUAGE_ENGLISH
+     - es_ES: wxLANGUAGE_SPANISH, wxLANGUAGE_SPANISH_SPAIN                      */
+ wxLanguage mapLanguageDialect(wxLanguage lng)
+ {
+-    if (const wxString& canonicalName = wxUILocale::GetLanguageCanonicalName(lng);
++    if (const wxString& canonicalName = wxLocale::GetLanguageCanonicalName(lng);
+         !canonicalName.empty())
+     {
+         assert(!contains(canonicalName, L'-'));
+-        const std::string locale = beforeFirst(utfTo<std::string>(canonicalName), '@', IfNotFoundReturn::all); //e.g. "sr_RS@latin"; see wxUILocale::InitLanguagesDB()
++        const std::string locale = beforeFirst(utfTo<std::string>(canonicalName), '@', IfNotFoundReturn::all); //e.g. "sr_RS@latin"; see wxLocale::InitLanguagesDB()
+         const std::string lngCode = beforeFirst(locale, '_', IfNotFoundReturn::all);
+ 
+         if (lngCode == "zh")
+         {
+             if (lng == wxLANGUAGE_CHINESE) //wxWidgets assigns this to "zh_TW" for some reason
+-                return wxLANGUAGE_CHINESE_CHINA;
++                return wxLANGUAGE_CHINESE_TAIWAN;
+ 
+             for (const char* l : {"zh_HK", "zh_MO", "zh_TW"})
+                 if (locale == l)
+                     return wxLANGUAGE_CHINESE_TAIWAN;
+ 
+-            return wxLANGUAGE_CHINESE_CHINA;
++            return wxLANGUAGE_CHINESE_TAIWAN;
+         }
+ 
+         if (lngCode == "en")
+         {
+             if (lng == wxLANGUAGE_ENGLISH || //wxWidgets assigns this to "en_GB" for some reason
+-                lng == wxLANGUAGE_ENGLISH_WORLD)
++                lng == wxLANGUAGE_ENGLISH_EIRE)
+                 return wxLANGUAGE_ENGLISH_US;
+ 
+             for (const char* l : {"en_US", "en_CA", "en_AS", "en_UM", "en_VI"})
+@@ -213,15 +213,12 @@
+             return wxLANGUAGE_ENGLISH_UK;
+         }
+ 
+-        if (lngCode == "nb" || lngCode == "nn") //wxLANGUAGE_NORWEGIAN_BOKMAL, wxLANGUAGE_NORWEGIAN_NYNORSK
+-            return wxLANGUAGE_NORWEGIAN;
+-
+         if (locale == "pt_BR")
+             return wxLANGUAGE_PORTUGUESE_BRAZILIAN;
+ 
+         //all other cases: map to primary language code
+         if (contains(locale, '_'))
+-            if (const wxLanguageInfo* lngInfo2 = wxUILocale::FindLanguageInfo(utfTo<wxString>(lngCode)))
++            if (const wxLanguageInfo* lngInfo2 = wxLocale::FindLanguageInfo(utfTo<wxString>(lngCode)))
+                 return static_cast<wxLanguage>(lngInfo2->Language);
+     }
+     return lng; //including wxLANGUAGE_DEFAULT, wxLANGUAGE_UNKNOWN
+@@ -234,7 +231,7 @@
+ {
+ public:
+     MemoryTranslationLoader(wxLanguage langId, std::map<std::string, std::wstring>&& transMapping) :
+-        canonicalName_(wxUILocale::GetLanguageCanonicalName(langId))
++        canonicalName_(wxLocale::GetLanguageCanonicalName(langId))
+     {
+         assert(!canonicalName_.empty());
+         static_assert(std::is_same_v<std::remove_cvref_t<decltype(transMapping)>, std::map<std::string, std::wstring>>); //translations *must* be sorted in MO file!
+@@ -306,7 +303,7 @@
+ 
+ void fff::localizationInit(const Zstring& zipPath) //throw FileError
+ {
+-    /*                     wxLocale          vs       wxUILocale (since wxWidgets 3.1.6)
++    /*                     wxLocale          vs       wxLocale (since wxWidgets 3.1.6)
+         ------------------------------------------|--------------------
+         calls setlocale()  Windows, Linux, maCOS  |   Linux only
+         wxTranslations     initialized            |   not initialized
+@@ -325,13 +322,13 @@
+                 2. call std::setlocale(LC_ALL, ""):
+                 a) app was double-clicked:                 locale is "C"            => drag/drop FAILS!
+                 b) run Contents/MacOS/FreeFileSync_main:   locale is "en_US.UTF-8"  => drag/drop works!                       */
+-    [[maybe_unused]] const bool rv = wxUILocale::UseDefault();
+-    assert(rv);
++    // [[maybe_unused]] const bool rv = wxLocale::UseDefault();
++    // assert(rv);
+ 
+-    //const char* currentLocale = std::setlocale(LC_ALL, nullptr);
++    const char* currentLocale = std::setlocale(LC_ALL, nullptr);
+ 
+     assert(!wxTranslations::Get());
+-    wxTranslations::Set(new wxTranslations() /*pass ownership*/); //implicitly done by wxLocale, but *not* wxUILocale
++    wxTranslations::Set(new wxTranslations() /*pass ownership*/); //implicitly done by wxLocale, but *not* wxLocale
+ 
+     //throw *after* mandatory initialization: setLanguage() requires wxTranslations::Get()!
+ 
+@@ -400,7 +397,7 @@
+ 
+     globalLang = lng;
+ 
+-    if (const wxLanguageInfo* selLngInfo = wxUILocale::GetLanguageInfo(lng))
++    if (const wxLanguageInfo* selLngInfo = wxLocale::GetLanguageInfo(lng))
+         globalLayoutDir = selLngInfo->LayoutDirection;
+     else
+         globalLayoutDir = wxLayout_LeftToRight;
+@@ -427,7 +424,7 @@
+ 
+ wxLanguage fff::getDefaultLanguage()
+ {
+-    static const wxLanguage defaultLng = mapLanguageDialect(static_cast<wxLanguage>(wxUILocale::GetSystemLanguage()));
++    static const wxLanguage defaultLng = mapLanguageDialect(static_cast<wxLanguage>(wxLocale::GetSystemLanguage()));
+     //uses GetUserPreferredUILanguages() since wxWidgets 1.3.6, not GetUserDefaultUILanguage() anymore:
+     // https://github.com/wxWidgets/wxWidgets/blob/master/src/common/intl.cpp
+     return defaultLng;

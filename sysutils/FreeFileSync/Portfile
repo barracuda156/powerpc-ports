@@ -1,0 +1,73 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           legacysupport 1.1
+PortGroup           makefile 1.0
+PortGroup           openssl 1.0
+PortGroup           wxWidgets 1.0
+
+# O_CLOEXEC
+legacysupport.newest_darwin_requires_legacy 10
+
+wxWidgets.use       wxWidgets-3.0-cxx11
+
+name                FreeFileSync
+version             13.1
+revision            0
+categories          sysutils
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+
+description         ${name} is a folder comparison and synchronization software
+long_description    {*}${description} that creates and manages backup copies of all your important files. \
+                    Instead of copying every file every time, FreeFileSync determines the differences \
+                    between a source and a target folder and transfers only the minimum amount of data needed. \
+                    ${name} is open source software, available for macOS, Windows and Linux.
+license             GPL-3
+homepage            https://freefilesync.org
+master_sites        ${homepage}/download
+distname            ${name}_${version}_Source
+checksums           rmd160  82aeded8d19a1af13fa22b10914a2705cc177cbb \
+                    sha256  c6e25039e8266473ec0a6254d9a9130f89d0874e4cfaba678d05447abdf74829 \
+                    size    2759227
+use_zip             yes
+
+depends_fetch       port:curl
+
+# Does not seem to download normally due to forwarding: html file is downloaded instead of the source.
+fetch {
+    if {![file exists ${distpath}/${distname}.zip]} {
+        ui_info "--->  Fetching ${distname}.zip"
+        system -W ${distpath} "${prefix}/bin/curl -L -o ${distname}.zip ${master_sites}/FreeFileSync_13.1_Source.zip"
+    }
+}
+
+worksrcdir          ${workpath}/${name}/Source
+
+patchfiles-append   patch-application.diff \
+                    patch-localization.diff \
+                    patch-Makefile.diff \
+                    patch-wx.diff \
+                    patch-wxASCII_STR.diff \
+                    patch-zen.diff
+
+post-patch {
+    reinplace "s,@PREFIX@,${prefix}," ${worksrcdir}/Makefile
+    reinplace "s,@CXX@,${configure.cxx}," ${worksrcdir}/Makefile
+    reinplace "s,@WXCONF@,${wxWidgets.wxconfig},g" ${worksrcdir}/Makefile
+    if {[string match *gcc* ${configure.compiler}]} {
+        # wx/generic/grid.h:641:41: error: 'zen::setImage(wxAnyButton&, const wxImage&)::wxGridCellCoords zen::wxGridNoCellCoords', \
+        # declared using local type 'zen::setImage(wxAnyButton&, const wxImage&)::wxGridCellCoords', is used but never defined [-fpermissive]
+        reinplace "s,@CXXFLAGS@,-std=gnu++23 ${configure.cxxflags} [get_canonical_archflags cxx] -fpermissive," ${worksrcdir}/Makefile
+    } else {
+        reinplace "s,@CXXFLAGS@,-std=c++23 ${configure.cxxflags} [get_canonical_archflags cxx]," ${worksrcdir}/Makefile
+    }
+}
+
+depends_build-append \
+                    port:pkgconfig \
+                    port:ZenXml
+depends_lib-append  path:lib/pkgconfig/gtk+-2.0.pc:gtk2 \
+                    port:libssh2 \
+                    port:xBRZ
+
+compiler.cxx_standard 2023

@@ -1,0 +1,81 @@
+# https://github.com/prusa3d/PrusaSlicer/commit/24d13031268aaa0f617657521af8c22690057191
+
+--- ui/command_box.h	2023-10-24 01:11:00.000000000 +0800
++++ ui/command_box.h	2023-11-04 19:30:15.000000000 +0800
+@@ -28,7 +28,7 @@
+                const wxString choices[] = nullptr,
+                long style = 0,
+                const wxValidator& validator = wxDefaultValidator,
+-               const wxString& name = wxASCII_STR(wxComboBoxNameStr));
++               const wxString& name = wxString::FromAscii(wxComboBoxNameStr));
+ 
+     void setHistory(const std::vector<Zstring>& history, size_t historyMax) { history_ = history; historyMax_ = historyMax; }
+     std::vector<Zstring> getHistory() const { return history_; }
+
+--- ui/folder_history_box.h	2023-10-24 01:11:00.000000000 +0800
++++ ui/folder_history_box.h	2023-11-04 19:31:35.000000000 +0800
+@@ -68,7 +68,7 @@
+                      const wxString choices[] = nullptr,
+                      long style = 0,
+                      const wxValidator& validator = wxDefaultValidator,
+-                     const wxString& name = wxASCII_STR(wxComboBoxNameStr));
++                     const wxString& name = wxString::FromAscii(wxComboBoxNameStr));
+ 
+     void setHistory(std::shared_ptr<HistoryList> sharedHistory) { sharedHistory_ = std::move(sharedHistory); }
+     std::shared_ptr<HistoryList> getHistory() { return sharedHistory_; }
+
+--- ../../wx+/grid.h	2023-10-24 01:11:00.000000000 +0800
++++ ../../wx+/grid.h	2023-11-04 19:33:24.000000000 +0800
+@@ -146,7 +146,7 @@
+          const wxPoint& pos   = wxDefaultPosition,
+          const wxSize& size   = wxDefaultSize,
+          long style           = wxTAB_TRAVERSAL | wxNO_BORDER,
+-         const wxString& name = wxASCII_STR(wxPanelNameStr));
++         const wxString& name = wxString::FromAscii(wxPanelNameStr));
+ 
+     size_t getRowCount() const;
+ 
+--- ../../wx+/toggle_button.h	2023-10-24 01:11:00.000000000 +0800
++++ ../../wx+/toggle_button.h	2023-11-04 19:34:19.000000000 +0800
+@@ -24,7 +24,7 @@
+                  const wxSize&      size = wxDefaultSize,
+                  long               style = 0,
+                  const wxValidator& validator = wxDefaultValidator,
+-                 const wxString&    name = wxASCII_STR(wxButtonNameStr)) :
++                 const wxString&    name = wxString::FromAscii(wxButtonNameStr)) :
+         wxBitmapButton(parent, id, bitmap, pos, size, style, validator, name) {}
+ 
+     //wxButton constructor
+@@ -35,7 +35,7 @@
+                  const wxSize&      size = wxDefaultSize,
+                  long               style = 0,
+                  const wxValidator& validator = wxDefaultValidator,
+-                 const wxString&    name = wxASCII_STR(wxButtonNameStr)) :
++                 const wxString&    name = wxString::FromAscii(wxButtonNameStr)) :
+         wxBitmapButton(parent, id, wxNullBitmap, pos, size, style, validator, name)
+     {
+         SetLabel(label);
+
+--- ../../wx+/graph.h	2023-10-24 01:11:00.000000000 +0800
++++ ../../wx+/graph.h	2023-11-04 19:35:16.000000000 +0800
+@@ -192,7 +192,7 @@
+             const wxPoint& pos   = wxDefaultPosition,
+             const wxSize& size   = wxDefaultSize,
+             long style           = wxTAB_TRAVERSAL | wxNO_BORDER,
+-            const wxString& name = wxASCII_STR(wxPanelNameStr));
++            const wxString& name = wxString::FromAscii(wxPanelNameStr));
+ 
+     class CurveAttributes
+     {
+
+--- ../../wx+/bitmap_button.h	2023-10-24 01:11:00.000000000 +0800
++++ ../../wx+/bitmap_button.h	2023-11-04 19:36:02.000000000 +0800
+@@ -28,7 +28,7 @@
+                      const wxSize& size           = wxDefaultSize,
+                      long style                   = 0,
+                      const wxValidator& validator = wxDefaultValidator,
+-                     const wxString& name         = wxASCII_STR(wxButtonNameStr)) :
++                     const wxString& name         = wxString::FromAscii(wxButtonNameStr)) :
+         wxBitmapButton(parent, id, wxNullBitmap, pos, size, style, validator, name)
+     {
+         SetLabel(label);

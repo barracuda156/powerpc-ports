@@ -1,0 +1,119 @@
+--- ../../wx+/dc.h	2023-10-24 01:11:00.000000000 +0800
++++ ../../wx+/dc.h	2023-11-04 18:39:09.000000000 +0800
+@@ -12,9 +12,12 @@
+ #include <zen/basic_math.h>
+ #include <wx/dcbuffer.h> //for macro: wxALWAYS_NATIVE_DOUBLE_BUFFER
+ #include <wx/dcscreen.h>
+-#include <wx/bmpbndl.h>
+-    //    #include <gtk/gtk.h>
++// #include <wx/bmpbndl.h>
++#include <gtk/gtk.h>
+ 
++#ifdef __APPLE__
++#include <AvailabilityMacros.h>
++#endif
+ 
+ namespace zen
+ {
+@@ -87,13 +90,13 @@
+ /* Standard DPI:
+      Windows/Ubuntu: 96 x 96
+      macOS: wxWidgets uses DIP (note: wxScreenDC().GetPPI() returns 72 x 72 which is a lie; looks like 96 x 96)       */
+-constexpr int defaultDpi = 96; //on Windows same as wxDisplay::GetStdPPIValue() (however returns 72 on macOS!)
++constexpr int defaultDpi = 72; //on Windows same as wxDisplay::GetStdPPIValue() (however returns 72 on macOS!)
+ 
+ inline
+ int getDPI()
+ {
+ #ifndef wxHAS_DPI_INDEPENDENT_PIXELS
+-#error why is wxHAS_DPI_INDEPENDENT_PIXELS not defined?
++#warning why is wxHAS_DPI_INDEPENDENT_PIXELS not defined?
+ #endif
+     //GTK2 doesn't properly support high DPI: https://freefilesync.org/forum/viewtopic.php?t=6114
+     //=> requires general fix at wxWidgets-level
+@@ -102,13 +105,13 @@
+     return defaultDpi; //e.g. macOS, GTK3
+ }
+ 
+-
++#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED > 1060
+ inline
+ double getDisplayScaleFactor()
+ {
+     return static_cast<double>(getDPI()) / defaultDpi;
+ }
+-
++#endif
+ 
+ inline
+ int fastFromDIP(int d) //like wxWindow::FromDIP (but tied to primary monitor and buffered)
+@@ -124,7 +127,7 @@
+     return numeric::intDivRound(100 * getDPI(), defaultDpi);
+ }
+ 
+-
++#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED > 1060
+ inline
+ wxBitmap toScaledBitmap(const wxImage& img /*expected to be DPI-scaled!*/)
+ {
+@@ -145,7 +148,7 @@
+     };
+     static_cast<wxDcSurgeon*>(dc.GetImpl())->setScaleFactor(scale);
+ }
+-
++#endif
+ 
+ //add some sanity to moronic const/non-const wxRect::Intersect()
+ inline
+@@ -224,9 +227,10 @@
+             if (!buffer_ || buffer->GetSize() != clientSize)
+                 buffer.emplace(clientSize);
+ 
++#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED > 1060
+             if (buffer->GetScaleFactor() != wnd.GetDPIScaleFactor())
+                 buffer->SetScaleFactor(wnd.GetDPIScaleFactor());
+-
++#endif
+             SelectObject(*buffer); //copies scale factor from wxBitmap
+ 
+             if (paintDc_.IsOk() && paintDc_.GetLayoutDirection() == wxLayout_RightToLeft)
+
+
+--- ../../wx+/bitmap_button.h	2023-10-24 01:11:00.000000000 +0800
++++ ../../wx+/bitmap_button.h	2023-11-04 20:20:23.000000000 +0800
+@@ -14,6 +14,9 @@
+ #include "std_button_layout.h"
+ #include "dc.h"
+ 
++#ifdef __APPLE__
++#include <AvailabilityMacros.h>
++#endif
+ 
+ namespace zen
+ {
+@@ -86,21 +89,22 @@
+         return;
+     }
+ 
+-
++#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED > 1060
+     button.SetBitmapLabel(toScaledBitmap(img));
+ 
+     //wxWidgets excels at screwing up consistently once again:
+     //the first call to SetBitmapLabel() *implicitly* sets the disabled bitmap, too, subsequent calls, DON'T!
+     button.SetBitmapDisabled(toScaledBitmap(img.ConvertToDisabled())); //inefficiency: wxBitmap::ConvertToDisabled() implicitly converts to wxImage!
++#endif
+ }
+ 
+-
++#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED > 1060
+ inline
+ void setImage(wxStaticBitmap& staticBmp, const wxImage& img)
+ {
+     staticBmp.SetBitmap(toScaledBitmap(img));
+ }
+-
++#endif
+ 
+ 
+ inline
