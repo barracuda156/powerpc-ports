@@ -1,0 +1,42 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem      1.0
+PortGroup       github 1.0
+
+name            erl-hotline
+github.setup    jwheare hotline 12933b44ec8e3536b766f47313a0f33e99aa44cf
+version         20210610
+categories      erlang hotline
+license         MIT
+maintainers     {@barracuda156 gmail.com:vital.had} openmaintainer
+supported_archs noarch
+
+description     Browser-based Hotline client in Erlang
+long_description \
+                {*}${description}
+checksums       rmd160  aa1eff1f10195a4672a04274a2f1033c12db1ddd \
+                sha256  c213519dbc09e1e99cd72d5c1f333e841a7fbb58b06416898bf9eb0de7f39533 \
+                size    137877
+github.tarball_from \
+                archive
+
+depends_lib     port:erlang
+depends_build-append \
+                port:rebar3
+
+use_configure   no
+build.target    compile
+build.cmd       ${prefix}/bin/rebar3
+
+set libdir      ${prefix}/lib/erlang/lib/${name}
+set docdir      ${prefix}/share/doc/${name}
+
+destroot {
+    xinstall -d ${destroot}${libdir}
+    copy ${worksrcpath}/_build/default/lib/${name}/ebin ${destroot}${libdir}/ebin
+    copy ${worksrcpath}/include ${destroot}${libdir}/include
+    copy ${worksrcpath}/scripts ${destroot}${libdir}/scripts
+    copy ${worksrcpath}/src ${destroot}${libdir}/src
+    xinstall -d ${destroot}${docdir}
+    xinstall -m 644 -W ${worksrcpath} LICENSE README.md TODO ${destroot}${docdir}
+}
