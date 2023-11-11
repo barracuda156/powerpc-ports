@@ -1,0 +1,70 @@
+--- config/_arch-n-opsys.orig	2022-07-28 12:55:45.000000000 +0800
++++ config/_arch-n-opsys	2023-01-23 04:06:10.000000000 +0800
+@@ -16,15 +16,8 @@
+ 
+ # the default size; this is set by the config/install.sh script
+ #
+-SIZE=@SIZE@
+-
+-# check for word-size override
+-#
+-case x"$1" in
+-  x-32) SIZE=32 ;;
+-  x-64) SIZE=64 ;;
+-  *) ;;
+-esac
++# Value for Rosetta: ppc64 is not supported in 10.6:
++SIZE=32
+ 
+ # pick_arch arch32 arch64
+ #
+@@ -62,47 +55,12 @@
+     ARCH=$(pick_arch ppc ppc64)
+     ;;
+   Darwin)
+-    case `uname -p` in
+-      powerpc)
+ 	ARCH=$(pick_arch ppc ppc64)
+ 	case `uname -r` in
++	  8*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.4 Tiger
+ 	  9*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.5 Leopard
++	  10*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.6 Snow Leopard
+ 	  *) exit 1;;
+-	esac;;
+-      i386)
+-	ARCH=$(pick_arch x86 amd64)
+-	REQUIRE_64BIT=no
+-	OPSYS=darwin
+-	HEAP_OPSYS=darwin
+-	case `uname -r` in
+-	  9*) HEAP_OPSYS=darwinz ;; # MacOS X 10.5 Leopard
+-	  10*) ;; # MacOS X 10.6 Snow Leopard
+-	  11*) ;; # MacOS X 10.7 Lion
+-	  12*) ;; # MacOS X 10.8 Mountain Lion
+-	  13*) ;; # MacOS X 10.9 Mavericks
+-	  14*) ;; # MacOS X 10.10 Yosemite
+-	  15*) ;; # MacOS X 10.11 El Capitan
+-	  16*) ;; # macOS 10.12 Sierra
+-	  17*) ;; # macOS 10.13 High Sierra
+-	  18*) ;; # macOS 10.14 Mojave
+-	  19*) REQUIRE_64BIT=yes ;; # macOS 10.15 Catalina
+-	  20*) REQUIRE_64BIT=yes ;; # macOS 11 Big Sur
+-	  21*) REQUIRE_64BIT=yes ;; # macOS 12 Monterey
+-	  22*) REQUIRE_64BIT=yes ;; # macOS 13 Ventura
+-          *) exit 1 ;;
+-        esac
+-        if [ x"$REQUIRE_64BIT" = xyes -a $SIZE = 32 ] ; then
+-	  # only 64-bit executables are supported in recent macOS versions
+-          exit 1;
+-        fi
+-	;;
+-      arm)
+-	# we use Rosetta since we do not have native arm64 support in
+-        # the legacy version of SML/NJ
+-	ARCH="amd64"
+-	OPSYS=darwin;
+-	HEAP_OPSYS=darwin
+-	;;
+     esac
+     ;;
+   Linux)

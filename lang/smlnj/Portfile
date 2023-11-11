@@ -9,12 +9,11 @@ license             BSD
 maintainers         {toby @tobypeterson} openmaintainer
 description         Standard ML of New Jersey
 long_description \
-    Standard ML of New Jersey (abbreviated SML/NJ) is a \
-    compiler for the Standard ML '97 programming language \
+    Standard ML of New Jersey (abbreviated SML/NJ) is \
+    a compiler for the Standard ML '97 programming language \
     with associated libraries, tools, and documentation. \
     SML/NJ is free, open source software.
-homepage            http://www.smlnj.org/
-platforms           darwin
+homepage            http://www.smlnj.org
 
 master_sites        http://smlnj.cs.uchicago.edu/dist/working/${version}/
 dist_subdir         ${name}/${version}_${revision}
@@ -63,9 +62,20 @@ foreach {tarball sha256 rmd160 size} $srcs {
 extract.mkdir       yes
 extract.only        config.tgz
 
-### patch ###
-patchfiles          patch-config__install.sh-correct-compiler.diff \
-                    patch-_arch.diff
+patchfiles          patch-config__install.sh-correct-compiler.diff
+
+# https://trac.macports.org/ticket/66745
+platform darwin powerpc {
+    compiler.blacklist-append clang
+
+    if {${os.major} == 10} {
+        # This is a hack for Rosetta:
+        patchfiles-append patch-rosetta.diff
+    } else {
+        # This is a fix for any native macOS PPC:
+        patchfiles-append patch-_arch.diff
+    }
+}
 
 post-patch {
     reinplace "s|@CC@|${configure.cc}|" ${worksrcpath}/config/install.sh
