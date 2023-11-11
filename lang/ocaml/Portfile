@@ -79,6 +79,13 @@ configure.env-append \
 # Configure.
 configure.pre_args  --prefix=${prefix} --mandir=${prefix}/share/man
 
+# IMPORTANT: this fix is ONLY required for Rosetta and otherwise undesirable.
+# Do not use this on a native 10.6 PowerPC.
+platform darwin 10 powerpc {
+    configure.args-append \
+                    --enable-imprecise-c99-float-ops
+}
+
 # Building.
 if {${build_arch} eq "ppc" || ${build_arch} eq "ppc64"} {
     build.target    world
