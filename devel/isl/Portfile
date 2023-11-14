@@ -60,6 +60,13 @@ if {${subport} eq ${name}} {
     compiler.blacklist {clang < 500}
 }
 
+configure.compiler.add_deps \
+                    no
+depends_build-append \
+                    port:gcc10-bootstrap
+configure.cc        ${prefix}/libexec/gcc10-bootstrap/bin/gcc
+configure.cxx       ${prefix}/libexec/gcc10-bootstrap/bin/g++
+
 subport isl14 {
     epoch           0
     version         0.14.1

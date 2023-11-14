@@ -58,6 +58,13 @@ platform darwin {
     compiler.blacklist {clang < 500}
 }
 
+configure.compiler.add_deps \
+                    no
+depends_build-append \
+                    port:gcc10-bootstrap
+configure.cc        ${prefix}/libexec/gcc10-bootstrap/bin/gcc
+configure.cxx       ${prefix}/libexec/gcc10-bootstrap/bin/g++
+
 configure.args      --disable-silent-rules
 
 triplet.add_build   cross
