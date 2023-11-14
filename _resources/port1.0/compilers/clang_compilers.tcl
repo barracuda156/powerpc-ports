@@ -8,7 +8,7 @@
 global os.major os.platform
 
 # clang is useless on Darwin / PowerPC, let disable it globally
-if {${os.platform} eq "darwin" && [option configure.build_arch] in [list ppc ppc64]} {
+if {${os.platform} eq "darwin" && [option configure.build_arch] in [list arm64 ppc ppc64]} {
     return
 }
 
