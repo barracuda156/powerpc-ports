@@ -64,6 +64,13 @@ depends_lib-append  port:cctools \
 depends_run-append  port:gcc_select \
                     path:share/doc/libgcc/README:libgcc
 
+configure.compiler.add_deps \
+                    no
+depends_build-append \
+                    port:gcc10-bootstrap
+configure.cc        ${prefix}/libexec/gcc10-bootstrap/bin/gcc
+configure.cxx       ${prefix}/libexec/gcc10-bootstrap/bin/g++
+
 depends_skip_archcheck-append gcc_select ld64 cctools
 license_noconflict  gmp mpfr ppl libmpc zlib
 
@@ -268,12 +275,6 @@ if { ${subport} ne ${libcxxname} } {
         }
         configure.args-append --with-gxx-libcxx-include-dir="${libcxx_incpath}"
     }
-
-    # libcxx is unavailable on PPC
-    if {${build_arch} ni [list ppc ppc64]} {
-        default_variants-append +stdlib_flag
-    }
-
 }
 
 # https://trac.macports.org/ticket/29067
