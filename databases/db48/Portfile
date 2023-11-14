@@ -26,14 +26,21 @@ master_sites    http://download.oracle.com/berkeley-db/
 
 distname        db-${version}
 
-checksums       md5     f80022099c5742cd179343556179aa8c \
-                sha1    ab36c170dda5b2ceaad3915ced96e41c6b7e493c \
-                rmd160  dd2fcd4c9b857a91e2f491fd4fadb0c51b993a9c
+checksums       rmd160  dd2fcd4c9b857a91e2f491fd4fadb0c51b993a9c \
+                sha256  e0491a07cdb21fb9aa82773bbbedaeb7639cbd0e7f96147ab46141e0045db72a \
+                size    22887305
 
 if {${os.platform} eq "darwin" && ${os.major} < 11 && ${cxx_stdlib} eq "libc++"} {
     # This port is in the dependency chain for clang 3.7 and later
     clang_dependency.extra_versions 3.7
 }
+
+configure.compiler.add_deps \
+                no
+depends_build-append \
+                port:gcc10-bootstrap
+configure.cc    ${prefix}/libexec/gcc10-bootstrap/bin/gcc
+configure.cxx   ${prefix}/libexec/gcc10-bootstrap/bin/g++
 
 patchfiles      patch-dbinc_atomic.h patch-dist_configure.diff
 
