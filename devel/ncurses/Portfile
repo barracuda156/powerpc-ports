@@ -1,5 +1,7 @@
-PortSystem 1.0
-PortGroup  clang_dependency 1.0
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem      1.0
+PortGroup       clang_dependency 1.0
 
 name            ncurses
 version         6.4
@@ -17,8 +19,9 @@ long_description \
 
 homepage        https://invisible-island.net/ncurses/
 master_sites    gnu https://invisible-mirror.net/archives/ncurses/
-checksums       rmd160 a8b6ef8fe778c87ffdd3e0f3199c156c47b8dc39 \
-                sha256 6931283d9ac87c5073f30b6290c4c75f21632bb4fc3603ac8100812bed248159
+checksums       rmd160  a8b6ef8fe778c87ffdd3e0f3199c156c47b8dc39 \
+                sha256  6931283d9ac87c5073f30b6290c4c75f21632bb4fc3603ac8100812bed248159 \
+                size    3612591
 
 # hex.diff from https://opensource.apple.com/source/ncurses/ncurses-57/patches.applied/
 patchfiles      hex.diff
@@ -27,6 +30,13 @@ patchfiles      hex.diff
 if {${os.platform} eq "darwin" && ${os.major} < 11 && ${cxx_stdlib} eq "libc++"} {
     clang_dependency.extra_versions 3.7
 }
+
+configure.compiler.add_deps \
+                no
+depends_build-append \
+                port:gcc10-bootstrap
+configure.cc    ${prefix}/libexec/gcc10-bootstrap/bin/gcc
+configure.cxx   ${prefix}/libexec/gcc10-bootstrap/bin/g++
 
 configure.cppflags
 configure.ldflags
