@@ -32,6 +32,15 @@ use_bzip2               yes
 
 configure.args          --enable-cxx
 
+configure.compiler.add_deps \
+                        no
+depends_build-append    port:gcc10-bootstrap
+configure.cc            ${prefix}/libexec/gcc10-bootstrap/bin/gcc
+configure.cxx           ${prefix}/libexec/gcc10-bootstrap/bin/g++
+
+build.env-append        CC_FOR_BUILD="${prefix}/libexec/gcc10-bootstrap/bin/gcc" \
+                        CXX_FOR_BUILD="${prefix}/libexec/gcc10-bootstrap/bin/g++"
+
 # Clear all options that affect CFLAGS and CXXFLAGS, since the configure
 # script tries to build the fastest library for the build machine if
 # CFLAGS and CXXFLAGS are undefined.
