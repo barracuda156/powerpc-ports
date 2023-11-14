@@ -49,6 +49,13 @@ xcode_workaround.fixed_xcode_version 11.2
 # blacklisted here
 compiler.blacklist-append  {clang == 211.10.1}
 
+configure.compiler.add_deps \
+                    no
+depends_build-append \
+                    port:gcc10-bootstrap
+configure.cc        ${prefix}/libexec/gcc10-bootstrap/bin/gcc
+configure.cxx       ${prefix}/libexec/gcc10-bootstrap/bin/g++
+
 if {${os.platform} eq "darwin" && ${os.major} < 11} {
     # the OS toolchains on these systems do not support TLS.
     # macports-clang-N also does not presently build this correctly on these systems
