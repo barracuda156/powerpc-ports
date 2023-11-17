@@ -1,6 +1,10 @@
 # MacPorts Ports
 
-This repository contains the source definitions for the open source software packages offered through MacPorts.
+This branch of MacPorts repo has fixes specific for macOS 10.6 PowerPC (10A190).
+While most of these are compatible with 10.5.8 and 10.6.8 Rosetta, only 10.6 PPC is supported here.
+
+There is no implication of all broken ports to be fixed, however this is intended to be a fully-functional set-up.
+If something fails for you on 10.6 PPC, please report here.
 
 ## What software is available
 
