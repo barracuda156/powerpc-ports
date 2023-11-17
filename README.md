@@ -1,6 +1,8 @@
 # MacPorts Ports
 
-This repository contains the source definitions for the open source software packages offered through MacPorts.
+This is an experimental branch using libstdc++ and gcc on Sonoma. Multiple ports are broken at the moment, since no one ever tested this.
+For instance, limits.h does not get found for a reason yet unknown. Also some SDK features are not recognized, like CoreText: https://trac.macports.org/ticket/68714
+This is a WIP. Use at your own risk.
 
 ## What software is available
 
