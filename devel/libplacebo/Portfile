@@ -21,10 +21,22 @@ checksums               rmd160  9585ba0f7285ea22ca09b60877c29cd6cb6df60a \
                         sha256  8808bbd177441cb2725f339b6b4fbd929006be5292c0be17c93102a347726aec \
                         size    846340
 
+if {${os.platform} eq "darwin" && ${os.major} < 11} {
+    # For now, due to: https://trac.macports.org/ticket/68962
+    github.setup        haasn libplacebo 5.264.1 v
+    checksums           rmd160  06f222bcd4147881bffb5837cd00a63e940260ef \
+                        sha256  47dac5926da6e0682ea545536ea143b7bba3eef139c9b96606c8f1fb44404c5f \
+                        size    725437
+} else {
+    depends_lib-append  port:xxhashlib
+
+    configure.args-append \
+                        -Dxxhash=enabled
+}
+
 depends_build-append    port:fast-float \
                         port:pkgconfig
-depends_lib-append      port:lcms2 \
-                        port:xxhashlib
+depends_lib-append      port:lcms2
 
 configure.args-append   -Dvulkan=disabled \
                         -Dopengl=disabled \
@@ -35,7 +47,6 @@ configure.args-append   -Dvulkan=disabled \
                         -Ddemos=false \
                         -Dtests=false \
                         -Dglslang=disabled \
-                        -Dxxhash=enabled \
                         -Dlcms=enabled \
                         -Dunwind=disabled
 
