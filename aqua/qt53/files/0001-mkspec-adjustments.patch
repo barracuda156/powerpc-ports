@@ -1,0 +1,102 @@
+From 5118178c21ca314101f1402d72b72ae2de9ea361 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Wed, 27 Dec 2023 00:55:06 +0800
+Subject: [PATCH] mkspec: adjustments
+
+---
+ mkspecs/common/g++-base.conf   |  9 +++++----
+ mkspecs/common/g++-macx.conf   |  2 +-
+ mkspecs/common/g++-unix.conf   |  1 -
+ mkspecs/macx-g++-32/qmake.conf | 10 +++++-----
+ mkspecs/macx-g++/qmake.conf    |  2 +-
+ 5 files changed, 12 insertions(+), 12 deletions(-)
+
+diff --git mkspecs/common/g++-base.conf mkspecs/common/g++-base.conf
+index 99c0d8078f..30b49bd041 100644
+--- mkspecs/common/g++-base.conf
++++ mkspecs/common/g++-base.conf
+@@ -10,15 +10,16 @@
+ 
+ QMAKE_COMPILER          = gcc
+ 
+-QMAKE_CC                = gcc
++QMAKE_CC                = __MACPORTS_CC__
++QMAKE_CXX               = __MACPORTS_CXX__
++QMAKE_AR                = @@PREFIX@@/bin/ar cq
++QMAKE_RANLIB            = @@PREFIX@@/bin/ranlib
+ 
+ QMAKE_LINK_C            = $$QMAKE_CC
+ QMAKE_LINK_C_SHLIB      = $$QMAKE_CC
+ 
+ QMAKE_CFLAGS_RELEASE_WITH_DEBUGINFO += $$QMAKE_CFLAGS_OPTIMIZE -g
+ 
+-QMAKE_CXX               = g++
+-
+ QMAKE_LINK              = $$QMAKE_CXX
+ QMAKE_LINK_SHLIB        = $$QMAKE_CXX
+ 
+@@ -31,5 +32,5 @@ QMAKE_CFLAGS_USE_PRECOMPILE   = -include ${QMAKE_PCH_OUTPUT_BASE}
+ QMAKE_CXXFLAGS_PRECOMPILE     = -x c++-header -c ${QMAKE_PCH_INPUT} -o ${QMAKE_PCH_OUTPUT}
+ QMAKE_CXXFLAGS_USE_PRECOMPILE = $$QMAKE_CFLAGS_USE_PRECOMPILE
+ 
+-QMAKE_CXXFLAGS_CXX11    = -std=c++0x
++QMAKE_CXXFLAGS_CXX11    = -std=gnu++11 -D_GLIBCXX_USE_CXX11_ABI=0
+ QMAKE_LFLAGS_CXX11      =
+diff --git mkspecs/common/g++-macx.conf mkspecs/common/g++-macx.conf
+index 086510dd96..78e3bf40ad 100644
+--- mkspecs/common/g++-macx.conf
++++ mkspecs/common/g++-macx.conf
+@@ -16,7 +16,7 @@ QMAKE_LFLAGS_RELEASE_WITH_DEBUGINFO += -g -gdwarf-2
+ 
+ QMAKE_LFLAGS_STATIC_LIB += -all_load
+ 
+-QMAKE_XCODE_GCC_VERSION = com.apple.compilers.llvmgcc42
++# QMAKE_XCODE_GCC_VERSION = com.apple.compilers.llvmgcc42
+ 
+ QMAKE_OBJCFLAGS_PRECOMPILE       = -x objective-c-header -c ${QMAKE_PCH_INPUT} -o ${QMAKE_PCH_OUTPUT}
+ QMAKE_OBJCFLAGS_USE_PRECOMPILE   = $$QMAKE_CFLAGS_USE_PRECOMPILE
+diff --git mkspecs/common/g++-unix.conf mkspecs/common/g++-unix.conf
+index a493cd5984..6848e6e02c 100644
+--- mkspecs/common/g++-unix.conf
++++ mkspecs/common/g++-unix.conf
+@@ -11,4 +11,3 @@
+ include(g++-base.conf)
+ 
+ QMAKE_LFLAGS_RELEASE   += -Wl,-O1
+-QMAKE_LFLAGS_NOUNDEF   += -Wl,--no-undefined
+diff --git mkspecs/macx-g++-32/qmake.conf mkspecs/macx-g++-32/qmake.conf
+index 6ef78aacbf..df10c5463e 100644
+--- mkspecs/macx-g++-32/qmake.conf
++++ mkspecs/macx-g++-32/qmake.conf
+@@ -14,11 +14,11 @@ include(../common/macx.conf)
+ include(../common/gcc-base-mac.conf)
+ include(../common/g++-macx.conf)
+ 
+-QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.6
++QMAKE_MACOSX_DEPLOYMENT_TARGET = __MACPORTS_DEPLOYMENT_TARGET__
+ 
+-QMAKE_CFLAGS           += -arch i386
+-QMAKE_OBJECTIVE_CFLAGS += -arch i386
+-QMAKE_CXXFLAGS         += -arch i386
+-QMAKE_LFLAGS           += -arch i386
++QMAKE_CFLAGS           += -arch @@ARCH@@
++QMAKE_OBJECTIVE_CFLAGS += -arch @@ARCH@@
++QMAKE_CXXFLAGS         += -arch @@ARCH@@
++QMAKE_LFLAGS           += -arch @@ARCH@@
+ 
+ load(qt_config)
+diff --git mkspecs/macx-g++/qmake.conf mkspecs/macx-g++/qmake.conf
+index a6c075a2ce..e957c8986e 100644
+--- mkspecs/macx-g++/qmake.conf
++++ mkspecs/macx-g++/qmake.conf
+@@ -14,6 +14,6 @@ include(../common/macx.conf)
+ include(../common/gcc-base-mac.conf)
+ include(../common/g++-macx.conf)
+ 
+-QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.6
++QMAKE_MACOSX_DEPLOYMENT_TARGET = __MACPORTS_DEPLOYMENT_TARGET__
+ 
+ load(qt_config)
+-- 
+2.43.0
+
