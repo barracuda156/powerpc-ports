@@ -1,0 +1,165 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           xcode 1.0
+
+name                xnu-10.6
+version             1504.15.3
+categories          devel
+platforms           {darwin == 10}
+license             Apache-2
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+description         The Mac OS X kernel (xnu) for Mac OS X 10.6 Snow Leopard
+long_description    {*}${description}
+homepage            https://opensource.apple.com/releases
+set apple_sources   https://github.com/apple-oss-distributions
+master_sites-append ${apple_sources}/bootstrap_cmds/archive/refs/tags/:bootstrap_cmds \
+                    ${apple_sources}/cxxfilt/archive/refs/tags/:cxxfilt \
+                    ${apple_sources}/dtrace/archive/refs/tags/:dtrace \
+                    ${apple_sources}/kext_tools/archive/refs/tags/:kext_tools \
+                    ${apple_sources}/xnu/archive/refs/tags/:xnu
+
+set CMDS            bootstrap_cmds-72
+set CXXFILT         cxxfilt-9
+set DTRACE          dtrace-78
+set KEXTTOOLS       kext_tools-180.2.1
+set XNU             xnu-${version}
+
+distfiles           ${XNU}.tar.gz:xnu \
+                    ${CMDS}.tar.gz:bootstrap_cmds \
+                    ${CXXFILT}.tar.gz:cxxfilt \
+                    ${DTRACE}.tar.gz:dtrace \
+                    ${KEXTTOOLS}.tar.gz:kext_tools
+
+checksums           ${XNU}.tar.gz \
+                    rmd160  438bef8a0c85b45e7b0e87fe455906bd64446285 \
+                    sha256  05cc3e9617581f8f9bfa434901fb902761c89bbcf770d822e84a31dd625c2b58 \
+                    size    8872451 \
+                    ${CMDS}.tar.gz \
+                    rmd160  a4e77cb1afbc5e24c3c4c7deda662d1c82d2459a \
+                    sha256  293911736006c1089d11c36fe9bc3842655f67e2f02f1415746d572abcf2c743 \
+                    size    276993 \
+                    ${CXXFILT}.tar.gz \
+                    rmd160  c48f94e790118163305b1f437708173a92539c80 \
+                    sha256  e3e9469aae55dbfd32fc4b5ec2b557fa14ae7300e7e628382ef2a187dc2f2596 \
+                    size    24438363 \
+                    ${DTRACE}.tar.gz \
+                    rmd160  b2a5b7a0b5ff2956a6630e960d9bb889011045ba \
+                    sha256  fbdcb218b6c64bcb3aa2fd59211b29cea1183ed97db50f2d2a35ee1b01489188 \
+                    size    1851440 \
+                    ${KEXTTOOLS}.tar.gz \
+                    rmd160  614a12ebf5aeffc47b2960da00755dedf671f3ac \
+                    sha256  d6aa454b0e019fe603a214ad89c04444854dea7708b999e0469535f04237c16e \
+                    size    258572
+
+# extract {
+#     ui_msg "---> Extracting sources"
+#     foreach libsource [list ${LIBC} ${LIBCLOSURE} ${LIBDISPATCH} ${XNU}] {
+#         xinstall -d ${workpath}/${libsource}
+#         system -W ${workpath} "tar -xf ${distpath}/$libsource.tar.gz -C $libsource --strip-components 1"
+#     }
+# }
+# 
+# post-extract {
+#     ln -s ${workpath}/${XNU}/osfmk ${workpath}/${XNU}/libkern/System
+# }
+# 
+# patchfiles-append   patch-project.pbxproj.diff
+# 
+# worksrcdir          ${workpath}/${LIBDISPATCH}
+# 
+# compiler.blacklist  apple* macports*
+# 
+# # sterilize MacPorts build environment; we want nothing picked from MP prefix
+# compiler.cpath
+# compiler.library_path
+# 
+# configure.cxx_stdlib
+# 
+# configure.cflags
+# configure.cxxflags
+# configure.cppflags
+# configure.optflags
+# configure.ldflags
+# 
+# post-patch {
+#     reinplace "s|@LIBC@|${LIBC}|g" ${worksrcpath}/libdispatch.xcodeproj/project.pbxproj
+#     reinplace "s|@LIBCLOSURE@|${LIBCLOSURE}|g" ${worksrcpath}/libdispatch.xcodeproj/project.pbxproj
+#     reinplace "s|@XNU@|${XNU}|g" ${worksrcpath}/libdispatch.xcodeproj/project.pbxproj
+# }
+# 
+# xcode.target        libdispatch
+# 
+# use_parallel_build  no
+# 
+# default_variants    +universal
+# 
+# destroot {
+#     set dispatch_build ${workpath}/${LIBDISPATCH}/build/Release
+#     set dispatch_root ${destroot}${prefix}/libexec/dispatch
+#     xinstall -d ${dispatch_root}/lib
+#     foreach lib {libdispatch.a libdispatch_debug.a libdispatch_profile.a} {
+#         copy ${dispatch_build}/${lib} ${dispatch_root}/lib
+#     }
+#     foreach incdir {include local} {
+#         copy ${dispatch_build}/usr/${incdir} ${dispatch_root}
+#     }
+# }
+
+# 
+# Build cxxfilt
+# 
+# $ cd cxxfilt-9
+# $ mkdir -p obj sym dst
+# $ make install RC_ARCHS="i386 x86_64" RC_CFLAGS="-arch i386 -arch x86_64 -pipe" RC_OS=macos RC_RELEASE=SnowLeopard SRCROOT=$PWD OBJROOT=$PWD/obj SYMROOT=$PWD/sym DSTROOT=$PWD/dst
+# ...
+# $ sudo ditto $PWD/dst/usr/local /usr/local
+# Password:
+# $ cd ..
+# 
+# Build dtrace
+# 
+# $ cd dtrace-78
+# $ mkdir -p obj sym dst
+# $ xcodebuild install -target ctfconvert -target ctfdump -target ctfmerge ARCHS="i386 x86_64" SRCROOT=$PWD OBJROOT=$PWD/obj SYMROOT=$PWD/sym DSTROOT=$PWD/dst
+# ...
+# $ sudo ditto $PWD/dst/usr/local /usr/local
+# Password:
+# $ cd ..
+# 
+# Build kext_tools
+# 
+# $ cd kext_tools-177
+# $ mkdir -p obj sym dst
+# $ xcodebuild install -target kextsymboltool -target setsegname ARCHS="i386 x86_64" SRCROOT=$PWD OBJROOT=$PWD/obj SYMROOT=$PWD/sym DSTROOT=$PWD/dst
+# ...
+# $ sudo ditto $PWD/dst/usr/local /usr/local
+# Password:
+# $ cd ..
+# 
+# Build bootstrap_cmds
+# 
+# $ cd bootstrap_cmds-72
+# $ mkdir -p obj sym dst
+# $ make install RC_ARCHS="i386" RC_CFLAGS="-arch i386 -pipe" RC_OS=macos RC_RELEASE=SnowLeopard SRCROOT=$PWD OBJROOT=$PWD/obj SYMROOT=$PWD/sym DSTROOT=$PWD/dst
+# ...
+# $ sudo ditto $PWD/dst/usr/local /usr/local
+# Password:
+# $ cd ..
+# 
+# Download the xnu source
+# 
+# $ curl -s -O http://www.opensource.apple.com/tarballs/xnu/xnu-1456.1.26.tar.gz
+# 
+# Unpack xnu
+# 
+# $ tar zxf xnu-1456.1.26.tar.gz
+# 
+# Build xnu
+# 
+# $ cd xnu-1456.1.26
+# $ make ARCH_CONFIGS="I386 X86_64" KERNEL_CONFIGS="RELEASE"
+# ...
+# $ file BUILD/obj/RELEASE_*/mach_kernel
+# BUILD/obj/RELEASE_I386/mach_kernel: Mach-O executable i386
+# BUILD/obj/RELEASE_X86_64/mach_kernel: Mach-O 64-bit executable x86_64
