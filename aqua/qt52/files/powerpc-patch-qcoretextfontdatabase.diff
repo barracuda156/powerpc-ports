@@ -1,0 +1,16 @@
+--- src/platformsupport/fontdatabases/mac/coretext.pri	2014-02-02 04:37:30.000000000 +0800
++++ src/platformsupport/fontdatabases/mac/coretext.pri	2023-12-30 00:39:00.000000000 +0800
+@@ -1,5 +1,5 @@
+-HEADERS += $$PWD/qcoretextfontdatabase_p.h $$PWD/qfontengine_coretext_p.h
+-OBJECTIVE_SOURCES += $$PWD/qfontengine_coretext.mm $$PWD/qcoretextfontdatabase.mm
++HEADERS += $$PWD/qcoretextfontdatabase_p.h
++OBJECTIVE_SOURCES += $$PWD/qcoretextfontdatabase.mm
+ 
+ ios: \
+     # On iOS CoreText and CoreGraphics are stand-alone frameworks
+@@ -7,4 +7,4 @@
+ else: \
+     # On Mac OS they are part of the ApplicationServices umbrella framework,
+     # even in 10.8 where they were also made available stand-alone.
+-    LIBS_PRIVATE += -framework ApplicationServices
++    LIBS_PRIVATE += -framework ApplicationServices -framework Foundation

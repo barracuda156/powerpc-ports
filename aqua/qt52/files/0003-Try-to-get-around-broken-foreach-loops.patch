@@ -1,0 +1,18 @@
+From 8a919bc980049ba7fd8dd5818d52541256728859 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Wed, 27 Dec 2023 03:51:03 +0800
+Subject: [PATCH 3/3] Try to get around broken foreach loops
+
+diff --git qmake/library/qmakeevaluator.cpp qmake/library/qmakeevaluator.cpp
+index 8e1296e1e8..26dbe939bd 100644
+--- qmake/library/qmakeevaluator.cpp
++++ qmake/library/qmakeevaluator.cpp
+@@ -1503,7 +1503,7 @@ void QMakeEvaluator::updateFeaturePaths()
+     feature_roots.removeDuplicates();
+ 
+     QStringList ret;
+-    foreach (const QString &root, feature_roots)
++    for (const QString &root : feature_roots)
+         if (IoUtils::exists(root))
+             ret << root;
+     m_featureRoots = new QMakeFeatureRoots(ret);

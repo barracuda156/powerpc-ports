@@ -1,0 +1,26 @@
+--- mkspecs/features/mac/default_pre.prf	2014-02-02 04:37:37.000000000 +0800
++++ mkspecs/features/mac/default_pre.prf	2023-12-27 08:22:50.000000000 +0800
+@@ -10,10 +10,6 @@
+     # Make sure Xcode path is valid
+     !exists($$QMAKE_XCODE_DEVELOPER_PATH): \
+         error("Xcode is not installed in $${QMAKE_XCODE_DEVELOPER_PATH}. Please use xcode-select to choose Xcode installation path.")
+-
+-    # Make sure Xcode is set up properly
+-    isEmpty($$list($$system("/usr/bin/xcrun -find xcrun 2>/dev/null"))): \
+-        error("Xcode not set up properly. You may need to confirm the license agreement by running /usr/bin/xcodebuild.")
+ }
+ 
+ isEmpty(QMAKE_XCODE_VERSION) {
+
+--- mkspecs/features/mac/sdk.prf	2014-02-02 04:37:37.000000000 +0800
++++ mkspecs/features/mac/sdk.prf	2023-12-27 08:20:35.000000000 +0800
+@@ -6,8 +6,7 @@
+     error("QMAKE_MAC_SDK can only contain short-form SDK names (eg. macosx, iphoneos)")
+ 
+ isEmpty(QMAKE_MAC_SDK.$${QMAKE_MAC_SDK}.path) {
+-    QMAKE_MAC_SDK_PATH = $$system("/usr/bin/xcodebuild -sdk $$QMAKE_MAC_SDK -version Path 2>/dev/null")
+-    isEmpty(QMAKE_MAC_SDK_PATH): error("Could not resolve SDK path for \'$$QMAKE_MAC_SDK\'")
++    QMAKE_MAC_SDK_PATH = "/Developer/SDKs/MacOSX10.6.sdk"
+     cache(QMAKE_MAC_SDK.$${QMAKE_MAC_SDK}.path, set stash, QMAKE_MAC_SDK_PATH)
+ } else {
+     QMAKE_MAC_SDK_PATH = $$eval(QMAKE_MAC_SDK.$${QMAKE_MAC_SDK}.path)

@@ -1,0 +1,61 @@
+From 5118178c21ca314101f1402d72b72ae2de9ea361 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Wed, 27 Dec 2023 00:55:06 +0800
+Subject: [PATCH] mkspec: adjustments
+
+diff --git mkspecs/common/g++-base.conf mkspecs/common/g++-base.conf
+index 99c0d8078f..30b49bd041 100644
+--- mkspecs/common/g++-base.conf
++++ mkspecs/common/g++-base.conf
+@@ -10,14 +10,15 @@
+ 
+ QMAKE_COMPILER          = gcc
+ 
+-QMAKE_CC                = gcc
++QMAKE_CC                = __MACPORTS_CC__
++QMAKE_CXX               = __MACPORTS_CXX__
++QMAKE_AR                = @@PREFIX@@/bin/ar cq
++QMAKE_RANLIB            = @@PREFIX@@/bin/ranlib
+ 
+ QMAKE_LINK_C            = $$QMAKE_CC
+ QMAKE_LINK_C_SHLIB      = $$QMAKE_CC
+ 
+-QMAKE_CFLAGS_RELEASE_WITH_DEBUGINFO += -O2 -g
+-
+-QMAKE_CXX               = g++
++QMAKE_CFLAGS_RELEASE_WITH_DEBUGINFO += __MACPORTS_OPTFLAGS__ -g
+ 
+ QMAKE_LINK              = $$QMAKE_CXX
+ QMAKE_LINK_SHLIB        = $$QMAKE_CXX
+@@ -31,5 +32,5 @@
+ QMAKE_CXXFLAGS_PRECOMPILE     = -x c++-header -c ${QMAKE_PCH_INPUT} -o ${QMAKE_PCH_OUTPUT}
+ QMAKE_CXXFLAGS_USE_PRECOMPILE = $$QMAKE_CFLAGS_USE_PRECOMPILE
+ 
+-QMAKE_CXXFLAGS_CXX11    = -std=c++0x
++QMAKE_CXXFLAGS_CXX11    = -std=gnu++11 -D_GLIBCXX_USE_CXX11_ABI=0 -fpermissive
+ QMAKE_LFLAGS_CXX11      =
+diff --git mkspecs/common/g++-macx.conf mkspecs/common/g++-macx.conf
+index 086510dd96..78e3bf40ad 100644
+--- mkspecs/common/g++-macx.conf
++++ mkspecs/common/g++-macx.conf
+@@ -14,9 +14,10 @@
+ QMAKE_CXXFLAGS_RELEASE_WITH_DEBUGINFO += -gdwarf-2
+ QMAKE_LFLAGS_RELEASE_WITH_DEBUGINFO += -g -gdwarf-2
+ 
++QMAKE_LFLAGS += -Wl,-undefined,dynamic_lookup
+ QMAKE_LFLAGS_STATIC_LIB += -all_load
+ 
+-QMAKE_XCODE_GCC_VERSION = com.apple.compilers.llvmgcc42
++QMAKE_XCODE_GCC_VERSION = 4.2
+ 
+ QMAKE_OBJCFLAGS_PRECOMPILE       = -x objective-c-header -c ${QMAKE_PCH_INPUT} -o ${QMAKE_PCH_OUTPUT}
+ QMAKE_OBJCFLAGS_USE_PRECOMPILE   = $$QMAKE_CFLAGS_USE_PRECOMPILE
+diff --git mkspecs/common/g++-unix.conf mkspecs/common/g++-unix.conf
+index a493cd5984..6848e6e02c 100644
+--- mkspecs/common/g++-unix.conf
++++ mkspecs/common/g++-unix.conf
+@@ -11,4 +11,3 @@
+ include(g++-base.conf)
+ 
+ QMAKE_LFLAGS_RELEASE   += -Wl,-O1
+-QMAKE_LFLAGS_NOUNDEF   += -Wl,--no-undefined

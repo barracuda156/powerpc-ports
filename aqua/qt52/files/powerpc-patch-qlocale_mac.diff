@@ -1,0 +1,19 @@
+--- src/corelib/tools/qlocale_mac.mm.orig	2014-09-11 18:48:05.000000000 +0800
++++ src/corelib/tools/qlocale_mac.mm	2023-12-29 22:27:06.000000000 +0800
+@@ -399,12 +399,12 @@
+     QCFType<CFLocaleRef> locale = CFLocaleCopyCurrent();
+     switch (type) {
+     case QSystemLocale::StringToStandardQuotation:
+-        begin = QCFString::toQString(static_cast<CFStringRef>(CFLocaleGetValue(locale, kCFLocaleQuotationBeginDelimiterKey)));
+-        end = QCFString::toQString(static_cast<CFStringRef>(CFLocaleGetValue(locale, kCFLocaleQuotationEndDelimiterKey)));
++        begin = QCFString::toQString(static_cast<CFStringRef>(CFLocaleGetValue(locale, kCFLocaleQuotationBeginDelimiter)));
++        end = QCFString::toQString(static_cast<CFStringRef>(CFLocaleGetValue(locale, kCFLocaleQuotationEndDelimiter)));
+         return QString(begin % str % end);
+     case QSystemLocale::StringToAlternateQuotation:
+-        begin = QCFString::toQString(static_cast<CFStringRef>(CFLocaleGetValue(locale, kCFLocaleAlternateQuotationBeginDelimiterKey)));
+-        end = QCFString::toQString(static_cast<CFStringRef>(CFLocaleGetValue(locale, kCFLocaleAlternateQuotationEndDelimiterKey)));
++        begin = QCFString::toQString(static_cast<CFStringRef>(CFLocaleGetValue(locale, kCFLocaleAlternateQuotationBeginDelimiter)));
++        end = QCFString::toQString(static_cast<CFStringRef>(CFLocaleGetValue(locale, kCFLocaleAlternateQuotationEndDelimiter)));
+         return QString(begin % str % end);
+      default:
+         break;

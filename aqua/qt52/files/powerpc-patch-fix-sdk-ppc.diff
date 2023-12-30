@@ -1,0 +1,31 @@
+--- configure.orig	2014-09-11 18:47:55.000000000 +0800
++++ configure	2023-11-07 01:46:33.000000000 +0800
+@@ -498,28 +487,6 @@
+     outpath=`pwd -W`
+ fi
+ 
+-#-------------------------------------------------------------------------------
+-# Verify Xcode installation on Mac OS
+-#-------------------------------------------------------------------------------
+-
+-if [ "$BUILD_ON_MAC" = "yes" ]; then
+-    if ! /usr/bin/xcode-select --print-path >/dev/null 2>&1; then
+-        echo >&2
+-        echo "   No Xcode is selected. Use xcode-select -switch to choose an Xcode" >&2
+-        echo "   version. See the xcode-select man page for more information." >&2
+-        echo >&2
+-        exit 2
+-    fi
+-
+-    if ! /usr/bin/xcrun -find xcrun >/dev/null 2>&1; then
+-        echo >&2
+-        echo "   Xcode not set up properly. You may need to confirm the license" >&2
+-        echo "   agreement by running /usr/bin/xcodebuild without arguments." >&2
+-        echo >&2
+-        exit 2
+-    fi
+-fi
+-
+ #-----------------------------------------------------------------------------
+ # Qt version detection
+ #-----------------------------------------------------------------------------

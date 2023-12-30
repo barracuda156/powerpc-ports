@@ -1,0 +1,81 @@
+
+diff --git mkspecs/common/gcc-base.conf mkspecs/common/gcc-base.conf
+index fcff502a..8823b1e6 100644
+--- mkspecs/common/gcc-base.conf
++++ mkspecs/common/gcc-base.conf
+@@ -31,7 +31,7 @@
+ # you can use the manual test in tests/manual/mkspecs.
+ #
+ 
+-QMAKE_CFLAGS_OPTIMIZE      = -O2
++QMAKE_CFLAGS_OPTIMIZE      = __MACPORTS_OPTFLAGS__
+ QMAKE_CFLAGS_OPTIMIZE_FULL = -O3
+ 
+ QMAKE_CFLAGS               += -pipe
+diff --git mkspecs/common/macx.conf mkspecs/common/macx.conf
+index ad54612f..94a23d4a 100644
+--- mkspecs/common/macx.conf
++++ mkspecs/common/macx.conf
+@@ -3,6 +3,6 @@
+ #
+ 
+ QMAKE_PLATFORM         += osx macx
+-QMAKE_MAC_SDK           = macosx
++QMAKE_MAC_SDK           = __MACPORTS_MAC_SDK__
+ 
+ include(mac.conf)
+diff --git mkspecs/macx-g++-32/qmake.conf mkspecs/macx-g++-32/qmake.conf
+index 6ef78aac..01cf5af7 100644
+--- mkspecs/macx-g++-32/qmake.conf
++++ mkspecs/macx-g++-32/qmake.conf
+@@ -14,7 +14,7 @@ include(../common/macx.conf)
+ include(../common/gcc-base-mac.conf)
+ include(../common/g++-macx.conf)
+ 
+-QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.6
++QMAKE_MACOSX_DEPLOYMENT_TARGET = __MACPORTS_DEPLOYMENT_TARGET__
+ 
+ QMAKE_CFLAGS           += -arch ppc
+ QMAKE_OBJECTIVE_CFLAGS += -arch ppc
+diff --git mkspecs/macx-g++/qmake.conf mkspecs/macx-g++/qmake.conf
+index a6c075a2..f507668b 100644
+--- mkspecs/macx-g++/qmake.conf
++++ mkspecs/macx-g++/qmake.conf
+@@ -14,6 +14,10 @@ include(../common/macx.conf)
+ include(../common/gcc-base-mac.conf)
+ include(../common/g++-macx.conf)
+ 
+-QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.6
++QMAKE_MACOSX_DEPLOYMENT_TARGET = __MACPORTS_DEPLOYMENT_TARGET__
++
++QMAKE_CFLAGS           += -arch ppc
++QMAKE_CXXFLAGS         += -arch ppc
++QMAKE_LFLAGS           += -arch ppc
+ 
+ load(qt_config)
+diff --git mkspecs/macx-g++40/qmake.conf mkspecs/macx-g++40/qmake.conf
+index f40315a6..612cfabc 100644
+--- mkspecs/macx-g++40/qmake.conf
++++ mkspecs/macx-g++40/qmake.conf
+@@ -14,7 +14,7 @@ include(../common/macx.conf)
+ include(../common/gcc-base-mac.conf)
+ include(../common/g++-macx.conf)
+ 
+-QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.6
++QMAKE_MACOSX_DEPLOYMENT_TARGET = __MACPORTS_DEPLOYMENT_TARGET__
+ 
+ QMAKE_CC                = gcc-4.0
+ QMAKE_CXX               = g++-4.0
+diff --git mkspecs/macx-g++42/qmake.conf mkspecs/macx-g++42/qmake.conf
+index 25383e9c..b21e8617 100644
+--- mkspecs/macx-g++42/qmake.conf
++++ mkspecs/macx-g++42/qmake.conf
+@@ -14,7 +14,7 @@ include(../common/macx.conf)
+ include(../common/gcc-base-mac.conf)
+ include(../common/g++-macx.conf)
+ 
+-QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.6
++QMAKE_MACOSX_DEPLOYMENT_TARGET = __MACPORTS_DEPLOYMENT_TARGET__
+ 
+ QMAKE_CC                = gcc-4.2
+ QMAKE_CXX               = g++-4.2

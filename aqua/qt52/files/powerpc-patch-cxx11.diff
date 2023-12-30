@@ -1,0 +1,14 @@
+--- mkspecs/features/c++11.prf	2014-02-02 04:37:37.000000000 +0800
++++ mkspecs/features/c++11.prf	2023-12-27 08:31:45.000000000 +0800
+@@ -2,9 +2,7 @@
+ QMAKE_OBJECTIVE_CFLAGS += $$QMAKE_CXXFLAGS_CXX11
+ QMAKE_LFLAGS += $$QMAKE_LFLAGS_CXX11
+ 
+-contains(QMAKE_LFLAGS, -stdlib=libc++) {
++contains(QMAKE_CXXFLAGS, -std=gnu++11) {
+     equals(QMAKE_MACOSX_DEPLOYMENT_TARGET, 10.6): \
+-        QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.7
+-    contains(QMAKE_IOS_DEPLOYMENT_TARGET, ^4.*): \
+-        QMAKE_IOS_DEPLOYMENT_TARGET = 5.0
++        QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.6
+ }
