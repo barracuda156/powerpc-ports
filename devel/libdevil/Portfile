@@ -58,6 +58,12 @@ configure.env       OPENEXR_DIR=${prefix}/libexec/openexr2
 compiler.cxx_standard 2011
 configure.cxxflags-append -std=gnu++11
 
+if {[string match *gcc* ${configure.compiler}]} {
+    # il_jp2.cpp: error: invalid conversion from 'ssize_t (*)(jas_stream_obj_t*, char*, size_t)'
+    # to 'int (*)(jas_stream_obj_t*, char*, unsigned int)' [-fpermissive]
+    configure.cxxflags-append -fpermissive
+}
+
 # I don't know what the deal is with plural vs. singular cmake flags.
 configure.args-append \
                     -DJASPER_INCLUDE_DIR=${prefix}/include \
