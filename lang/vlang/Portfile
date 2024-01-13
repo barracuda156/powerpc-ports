@@ -9,7 +9,7 @@ PortGroup           makefile 1.0
 # clock_gettime
 legacysupport.newest_darwin_requires_legacy 15
 
-github.setup        vlang v 0.4.3
+github.setup        vlang v 0.3.4
 github.tarball_from archive
 revision            0
 
@@ -28,7 +28,7 @@ maintainers         {harens @harens} openmaintainer
 
 # Install the V compiler as a separate distfile.
 # Based on https://github.com/macports/macports-ports/blob/master/games/minetest/Portfile
-set vc_commit       5e691a82c01957870b451e06216a9fb3a4e83a18
+set vc_commit       6be6daffdbd8227595aea70cc981bf4c634decb7
 set main_distfile   ${distfiles}
 set vc_distfile     ${vc_commit}${extract.suffix}
 set vc_mastersite   https://github.com/vlang/vc/archive
@@ -40,13 +40,13 @@ master_sites        ${github.master_sites}:main \
                     ${vc_mastersite}:vc
 
 checksums           ${main_distfile} \
-                    rmd160  d6ba79bb2034084de8b5c94f1cc1217ec3d80cc0 \
-                    sha256  79bbe201fe6f7b98b2f80e405ce1d914b4d28931372bf7f9d30cf9b356e4d4f1 \
-                    size    7110780 \
+                    rmd160  ab7cc790d675588d687ec86952b89ddcd83b4b78 \
+                    sha256  7e251dd1748d16090348da4a29abd85dfe8c48aebc47bd9c23e91ed18e0c5ba1 \
+                    size    6714098 \
                     ${vc_distfile} \
-                    rmd160  84185a2c2dc90e0aeb7ae6b70152f557f46472a5 \
-                    sha256  2e8612b9328b66b80ebac41176c7df26c5980ad37adf3ef20bbcaa5f0195c265 \
-                    size    1798998
+                    rmd160  fb9448443c918b664a803617e258db71035618b5 \
+                    sha256  97d38392c906195b60814e2387966fa94eb6f7779d3b9efb66a57f3f05a54bb0 \
+                    size    1675380
 
 depends_lib         port:boehmgc
 
@@ -72,7 +72,6 @@ compiler.blacklist-append {clang < 700} macports-clang-3.*
 # V has built-in font rendering, but users can optionally use freetype.
 patchfiles          patch-boehmgc-prefix.diff \
                     patch-freetype2-prefix.diff \
-                    patch-min-macos.diff \
                     patch-openssl-prefix.diff \
                     patch-pkgconfig-prefix.diff \
                     patch-postgresql-prefix.diff \
@@ -93,14 +92,14 @@ if { ${os.major} <= [option legacysupport.newest_darwin_requires_legacy] } {
 
 post-patch {
     # https://github.com/vlang/v/issues/10796 - Set correct deployment target.
-    reinplace "s|@MACOS_VERSION@|${macosx_deployment_target}|" ${worksrcpath}/vlib/v/pref/pref.v
-    reinplace "s|macosx_version_min = _SLIT(\"10.7\")|macosx_version_min = _SLIT(\"${macosx_deployment_target}\")|" \
-    ${vc_path}/v.c
+    foreach f [list ${worksrcpath}/vlib/v/builder/cc.v ${vc_path}/v.c] {
+        reinplace "s|-mmacosx-version-min=10.7|-mmacosx-version-min=${macosx_deployment_target}|" ${f}
+    }
 
     # Disable vlang self update feature.
     copy -force ${filespath}/vup.v ${worksrcpath}/cmd/tools
 
-    foreach f [list net/openssl/openssl.c.v fontstash/a_d_use_freetype.v db/pg/pg.c.v v/pkgconfig/pkgconfig.v builtin/builtin_d_gcboehm.c.v] {
+    foreach f [list net/openssl/c.v fontstash/a_d_use_freetype.v pg/pg.v v/pkgconfig/pkgconfig.v builtin/builtin_d_gcboehm.c.v] {
         reinplace -W ${worksrcpath} "s|@PREFIX@|${prefix}|g" vlib/${f}
     }
 
