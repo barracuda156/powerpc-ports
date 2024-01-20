@@ -1,0 +1,70 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem              1.0
+PortGroup               github 1.0
+
+github.setup            dbsoft White-Star c293f6082e0b39a55cd66784a4aa4aea7de0bcac
+name                    white-star
+version                 2024.01.18
+categories              www
+maintainers             {@barracuda156 gmail.com:vital.had} openmaintainer
+license                 GPL-2
+description             White Star web browser based on PaleMoon
+long_description        ${description}
+homepage                https://dbsoft.org/whitestar.php
+
+supported_archs         ppc
+universal_variant       no
+installs_libs           no
+
+fetch.type              git
+
+post-fetch {
+    system -W ${worksrcpath} "git submodule update --init"
+}
+
+# https://github.com/dbsoft/White-Star/issues/2
+# https://dbsoft.org/whitestar-build-mac.php
+depends_build-append    port:autoconf213 \
+                        port:cctools \
+                        port:freetype \
+                        port:gmake \
+                        port:ld64 \
+                        port:libidl \
+                        port:pkgconfig \
+                        port:python27
+
+depends_lib-append      port:bzip2 \
+                        path:lib/pkgconfig/icu-uc.pc:icu \
+                        path:include/turbojpeg.h:libjpeg-turbo \
+                        port:libpng \
+                        path:lib/pkgconfig/vpx.pc:libvpx \
+                        port:nspr \
+                        port:nss \
+                        port:openjpeg \
+                        port:webp \
+                        port:zlib
+
+compiler.cxx_standard   2011
+
+post-extract {
+    xinstall -d ${worksrcpath}/platform/whitestar/branding
+    move ${worksrcpath}/whitestar/branding/unofficial ${worksrcpath}/platform/whitestar/branding/whitestar
+}
+
+post-patch {
+    copy ${filespath}/mozcfg-ppc32mac ${worksrcpath}/.mozconfig
+}
+
+use_configure           no
+
+build.cmd               ./mach
+build.target            build
+
+post-build {
+    system -W ${worksrcpath} "./mach package"
+}
+
+destroot {
+    move ${worksrcpath}/obj-powerpc-apple-darwin/dist/Browser.app ${destroot}${applications_dir}/WhiteStar.app
+}
