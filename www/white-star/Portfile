@@ -52,6 +52,10 @@ post-extract {
     move ${worksrcpath}/whitestar/branding/unofficial ${worksrcpath}/platform/whitestar/branding/whitestar
 }
 
+patchfiles-append       0001-gfx-qcms-transform-altivec.c-fix-load_aligned_float-.patch \
+                        0002-js-src-jsscript.h-restrict-padding-hack-to-older-gcc.patch \
+                        0003-Info.plist.in-add-ppc-to-LSMinimumSystemVersionByArc.patch
+
 post-patch {
     copy ${filespath}/mozcfg-ppc32mac ${worksrcpath}/.mozconfig
 }
