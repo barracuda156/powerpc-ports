@@ -20,6 +20,8 @@ if {${os.arch} eq "powerpc"} {
                             sha256  83971978f413ee309589307ed994fd7a7f2d55e818e6435b2663e8167da260d7 \
                             size    2887509
 
+    patchfiles-append       1001-Minor-fix-ups-for-ppc.patch
+
     subport darwin-xtools-devel {
         # This is only relevant for PowerPC, since on x86/aarch64 we can use the latest version.
         # Do not make v. 2.x a default one: as of now, it has some issues on older systems.
@@ -50,9 +52,7 @@ if {${os.arch} eq "powerpc"} {
 
 platforms                   darwin
 categories                  devel
-maintainers                 {@catap korins.ky:kirill} \
-                            {@barracuda156 gmail.com:vital.had} \
-                            openmaintainer
+maintainers                 {@catap korins.ky:kirill} openmaintainer
 
 description                 A set of modifications to cctools and ld64 that enable support \
                             for older systems with up-to-date tools.
@@ -168,7 +168,7 @@ cmake.generator             {Unix Makefiles}
 
 configure.args-append       -DCCTOOLS_LD_CLASSIC=OFF
 
-# 64-bit LD requires future patches
+# 64-bit LD requires futures patches
 if {${build_arch} ni [list i386 ppc]} {
     configure.args-append   -DXTOOLS_HOST_IS_64B=ON
 } else {

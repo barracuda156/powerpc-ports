@@ -1,0 +1,22 @@
+From 557852a8953b0f133c53da4076b31c52426eb96b Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Tue, 6 Feb 2024 18:39:41 +0800
+Subject: [PATCH] ld64: do not err out on pre-release triple
+
+---
+ ld64/src/ld/Options.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git ld64/src/ld/Options.cpp ld64/src/ld/Options.cpp
+index 2fe070a..fe8a4e3 100644
+--- ld64/src/ld/Options.cpp
++++ ld64/src/ld/Options.cpp
+@@ -1653,7 +1653,7 @@ uint32_t Options::parseVersionNumber32(const char* versionString)
+ 			z = strtoul(&end[1], &end, 10);
+ 		}
+ 	}
+-	if ( (*end != '\0') || (x > 0xffff) || (y > 0xff) || (z > 0xff) )
++	if ( (x > 0xffff) || (y > 0xff) || (z > 0xff) )
+ 		throwf("malformed 32-bit x.y.z version number: %s", versionString);
+ 
+ 	return (x << 16) | ( y << 8 ) | z;
