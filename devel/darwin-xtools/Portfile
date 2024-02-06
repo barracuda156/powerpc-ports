@@ -50,10 +50,13 @@ if {${os.arch} eq "powerpc"} {
 
 platforms                   darwin
 categories                  devel
-maintainers                 {@catap korins.ky:kirill} openmaintainer
+maintainers                 {@catap korins.ky:kirill} \
+                            {@barracuda156 gmail.com:vital.had} \
+                            openmaintainer
 
-description                 Aset of modifications to ctools and ld64 that enable support for older systems with up-to-date-tools.
-long_description            {*}${description}
+description                 A set of modifications to cctools and ld64 that enable support \
+                            for older systems with up-to-date tools.
+long_description            {*}${description} This is an experimental port.
 license                     {APSL-2 Apache-2}
 
 homepage                    https://github.com/iains/darwin-xtools
@@ -103,7 +106,7 @@ depends_skip_archcheck-append \
                             cmake-bootstrap
 configure.cmd               ${prefix}/libexec/cmake-bootstrap/bin/cmake
 
-# prevent findng or linking against any other ports
+# Prevent findng or linking against any other ports
 compiler.cpath
 compiler.library_path
 configure.cppflags-delete   -I${prefix}/include
@@ -120,7 +123,7 @@ if {${os.platform} eq "darwin" && ${os.major} < 12} {
     depends_skip_archcheck-append \
                             gcc10-bootstrap
 
-    # Leopard is the first macOS which supports Roseta
+    # Leopard is the first macOS which supports Rosetta
     # See: https://trac.macports.org/ticket/67284
     if {${os.major} > 8} {
         pre-configure {
@@ -151,7 +154,7 @@ if {${os.platform} eq "darwin" && ${os.major} < 12} {
         configure.cxx       ${prefix}/libexec/gcc10-bootstrap/bin/g++
     }
 
-    # prevent it from linking against gcc's libstdc++.6.dylib and libgcc_s.1.1.dylib
+    # Prevent it from linking against gcc's libstdc++.6.dylib and libgcc_s.1.1.dylib
     configure.ldflags-append \
                             -static-libstdc++ -static-libgcc
 
@@ -165,7 +168,7 @@ cmake.generator             {Unix Makefiles}
 
 configure.args-append       -DCCTOOLS_LD_CLASSIC=OFF
 
-# 64bit LD requires futures patches
+# 64-bit LD requires future patches
 if {${build_arch} ni [list i386 ppc]} {
     configure.args-append   -DXTOOLS_HOST_IS_64B=ON
 } else {
