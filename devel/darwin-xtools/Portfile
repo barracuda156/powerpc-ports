@@ -5,17 +5,36 @@ PortGroup                   cmake 1.1
 PortGroup                   github 1.0
 PortGroup                   muniversal 1.0
 
+name                        darwin-xtools
+
 if {${os.arch} eq "powerpc"} {
-    set xtools_version      6f6c04e8b25497851f6a5979a6e96023fffe22df
+    set xtools_version      80ad30c3bce821f52d94e844cbb1c2d095a127c6
     github.setup            iains darwin-xtools ${xtools_version}
-    version                 2.2.4
-    revision                1
-    epoch                   1
+    version                 1.1.0
+    revision                0
+    epoch                   2
+    conflicts               darwin-xtools-devel
 
     checksums               ${name}-${xtools_version}.tar.gz \
+                            rmd160  0b0c7155c63a5f962c32848cd649d98b7eef1298 \
+                            sha256  83971978f413ee309589307ed994fd7a7f2d55e818e6435b2663e8167da260d7 \
+                            size    2887509
+
+    subport darwin-xtools-devel {
+        # This is only relevant for PowerPC, since on x86/aarch64 we can use the latest version.
+        # Do not make v. 2.x a default one: as of now, it has some issues on older systems.
+        set xtools_version  6f6c04e8b25497851f6a5979a6e96023fffe22df
+        github.setup        iains darwin-xtools ${xtools_version}
+        version             2.2.4
+        revision            0
+        epoch               0
+        conflicts           darwin-xtools
+
+        checksums           ${name}-${xtools_version}.tar.gz \
                             rmd160  07dd50453b93f90ea4806fd8c12be3acb91c2fbd \
                             sha256  7568104068614b8e8b1cb72fcc01219f78f90a0d14d95c255be78e2c0a899d62 \
                             size    2932788
+    }
 } else {
     set xtools_version      6446947f3e99db52a40b30a38f36b9ae33492aea
     github.setup            iains darwin-xtools ${xtools_version}
@@ -29,16 +48,6 @@ if {${os.arch} eq "powerpc"} {
                             size    2958759
 }
 
-set libyaml_version         0.2.5
-set libyaml_distfile        ${libyaml_version}.tar.gz
-distfiles-append            ${libyaml_distfile}:libyaml
-checksums-append            ${libyaml_distfile} \
-                            rmd160  7fe42b7d7bb0dd07aedee6c775c43fd35bb5cf3e \
-                            sha256  fa240dbf262be053f3898006d502d514936c818e422afdcf33921c63bed9bf2e \
-                            size    85055
-
-github.tarball_from         archive
-
 platforms                   darwin
 categories                  devel
 maintainers                 {@catap korins.ky:kirill} openmaintainer
@@ -51,7 +60,19 @@ homepage                    https://github.com/iains/darwin-xtools
 
 master_sites-append         https://github.com/yaml/libyaml/archive/refs/tags:libyaml
 
-patchfiles-append           0001-ld64-unwinddump-include-stdlib-for-exit-3.patch \
+github.tarball_from         archive
+
+# Use the following for 2.x and 3.x versions, but not for 1.x:
+if {${os.arch} ne "powerpc" || ${subport} eq "darwin-xtools-devel"} {
+    set libyaml_version     0.2.5
+    set libyaml_distfile    ${libyaml_version}.tar.gz
+    distfiles-append        ${libyaml_distfile}:libyaml
+    checksums-append        ${libyaml_distfile} \
+                            rmd160  7fe42b7d7bb0dd07aedee6c775c43fd35bb5cf3e \
+                            sha256  fa240dbf262be053f3898006d502d514936c818e422afdcf33921c63bed9bf2e \
+                            size    85055
+
+    patchfiles-append       0001-ld64-unwinddump-include-stdlib-for-exit-3.patch \
                             0002-ld64-archive_file-fix-compilation-without-LTO_SUPPOR.patch \
                             0003-cctools-cmake-as-fix-compilation-on-powerpc-apple-da.patch \
                             0004-cctools-otool-fix-duplicate-symbol-in-arm-i386-_disa.patch \
@@ -67,12 +88,13 @@ patchfiles-append           0001-ld64-unwinddump-include-stdlib-for-exit-3.patch
                             0014-cctools-removed-redundant-implementation-of-get_toc_.patch \
                             0015-tapilite-fix-build-by-clang.patch
 
-platform darwin powerpc {
-    patchfiles-append       0016-Minor-fix-ups-for-ppc.patch
-}
+    platform darwin powerpc {
+        patchfiles-append   0016-Minor-fix-ups-for-ppc.patch
+    }
 
-post-extract {
-    ln -s ${workpath}/libyaml-${libyaml_version} ${worksrcpath}/libyaml
+    post-extract {
+        ln -s ${workpath}/libyaml-${libyaml_version} ${worksrcpath}/libyaml
+    }
 }
 
 # Use cmake-bootstrap
@@ -84,8 +106,8 @@ configure.cmd               ${prefix}/libexec/cmake-bootstrap/bin/cmake
 # prevent findng or linking against any other ports
 compiler.cpath
 compiler.library_path
-configure.cppflags-delete -I${prefix}/include
-configure.ldflags-delete  -L${prefix}/lib
+configure.cppflags-delete   -I${prefix}/include
+configure.ldflags-delete    -L${prefix}/lib
 
 compiler.cxx_standard       2011
 
@@ -141,9 +163,7 @@ cmake.install_prefix        ${prefix}/libexec/${name}
 cmake.build_type            Release
 cmake.generator             {Unix Makefiles}
 
-configure.args-append       -DCCTOOLS_LD_CLASSIC=OFF \
-                            -DXTOOLS_LIBYAML_PATH=${worksrcpath}/libyaml \
-                            -DXTOOLS_USE_TAPILITE=ON
+configure.args-append       -DCCTOOLS_LD_CLASSIC=OFF
 
 # 64bit LD requires futures patches
 if {${build_arch} ni [list i386 ppc]} {
@@ -152,9 +172,13 @@ if {${build_arch} ni [list i386 ppc]} {
     configure.args-append   -DXTOOLS_HOST_IS_64B=OFF
 }
 
-post-destroot {
-    file delete -force {*}[glob -directory ${destroot}${cmake.install_prefix} \
-                           cmake/yaml* include/yaml.h lib/libyaml*]
+if {${os.arch} ne "powerpc" || ${subport} eq "darwin-xtools-devel"} {
+    configure.args-append   -DXTOOLS_LIBYAML_PATH=${worksrcpath}/libyaml \
+                            -DXTOOLS_USE_TAPILITE=ON
+    post-destroot {
+        file delete -force {*}[glob -directory ${destroot}${cmake.install_prefix} \
+                            cmake/yaml* include/yaml.h lib/libyaml*]
+    }
 }
 
 github.livecheck.branch     darwin-xtools-[string map {. -} ${version}]
