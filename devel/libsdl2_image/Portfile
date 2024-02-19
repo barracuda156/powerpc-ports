@@ -37,6 +37,10 @@ configure.args  --disable-avif \
 
 compiler.blacklist *gcc-4.* { clang < 211 }
 
+# src/IMG_webp.c:74:1: error: attributes should be specified before the declarator in a function definition
+patchfiles-append \
+                patch-unbreak-build.diff
+
 post-destroot {
     set docdir ${prefix}/share/doc/${name}
     xinstall -d ${destroot}${docdir}
