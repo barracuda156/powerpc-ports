@@ -1,0 +1,20 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           ruby 1.0
+
+ruby.branches       3.3 3.2 3.1
+ruby.setup          rake-compiler 1.2.7 gem {} rubygems
+categories-append   devel
+revision            0
+platforms           any
+license             MIT
+maintainers         nomaintainer
+description         Provide a standard and simplified way to build \
+                    and package Ruby extensions (C, Java) using Rake as glue
+long_description    {*}${description}
+homepage            https://github.com/rake-compiler/rake-compiler
+checksums           rmd160  63d45aa7cbe11bca7b12e1321e9ac948d52ec839 \
+                    sha256  5176f8527bbf86db4b333915335eb5fa0b4f578cb82428c3e5e47e48179f0dee \
+                    size    35328
+supported_archs     noarch
