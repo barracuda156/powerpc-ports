@@ -1,0 +1,32 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           ruby 1.0
+
+ruby.branches       3.3 3.2 3.1
+ruby.setup          torrent_client 0.2.1 gem {} rubygems
+categories-append   p2p www
+revision            0
+platforms           any
+license             Apache-2
+maintainers         nomaintainer
+description         Simple Ruby torrent downloader
+long_description    {*}${description}
+homepage            https://github.com/MikaelSmith/torrent_client
+checksums           rmd160  2ae5034f0c4d12612b405450b89be5bba698fa38 \
+                    sha256  8cc220efef7b233d52724b681d590599913e86660b805dd24bbb0545323530fa \
+                    size    6144
+supported_archs     noarch
+
+if {${name} ne ${subport}} {
+    PortGroup       boost 1.0
+
+    # https://github.com/MikaelSmith/torrent_client/issues/4
+    boost.version   1.81
+
+    depends_lib-append \
+                    port:libtorrent-rasterbar
+
+    depends_run-append \
+                    port:rb${ruby.suffix}-rake-compiler
+}
