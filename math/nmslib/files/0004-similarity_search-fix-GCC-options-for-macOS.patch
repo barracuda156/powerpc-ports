@@ -1,0 +1,38 @@
+From 2be687e2cd6e6f127576af5292b03186778698a1 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Tue, 19 Mar 2024 14:31:21 +0800
+Subject: [PATCH] similarity_search: fix GCC options for macOS
+
+---
+ similarity_search/CMakeLists.txt | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git similarity_search/CMakeLists.txt similarity_search/CMakeLists.txt
+index 7f7169e..63d64e8 100644
+--- similarity_search/CMakeLists.txt
++++ similarity_search/CMakeLists.txt
+@@ -47,15 +47,21 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+     if (CXX_COMPILER_VERSION VERSION_LESS 4.7)
+         message(FATAL_ERROR "GCC version must be at least 4.7!")
+     endif()
+-    set (CMAKE_CXX_FLAGS_RELEASE "${WARN_FLAGS} -Ofast -lm -DNDEBUG -std=c++11 -pthread  -DHAVE_CXX0X ${SIMD_FLAGS} -Wl,--no-as-needed -fpic")
+-    set (CMAKE_CXX_FLAGS_DEBUG   "${WARN_FLAGS} -ggdb  -lm -DNDEBUG -std=c++11 -pthread  -DHAVE_CXX0X ${SIMD_FLAGS} -Wl,--no-as-needed -fpic")
++    if (CMAKE_SYSTEM_NAME MATCHES Darwin)
++        # MACOSX
++        set (CMAKE_CXX_FLAGS_RELEASE "${WARN_FLAGS} -Ofast -lm -DNDEBUG -std=c++11 -pthread -DHAVE_CXX0X ${SIMD_FLAGS} -fPIC")
++        set (CMAKE_CXX_FLAGS_DEBUG   "${WARN_FLAGS} -ggdb  -lm -DNDEBUG -std=c++11 -pthread -DHAVE_CXX0X ${SIMD_FLAGS} -fPIC")
++    else()
++        set (CMAKE_CXX_FLAGS_RELEASE "${WARN_FLAGS} -Ofast -lm -DNDEBUG -std=c++11 -pthread  -DHAVE_CXX0X ${SIMD_FLAGS} -Wl,--no-as-needed -fpic")
++        set (CMAKE_CXX_FLAGS_DEBUG   "${WARN_FLAGS} -ggdb  -lm -DNDEBUG -std=c++11 -pthread  -DHAVE_CXX0X ${SIMD_FLAGS} -Wl,--no-as-needed -fpic")
++    endif()
+ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
+     if (CXX_COMPILER_VERSION VERSION_LESS 14.0.1)
+         message(FATAL_ERROR "Intel version must be at least 14.0.1!")
+     endif()
+     set (CMAKE_CXX_FLAGS_RELEASE "-Wall -Wunreachable-code -Ofast -DNDEBUG -std=c++11 -DHAVE_CXX0X -pthread ${SIMD_FLAGS} -fpic")
+     set (CMAKE_CXX_FLAGS_DEBUG   "-Wall -Wunreachable-code -ggdb  -DNDEBUG -std=c++11 -DHAVE_CXX0X -pthread ${SIMD_FLAGS} -fpic")
+-elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
++elseif(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+     if (CMAKE_SYSTEM_NAME MATCHES Darwin)
+         # MACOSX
+         set (CMAKE_CXX_FLAGS_RELEASE "${WARN_FLAGS} -O3 -DNDEBUG -std=c++11 -DHAVE_CXX0X -pthread -fpic ${SIMD_FLAGS}")

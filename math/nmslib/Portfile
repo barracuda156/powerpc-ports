@@ -1,0 +1,57 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           cmake 1.1
+PortGroup           compiler_blacklist_versions 1.0
+PortGroup           github 1.0
+
+github.setup        nmslib nmslib 2.1.1 v
+categories          math
+license             Apache-2
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+description         Non-Metric Space Library (NMSLIB)
+long_description    An efficient similarity search library and a toolkit \
+                    for evaluation of k-NN methods for generic non-metric spaces
+checksums           rmd160  dfbb64f6137192b282aa5c63fbc558633d705268 \
+                    sha256  1f9cf1b63b5047ac13149abb0a319789db9096f49405020a3322914a151e7dc5 \
+                    size    67275985
+github.tarball_from archive
+
+cmake.source_dir    ${worksrcpath}/similarity_search
+
+depends_build-append \
+                    port:pkgconfig
+depends_lib-append  path:share/pkgconfig/eigen3.pc:eigen3
+
+# https://github.com/nmslib/nmslib/pull/539
+patchfiles-append   0001-ISSUE-535-Include-utils.h-for-WARN-macro.patch
+
+# https://github.com/nmslib/nmslib/pull/547
+patchfiles-append   0002-similarity_search-use-correct-optflags-depending-on-.patch
+
+# https://github.com/nmslib/nmslib/pull/548
+patchfiles-append   0003-similarity_search-fix-Apple-clang-detection.patch
+
+# https://github.com/nmslib/nmslib/pull/549
+patchfiles-append   0004-similarity_search-fix-GCC-options-for-macOS.patch
+
+# Current Eigen needs C++14:
+post-patch {
+    reinplace "s|-std=c++11|-std=c++14|g" ${cmake.source_dir}/CMakeLists.txt
+}
+
+compiler.cxx_standard           2014
+compiler.thread_local_storage   yes
+
+# https://github.com/nmslib/nmslib/issues/545
+compiler.blacklist-append       {clang}
+
+configure.args-append \
+                    -DWITH_EXTRAS=ON
+
+# Disabled for now due to:
+# https://github.com/nmslib/nmslib/issues/546
+test.run            no
+# test.dir            ${cmake.source_dir}/debug
+# test.cmd            ./bunit
+# test.target

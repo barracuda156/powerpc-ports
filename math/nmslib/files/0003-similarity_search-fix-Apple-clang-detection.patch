@@ -1,0 +1,22 @@
+From f6349f22bdcb81799cffe5243be52653796feb7e Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Tue, 19 Mar 2024 13:06:54 +0800
+Subject: [PATCH] similarity_search: fix Apple clang detection
+
+---
+ similarity_search/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git similarity_search/CMakeLists.txt similarity_search/CMakeLists.txt
+index 643684a..19427de 100644
+--- similarity_search/CMakeLists.txt
++++ similarity_search/CMakeLists.txt
+@@ -59,7 +59,7 @@ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
+     endif()
+     set (CMAKE_CXX_FLAGS_RELEASE "-Wall -Wunreachable-code -Ofast -DNDEBUG -std=c++11 -DHAVE_CXX0X -pthread ${SIMD_FLAGS} -fpic")
+     set (CMAKE_CXX_FLAGS_DEBUG   "-Wall -Wunreachable-code -ggdb  -DNDEBUG -std=c++11 -DHAVE_CXX0X -pthread ${SIMD_FLAGS} -fpic")
+-elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
++elseif(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+     if (CMAKE_SYSTEM_NAME MATCHES Darwin)
+         # MACOSX
+         set (CMAKE_CXX_FLAGS_RELEASE "${WARN_FLAGS} -O3 -DNDEBUG -std=c++11 -DHAVE_CXX0X -pthread -fpic ${SIMD_FLAGS}")

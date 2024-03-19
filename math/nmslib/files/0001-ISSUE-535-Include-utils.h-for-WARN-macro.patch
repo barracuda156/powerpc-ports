@@ -1,0 +1,27 @@
+From fe0761b51482ce90f450f3ebed41190ac9e4f9a4 Mon Sep 17 00:00:00 2001
+From: "Artem Farazei (C8)" <92033292+afarazei-c8@users.noreply.github.com>
+Date: Wed, 18 Oct 2023 15:06:58 +0200
+Subject: [PATCH] [ISSUE-535] Include "utils.h" for WARN macro
+
+---
+ similarity_search/src/distcomp_scalar.cc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git similarity_search/src/distcomp_scalar.cc similarity_search/src/distcomp_scalar.cc
+index 0aed6eb..ada06ef 100644
+--- similarity_search/src/distcomp_scalar.cc
++++ similarity_search/src/distcomp_scalar.cc
+@@ -15,12 +15,12 @@
+ #include "portable_intrinsics.h"
+ #include "distcomp.h"
+ #include "string.h"
++#include "utils.h"
+ 
+ #include <cstdlib>
+ #include <limits>
+ #include <algorithm>
+ 
+-
+ namespace similarity {
+ 
+ using namespace std;

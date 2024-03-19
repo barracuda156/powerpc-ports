@@ -1,0 +1,26 @@
+From 6efa515ce2950318d314c2e936885fa04725e16f Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Tue, 19 Mar 2024 12:44:09 +0800
+Subject: [PATCH] similarity_search: use correct optflags depending on arch
+
+---
+ similarity_search/CMakeLists.txt | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git similarity_search/CMakeLists.txt similarity_search/CMakeLists.txt
+index 7f7169e..643684a 100644
+--- similarity_search/CMakeLists.txt
++++ similarity_search/CMakeLists.txt
+@@ -35,7 +35,11 @@ if(NOT WIN32)
+ endif()
+ #message(FATAL_ERROR "stopping... compiler version is: ${CMAKE_CXX_COMPILER_ID} ${CXX_COMPILER_VERSION}")
+ 
+-set(SIMD_FLAGS " -march=native")
++if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "ppc|powerpc")
++    set(SIMD_FLAGS " -mtune=native")
++else()
++    set(SIMD_FLAGS " -march=native")
++endif()
+ #set(SIMD_FLAGS "-march=x86-64")
+ #set(SIMD_FLAGS "-march=core2")
+ #set(SIMD_FLAGS "-fpic -msse4.2")
