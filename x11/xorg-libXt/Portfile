@@ -41,6 +41,16 @@ depends_lib     port:xorg-libsm \
 
 configure.env-append RAWCPP=${configure.cpp}
 
+# Something got badly broken in 1.3.0:
+# Error: unresolved olink: targetdoc/targetptr = 'libX11/libX11'.
+# /opt/local/bin/fop: line 255: /System/Library/Frameworks/JavaVM.framework/Home/bin/java: Bad CPU type in executable
+# /opt/local/bin/fop: line 255: /System/Library/Frameworks/JavaVM.framework/Home/bin/java: Unknown error: 0
+# Temporary fix – deactivate fop during the build.
+platform powerpc {
+    configure.args-append \
+                --without-fop
+}
+
 use_autoreconf  yes
 autoreconf.args -fvi
 
