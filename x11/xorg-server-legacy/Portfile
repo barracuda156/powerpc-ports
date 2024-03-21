@@ -108,7 +108,7 @@ post-destroot {
 }
 
 platform macosx {
-    if { ${os.major} < 10 } {
+    if { ${os.major} < 10 || ${configure.build_arch} eq "ppc" } {
         # Xplugin.h is missing on Tiger and incorrect on Leopard
         configure.cppflags-append -I${filespath}/include
     }
@@ -120,6 +120,15 @@ platform macosx {
             error "unsupported OS version"
         }
     }
+}
+
+# Instead of patching the source, for now just do this:
+platform darwin 10 powerpc {
+    configure.args-append \
+        ac_cv_func_dispatch_async=0
+
+    configure.cflags-append \
+        -mmacosx-version-min=10.5
 }
 
 variant xcsecurity description "Enable Security Extensions" {
