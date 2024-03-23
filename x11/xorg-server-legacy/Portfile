@@ -122,18 +122,35 @@ platform macosx {
     }
 }
 
-# Instead of patching the source, for now just do this:
-platform darwin 10 powerpc {
-    configure.args-append \
-        ac_cv_func_dispatch_async=0
-
-    configure.cflags-append \
-        -mmacosx-version-min=10.5
-}
-
 variant xcsecurity description "Enable Security Extensions" {
     configure.args-append \
                 --enable-xcsecurity
+}
+
+variant dispatch description "Build against Macports libdispatch-legacy" {
+    # This builds, but it highly experimental at the point.
+    depends_lib-append \
+                port:libdispatch-legacy
+
+    configure.cppflags-append \
+        -I${prefix}/libexec/dispatch/usr/include
+    configure.ldflags-append \
+        ${prefix}/libexec/dispatch/usr/lib/libdispatch.a
+}
+
+platform darwin 10 powerpc {
+    # This patch is safe to apply unconditionally:
+    patchfiles-append \
+                patch-10.6-fixes.diff
+
+    # And these are needed to build without libdispatch:
+    if {![variant_isset dispatch]} {
+        configure.args-append \
+                ac_cv_func_dispatch_async=0
+
+        configure.cflags-append \
+                -mmacosx-version-min=10.5
+    }
 }
 
 variant docs description "Install extra documentation" {
