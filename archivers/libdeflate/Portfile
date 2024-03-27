@@ -36,5 +36,14 @@ maintainers         {linux.com:nickblack @dankamongmen} \
 # https://github.com/ebiggers/libdeflate/commit/a83fb24e1cb0ec6b6fd53446c941013edf055192
 compiler.blacklist-append   *gcc-4.* {clang < 400} {macports-clang-3.[0-8]}
 
+compiler.c_standard 1999
+
 # TODO: verify powerpc defs in common_defs.h
 # https://github.com/ebiggers/libdeflate/issues/362
+
+variant tests description "Enable testing" {
+    configure.args-append \
+                    -DLIBDEFLATE_BUILD_TESTS=ON
+
+    test.run        yes
+}
