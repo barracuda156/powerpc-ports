@@ -33,8 +33,13 @@ maintainers         {linux.com:nickblack @dankamongmen} \
                     {gmail.com:herby.gillot @herbygillot} \
                     openmaintainer
 
+# https://github.com/ebiggers/libdeflate/issues/362
+patchfiles-append   0001-common_defs.h-improve-PowerPC-detection-macros.patch
+
 # https://github.com/ebiggers/libdeflate/commit/a83fb24e1cb0ec6b6fd53446c941013edf055192
 compiler.blacklist-append   *gcc-4.* {clang < 800} {macports-clang-3.[0-8]}
 
-# TODO: verify powerpc defs in common_defs.h
-# https://github.com/ebiggers/libdeflate/issues/362
+configure.args-append \
+                    -DLIBDEFLATE_BUILD_TESTS=ON
+
+test.run            yes
