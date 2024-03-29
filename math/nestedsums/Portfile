@@ -2,7 +2,7 @@ PortSystem 1.0
 PortGroup xcodeversion 1.0
 
 name		nestedsums
-version		1.4.12
+version		1.5.2
 categories	math
 platforms	darwin
 maintainers	nomaintainer
@@ -12,15 +12,19 @@ long_description	\
 		Transcendental Functions
 
 homepage	http://wwwthep.physik.uni-mainz.de/~stefanw/nestedsums/
-master_sites	http://wwwthep.physik.uni-mainz.de/~stefanw/download/
+master_sites    http://particlephysics.uni-mainz.de/weinzierl/download/
 
-checksums	sha1    07c19f2bf6a2cd43555deb9f5d16ec7ea7a97f65 \
-		rmd160  381256ed0aa4c55d1f3ea87f493b83e6a5befae1
+checksums       rmd160  8d5c5148ea018502b153c5ebfb4cbe521f84b24d \
+                sha256  5dd125dda6159c04fbcf4341e57dc2f38a9bc7c62b629f29038242b3b7f9882c \
+                size    511806
 
 depends_build	port:pkgconfig
 depends_lib	port:GiNaC
 
 minimum_xcodeversions {8 2.1}
+
+compiler.cxx_standard \
+                2011
 
 test.run	yes
 test.target	check
