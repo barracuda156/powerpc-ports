@@ -1,0 +1,61 @@
+From ab281bcd29431552b34d775ac66f3b62b84bb3e8 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Fri, 29 Mar 2024 16:25:35 +0800
+Subject: [PATCH] quartzRandR.c: fix for SL
+
+---
+ hw/xquartz/quartzRandR.c | 6 +++---
+ hw/xquartz/quartzRandR.h | 5 +----
+ 2 files changed, 4 insertions(+), 7 deletions(-)
+
+diff --git hw/xquartz/quartzRandR.c hw/xquartz/quartzRandR.c
+index cb470fa8e..6591f4dbc 100644
+--- hw/xquartz/quartzRandR.c
++++ hw/xquartz/quartzRandR.c
+@@ -66,7 +66,7 @@ static Bool ignore_next_fake_mode_update = FALSE;
+ typedef int (*QuartzModeCallback)
+     (ScreenPtr, QuartzModeInfoPtr, void *);
+ 
+-#if MAC_OS_X_VERSION_MIN_REQUIRED < 1060
++#if defined(USE_DEPRECATED_CG_API)
+ 
+ static long
+ getDictLong(CFDictionaryRef dictRef, CFStringRef key)
+@@ -212,7 +212,7 @@ QuartzRandREnumerateModes(ScreenPtr pScreen,
+     return retval;
+ }
+ 
+-#else /* we have the new CG APIs from Snow Leopard */
++#else /* defined(USE_DEPRECATED_CG_API) */
+ 
+ static void
+ QuartzRandRGetModeInfo(CGDisplayModeRef modeRef,
+@@ -350,7 +350,7 @@ QuartzRandREnumerateModes(ScreenPtr pScreen,
+     return retval;
+ }
+ 
+-#endif  /* Snow Leopard CoreGraphics APIs */
++#endif /* defined(USE_DEPRECATED_CG_API) */
+ 
+ static Bool
+ QuartzRandRModesEqual(QuartzModeInfoPtr pMode1,
+diff --git hw/xquartz/quartzRandR.h hw/xquartz/quartzRandR.h
+index 006fc4d44..7e63056c9 100644
+--- hw/xquartz/quartzRandR.h
++++ hw/xquartz/quartzRandR.h
+@@ -28,8 +28,7 @@
+  * use or other dealings in this Software without prior written authorization.
+  */
+ 
+-#ifndef _QUARTZRANDR_H_
+-#define _QUARTZRANDR_H_
++#define USE_DEPRECATED_CG_API 1
+ 
+ #include "randrstr.h"
+ 
+@@ -81,5 +80,3 @@ QuartzRandRSetFakeFullscreen(BOOL state);
+  */
+ void
+ QuartzRandRToggleFullscreen(void);
+-
+-#endif

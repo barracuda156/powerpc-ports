@@ -141,7 +141,8 @@ variant dispatch description "Build against Macports libdispatch-legacy" {
 platform darwin 10 powerpc {
     # This patch is safe to apply unconditionally:
     patchfiles-append \
-                patch-10.6-fixes.diff
+                0001-xprScreen.c-fix-for-SL.patch \
+                0002-quartzRandR.c-fix-for-SL.patch
 
     # And these are needed to build without libdispatch:
     if {![variant_isset dispatch]} {
