@@ -19,8 +19,21 @@ checksums       rmd160  8d5c5148ea018502b153c5ebfb4cbe521f84b24d \
                 sha256  5dd125dda6159c04fbcf4341e57dc2f38a9bc7c62b629f29038242b3b7f9882c \
                 size    511806
 
-depends_build   port:pkgconfig
-depends_lib     port:GiNaC
+use_autoreconf  yes
+autoreconf.cmd  ./autogen.sh
+autoreconf.args
+
+depends_build-append \
+                port:pkgconfig
+depends_lib-append \
+                port:GiNaC
+
+patchfiles      patch-test-cxxflags.diff
+post-patch {
+    reinplace "s|libtoolize|glibtoolize|g" ${worksrcpath}/autogen.sh
+    reinplace "s|@CXXFLAGS@|${configure.cxxflags} [get_canonical_archflags cxx]|" \
+                ${worksrcpath}/checks/Makefile.am
+}
 
 minimum_xcodeversions \
                 {8 2.1}
