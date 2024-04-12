@@ -1,0 +1,44 @@
+From eb6061e72e3f3b48d6c6d28e3a241c30049ea36f Mon Sep 17 00:00:00 2001
+From: Iain Sandoe <iain@sandoe.co.uk>
+Date: Wed, 26 Jul 2023 14:31:02 +0100
+Subject: [PATCH] Darwin, ppc: Add system stubs for all 32b PPC
+
+This is a minor adjustment to make the GCC behaviour better match the
+old system tools.
+
+Signed-off-by: Iain Sandoe <iain@sandoe.co.uk>
+
+gcc/ChangeLog:
+
+	* config/rs6000/darwin.h (LIB_SPEC): Include libSystemStubs for
+	all 32b Darwin PowerPC cases.
+
+(cherry picked from commit b3ab28c3e85af7995fffb87eb190ef942b7e9e4a)
+---
+ gcc/config/rs6000/darwin.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/gcc/config/rs6000/darwin.h b/gcc/config/rs6000/darwin.h
+index e5743afe91e..3a2e480ace6 100644
+--- gcc/config/rs6000/darwin.h
++++ gcc/config/rs6000/darwin.h
+@@ -98,7 +98,7 @@
+    Include libmx when targeting Darwin 7.0 and above, but before libSystem,
+    since the functions are actually in libSystem but for 7.x compatibility
+    we want them to be looked for in libmx first.
+-   Include libSystemStubs when compiling against 10.3 - 10.5 SDKs (we assume
++   Include libSystemStubs when compiling against 10.3 - 10.6 SDKs (we assume
+    this is the case when targetting these) - but not for 64-bit long double.
+    Don't do either for m64, the library is either a dummy or non-existent.
+ */
+@@ -107,8 +107,8 @@
+ #define LIB_SPEC \
+ "%{!static:								\
+   %{!m64:%{!mlong-double-64:						\
+-    %{pg:%:version-compare(>< 10.3 10.5 mmacosx-version-min= -lSystemStubs_profile)} \
+-    %{!pg:%:version-compare(>< 10.3 10.5 mmacosx-version-min= -lSystemStubs)} \
++    %{pg:%:version-compare(>< 10.3 10.7 mmacosx-version-min= -lSystemStubs_profile)} \
++    %{!pg:%:version-compare(>< 10.3 10.7 mmacosx-version-min= -lSystemStubs)} \
+      %:version-compare(>< 10.3 10.4 mmacosx-version-min= -lmx)}}	\
+   -lSystem								\
+ }"
