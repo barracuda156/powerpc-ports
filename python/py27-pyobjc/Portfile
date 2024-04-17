@@ -45,6 +45,12 @@ depends_lib-append \
 patchfiles          patch-method-signature.m.diff \
                     patch-setup.py.diff
 
+platform darwin powerpc {
+    # Needed on PowerPC:
+    patchfiles-append \
+                    patch-fix-powerpc.diff
+}
+
 post-patch {
     reinplace "s|use-system-libffi = 0|\\
 use-system-libffi = 1\\

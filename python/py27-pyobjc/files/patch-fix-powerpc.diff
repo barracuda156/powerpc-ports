@@ -1,0 +1,29 @@
+--- Modules/objc/module.m	2018-06-05 23:37:45.000000000 +0800
++++ Modules/objc/module.m	2024-04-18 02:16:06.000000000 +0800
+@@ -1531,7 +1643,7 @@
+     return result;
+ }
+ 
+-#if PyObjC_BUILD_RELEASE >= 1006
++#if PyObjC_BUILD_RELEASE >= 1006 && !defined(__ppc__)
+     /* Associated Object support. Functionality is available on OSX 10.6 or later. */
+ 
+ PyDoc_STRVAR(PyObjC_setAssociatedObject_doc,
+@@ -2050,7 +2172,7 @@
+         .ml_doc     = "_typestr2typestr(value)\n" CLINIC_SEP "\nReturns the standard Objective-C version for a PyObjC typestr"
+     },
+ 
+-#if    PyObjC_BUILD_RELEASE >= 1006
++#if    PyObjC_BUILD_RELEASE >= 1006 && !defined(__ppc__)
+ 
+     {
+         .ml_name    = "setAssociatedObject",
+@@ -2498,7 +2584,7 @@
+ 
+     PyObjCPointerWrapper_Init();
+ 
+-#if PyObjC_BUILD_RELEASE >= 1006
++#if PyObjC_BUILD_RELEASE >= 1006 && !defined(__ppc__)
+ #if MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_6
+     if (objc_setAssociatedObject != NULL) {
+ #endif /* MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_6 */
