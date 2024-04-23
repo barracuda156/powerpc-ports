@@ -1,0 +1,49 @@
+# -*- coding:utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+# $Id$
+
+PortSystem          1.0
+PortGroup           bitbucket 1.0
+
+name                phantomjs-qt4
+bitbucket.setup     ariya phantomjs 1.9.8
+revision            0
+categories          www
+license             BSD
+maintainers         nomaintainer
+
+homepage            https://www.phantomjs.org
+bitbucket.tarball_from downloads
+
+description         PhantomJS is a minimalistic headless WebKit.
+
+long_description    PhantomJS is a headless WebKit scriptable with \
+                    a JavaScript API. It has fast and native support \
+                    for various web standards: DOM handling, CSS selector, \
+                    JSON, Canvas and SVG.
+
+use_zip             yes
+distfiles           ${name}-${version}-source${extract.suffix}
+
+checksums           rmd160  09ec849b7b9cd77e1717b756cd3b19e04ef01599 \
+                    sha256  37e53b2907bf37d2b6a43f08d38bb4a15596bba337822179e647efd60c2261bf
+
+patchfiles          patch-tools_preconfig.sh.diff \
+                    patch-src_qt_preconfig.sh.diff
+
+use_configure       no
+
+build.cmd           ./build.sh
+build.target
+build.args          --confirm \
+                    --jobs ${build.jobs}
+
+destroot    {
+    set docdir ${prefix}/share/doc/${name}
+    xinstall -d ${destroot}${docdir}
+
+    xinstall -m 755 ${worksrcpath}/bin/${name} ${destroot}${prefix}/bin/${name}
+    xinstall -W ${worksrcpath} ChangeLog README.md ${destroot}${docdir}
+    move ${worksrcpath}/examples ${destroot}${docdir}/examples
+}
+
+livecheck.regex     {phantomjs-(\d+(?:\.\d+)*)-source\.[tz]}
