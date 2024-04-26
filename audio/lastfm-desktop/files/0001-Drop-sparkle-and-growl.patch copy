@@ -1,0 +1,275 @@
+From 82d6184ab87ce9793f7ae25e9e3f1793768f1f3c Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Fri, 26 Apr 2024 15:38:01 +0800
+Subject: [PATCH] Drop sparkle and growl
+
+---
+ admin/dist/mac/bundleFrameworks.sh            |  4 +-
+ app/client/Application.cpp                    | 26 ++++----
+ app/client/Dialogs/LicensesDialog.cpp         | 62 +++++++++----------
+ app/client/MainWindow.cpp                     |  8 +--
+ app/client/MainWindow.h                       |  4 +-
+ app/client/Settings/GeneralSettingsWidget.cpp |  2 +-
+ lib/unicorn/Updater/Updater.h                 |  6 +-
+ lib/unicorn/unicorn.pro                       |  4 +-
+ 8 files changed, 57 insertions(+), 59 deletions(-)
+
+diff --git admin/dist/mac/bundleFrameworks.sh admin/dist/mac/bundleFrameworks.sh
+index 7ce24bf9..010b7852 100755
+--- admin/dist/mac/bundleFrameworks.sh
++++ admin/dist/mac/bundleFrameworks.sh
+@@ -145,8 +145,8 @@ echo
+ 
+ echo ======= Copying 3rd party frameworks ===========
+ 
+-cp -R -H -f /Library/Frameworks/Growl.framework "$bundlePath/Contents/Frameworks"
+-cp -R -H -f /Library/Frameworks/Sparkle.framework "$bundlePath/Contents/Frameworks"
++#cp -R -H -f /Library/Frameworks/Growl.framework "$bundlePath/Contents/Frameworks"
++#cp -R -H -f /Library/Frameworks/Sparkle.framework "$bundlePath/Contents/Frameworks"
+ #cp -R -L -f /Library/Frameworks/Breakpad.framework "$bundlePath/Contents/Frameworks"
+ 
+ echo
+diff --git app/client/Application.cpp app/client/Application.cpp
+index e45c93c3..69718fc8 100644
+--- app/client/Application.cpp
++++ app/client/Application.cpp
+@@ -50,7 +50,7 @@
+ #include "lib/unicorn/DesktopServices.h"
+ #include "lib/unicorn/dialogs/UserManagerDialog.h"
+ #ifdef Q_OS_MAC
+-#include "lib/unicorn/notify/Notify.h"
++// #include "lib/unicorn/notify/Notify.h"
+ #include "CommandReciever/CommandReciever.h"
+ #endif
+ 
+@@ -322,15 +322,15 @@ Application::init()
+ #endif
+     emit messageReceived( args );
+ 
+-#ifdef Q_OS_MAC
+-    m_notify = new Notify( this );
+-    connect( m_notify, SIGNAL(clicked()), SLOT(showWindow()) );
+-    connect( &ScrobbleService::instance(), SIGNAL(paused()), m_notify, SLOT(paused()) );
+-    connect( &ScrobbleService::instance(), SIGNAL(resumed()), m_notify, SLOT(resumed()) );
+-    connect( &ScrobbleService::instance(), SIGNAL(stopped()), m_notify, SLOT(stopped()) );
+-
+-    new CommandReciever( this );
+-#endif
++// #ifdef Q_OS_MAC
++//     m_notify = new Notify( this );
++//     connect( m_notify, SIGNAL(clicked()), SLOT(showWindow()) );
++//     connect( &ScrobbleService::instance(), SIGNAL(paused()), m_notify, SLOT(paused()) );
++//     connect( &ScrobbleService::instance(), SIGNAL(resumed()), m_notify, SLOT(resumed()) );
++//     connect( &ScrobbleService::instance(), SIGNAL(stopped()), m_notify, SLOT(stopped()) );
++// 
++//     new CommandReciever( this );
++// #endif
+ 
+ #if !defined(Q_OS_WIN) && !defined(Q_OS_MAC)
+     new Mpris2( this );
+@@ -449,9 +449,9 @@ Application::onTrackStarted( const lastfm::Track& track, const Track& oldTrack )
+         if ( ScrobbleService::instance().scrobblableTrack( m_currentTrack )
+              && unicorn::Settings().notifications() )
+         {
+-#ifdef Q_OS_MAC
+-            m_notify->newTrack( track );
+-#else
++// #ifdef Q_OS_MAC
++//             m_notify->newTrack( track );
++// #else
+             tray()->showMessage( track.toString(), tr("from %1").arg( track.album() ) );
+ #endif
+         }
+diff --git app/client/Dialogs/LicensesDialog.cpp app/client/Dialogs/LicensesDialog.cpp
+index 8ddd237e..c44d67e4 100644
+--- app/client/Dialogs/LicensesDialog.cpp
++++ app/client/Dialogs/LicensesDialog.cpp
+@@ -46,19 +46,19 @@ LicensesDialog::LicensesDialog(QWidget *parent) :
+     licenseText.append( "<li>" + unicorn::Label::anchor( "http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html", "GNU Lesser General Public License (LGPL) version 2.1" ) + "</li>");
+     licenseText.append( "</ul>" );
+ 
+-#ifdef Q_OS_MAC
+-    // Sparkle (updating framework)
+-    licenseText.append( "<hr>" );
+-    licenseText.append( "<h3>Sparkle</h3>" );
+-    licenseText.append( "<ul>" );
+-    licenseText.append( "<li>" + unicorn::Label::anchor( "http://sparkle.andymatuschak.org/", "Sparkle" ) + "</li>");
+-    licenseText.append( "<li>" + unicorn::Label::anchor( "https://github.com/andymatuschak/Sparkle/blob/master/License.txt", "Sparkle License" ) + "</li>");
+-    licenseText.append( "</ul>" );
+-    licenseText.append( "<p>Copyright (c) 2006 Andy Matuschak</p>" );
+-    licenseText.append( "<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>" );
+-    licenseText.append( "<p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>" );
+-    licenseText.append( "<p>THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>" );
+-#endif
++// #ifdef Q_OS_MAC
++//     // Sparkle (updating framework)
++//     licenseText.append( "<hr>" );
++//     licenseText.append( "<h3>Sparkle</h3>" );
++//     licenseText.append( "<ul>" );
++//     licenseText.append( "<li>" + unicorn::Label::anchor( "http://sparkle.andymatuschak.org/", "Sparkle" ) + "</li>");
++//     licenseText.append( "<li>" + unicorn::Label::anchor( "https://github.com/andymatuschak/Sparkle/blob/master/License.txt", "Sparkle License" ) + "</li>");
++//     licenseText.append( "</ul>" );
++//     licenseText.append( "<p>Copyright (c) 2006 Andy Matuschak</p>" );
++//     licenseText.append( "<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>" );
++//     licenseText.append( "<p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>" );
++//     licenseText.append( "<p>THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>" );
++// #endif
+ 
+ #ifdef Q_OS_WIN
+     // Winsparkle
+@@ -73,24 +73,24 @@ LicensesDialog::LicensesDialog(QWidget *parent) :
+     licenseText.append( "<p>THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>" );
+ #endif
+ 
+-#ifdef Q_OS_MAC
+-    // Growl
+-    licenseText.append( "<hr>" );
+-    licenseText.append( "<h3>Growl</h3>" );
+-    licenseText.append( "<ul>" );
+-    licenseText.append( "<li>" + unicorn::Label::anchor( "http://growl.info", "Growl" ) + "<li>" );
+-    licenseText.append( "<li>" + unicorn::Label::anchor( "http://growl.info/documentation/developer/bsd-license.txt", "Growl License" ) + "<li>" );
+-    licenseText.append( "</ul>" );
+-    licenseText.append( "<p>Copyright (c) The Growl Project, 2004</p>" );
+-    licenseText.append( "<p>All rights reserved.</p>" );
+-    licenseText.append( "<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>" );
+-    licenseText.append( "<ol>" );
+-    licenseText.append( "<li>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</li>" );
+-    licenseText.append( "<li>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</li>" );
+-    licenseText.append( "<li>Neither the name of Growl nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.</li>" );
+-    licenseText.append( "</ol>" );
+-    licenseText.append( "<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>" );
+-#endif
++// #ifdef Q_OS_MAC
++//     // Growl
++//     licenseText.append( "<hr>" );
++//     licenseText.append( "<h3>Growl</h3>" );
++//     licenseText.append( "<ul>" );
++//     licenseText.append( "<li>" + unicorn::Label::anchor( "http://growl.info", "Growl" ) + "<li>" );
++//     licenseText.append( "<li>" + unicorn::Label::anchor( "http://growl.info/documentation/developer/bsd-license.txt", "Growl License" ) + "<li>" );
++//     licenseText.append( "</ul>" );
++//     licenseText.append( "<p>Copyright (c) The Growl Project, 2004</p>" );
++//     licenseText.append( "<p>All rights reserved.</p>" );
++//     licenseText.append( "<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>" );
++//     licenseText.append( "<ol>" );
++//     licenseText.append( "<li>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</li>" );
++//     licenseText.append( "<li>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</li>" );
++//     licenseText.append( "<li>Neither the name of Growl nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.</li>" );
++//     licenseText.append( "</ol>" );
++//     licenseText.append( "<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>" );
++// #endif
+     // Breakpad
+     licenseText.append( "<hr>" );
+     licenseText.append( "<h3>Breakpad</h3>" );
+diff --git app/client/MainWindow.cpp app/client/MainWindow.cpp
+index d5bfb40a..762006a8 100644
+--- app/client/MainWindow.cpp
++++ app/client/MainWindow.cpp
+@@ -58,7 +58,7 @@
+ #include "lib/unicorn/qtwin.h"
+ #include "lib/unicorn/widgets/SlidingStackedWidget.h"
+ #include "lib/listener/PlayerConnection.h"
+-#if defined(Q_OS_MAC) || defined(Q_OS_WIN)
++#if defined(Q_OS_WIN)
+ #include "lib/unicorn/Updater/Updater.h"
+ #endif
+ #include "lib/unicorn/QMessageBoxBuilder.h"
+@@ -167,7 +167,7 @@ MainWindow::MainWindow( QMenuBar* menuBar )
+ 
+     setupMenuBar();
+ 
+-#if defined(Q_OS_MAC) || defined(Q_OS_WIN)
++#if defined(Q_OS_WIN)
+     m_updater = new Updater( this );
+ #endif
+ 
+@@ -414,7 +414,7 @@ MainWindow::onDiagnosticsTriggered()
+ void
+ MainWindow::setBetaUpdates( bool betaUpdates )
+ {
+-#if defined(Q_OS_MAC) || defined(Q_OS_WIN)
++#if defined(Q_OS_WIN)
+     if ( m_updater )
+         m_updater->setBetaUpdates( betaUpdates );
+ #endif
+@@ -441,7 +441,7 @@ MainWindow::onBringAllToFrontTriggered()
+ void
+ MainWindow::checkForUpdates()
+ {
+-#if defined(Q_OS_MAC) || defined(Q_OS_WIN)
++#if defined(Q_OS_WIN)
+     m_updater->checkForUpdates();
+ #endif
+ }
+diff --git app/client/MainWindow.h app/client/MainWindow.h
+index 1291a5fa..27ccddbb 100644
+--- app/client/MainWindow.h
++++ app/client/MainWindow.h
+@@ -35,7 +35,7 @@
+ #include "Settings/PreferencesDialog.h"
+ #include "Dialogs/DiagnosticsDialog.h"
+ 
+-#if defined(Q_OS_MAC) || defined(Q_OS_WIN)
++#if defined(Q_OS_WIN)
+ namespace unicorn
+ {
+     class Updater;
+@@ -144,7 +144,7 @@ private:
+ 
+     QPointer<PreferencesDialog> m_preferences;
+     QPointer<DiagnosticsDialog> m_diagnostics;
+-#if defined(Q_OS_MAC) || defined(Q_OS_WIN)
++#if defined(Q_OS_WIN)
+     QPointer<Updater> m_updater;
+ #endif
+ 
+diff --git app/client/Settings/GeneralSettingsWidget.cpp app/client/Settings/GeneralSettingsWidget.cpp
+index 763c38e7..b02e5817 100644
+--- app/client/Settings/GeneralSettingsWidget.cpp
++++ app/client/Settings/GeneralSettingsWidget.cpp
+@@ -40,7 +40,7 @@ GeneralSettingsWidget::GeneralSettingsWidget( QWidget* parent )
+     ui->sendCrashReports->setChecked( unicorn::Settings().sendCrashReports() );
+     ui->beta->setChecked( unicorn::Settings().betaUpdates() );
+ 
+-#if !defined( Q_OS_WIN ) && !defined( Q_OS_MAC )
++#if !defined( Q_OS_WIN )
+     ui->beta->hide(); // only have a beta update setting in mac and windows
+ #endif
+ 
+diff --git lib/unicorn/Updater/Updater.h lib/unicorn/Updater/Updater.h
+index e20958ca..0e34dabc 100644
+--- lib/unicorn/Updater/Updater.h
++++ lib/unicorn/Updater/Updater.h
+@@ -30,9 +30,9 @@
+ namespace qtsparkle { class Updater; }
+ #define UPDATE_URL_WIN "https://cdn.last.fm/client/updates/updates.win.xml"
+ #define UPDATE_URL_WIN_BETA "https://cdn.last.fm/client/updates/updates.win.beta.xml"
+-#elif defined( Q_OS_MAC )
+-#define UPDATE_URL_MAC @"https://cdn.last.fm/client/updates/updates.mac.xml"
+-#define UPDATE_URL_MAC_BETA @"https://cdn.last.fm/client/updates/updates.mac.beta.xml"
++// #elif defined( Q_OS_MAC )
++// #define UPDATE_URL_MAC @"https://cdn.last.fm/client/updates/updates.mac.xml"
++// #define UPDATE_URL_MAC_BETA @"https://cdn.last.fm/client/updates/updates.mac.beta.xml"
+ #endif
+ 
+ namespace unicorn
+diff --git lib/unicorn/unicorn.pro lib/unicorn/unicorn.pro
+index ceb34dab..73cdb8cb 100644
+--- lib/unicorn/unicorn.pro
++++ lib/unicorn/unicorn.pro
+@@ -1,6 +1,6 @@
+ TARGET = unicorn
+ TEMPLATE = lib
+-CONFIG += dll lastfm sparkle growl logger
++CONFIG += dll lastfm logger
+ unix:!mac {
+     CONFIG -= dll
+     CONFIG += staticlib
+@@ -162,8 +162,6 @@ macx:SOURCES += mac/AppleScript.cpp \
+                 plugins/ITunesPluginInstaller.cpp
+ 
+ macx:OBJECTIVE_SOURCES += UnicornApplication_mac.mm \
+-                          notify/Notify.mm \
+-                          Updater/Updater_mac.mm \
+                           UnicornApplicationDelegate.mm \
+                           dialogs/CloseAppsDialog_mac.mm
+ 
