@@ -1,0 +1,18 @@
+--- a/src/video/mac/vlcmacwidget.mm
++++ b/src/video/mac/vlcmacwidget.mm	2024-04-28 20:01:45.000000000 +0800
+@@ -25,7 +25,7 @@
+ {
+     // Many Cocoa objects create temporary autorelease objects,
+     // so create a pool to catch them.
+-    @autoreleasepool {
++    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+         VideoView *videoView = [[VideoView alloc] init];
+ 
+         this->setCocoaView(videoView);
+@@ -35,5 +35,5 @@
+         if (strcmp(qVersion(), "5.8.0")) {
+             [videoView release];
+         }
+-    }
++    [pool release];
+ }
