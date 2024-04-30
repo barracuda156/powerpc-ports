@@ -1,0 +1,85 @@
+From 7ba9efe31afb16c025ab2277774be0d8cfeb276c Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Thu, 22 Jun 2023 00:38:48 +0800
+Subject: [PATCH] Allow building for 32-bit and PPC
+
+diff --git src/is_supported_platform.h src/is_supported_platform.h
+index 03a77f704d..2ffd1bf68c 100644
+--- src/is_supported_platform.h
++++ src/is_supported_platform.h
+@@ -21,7 +21,7 @@
+ // WARNING: do not #include anything in here!
+ 
+ #if !defined(__BYTE_ORDER__) || __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__
+-#error "Unfortunately we only work on litte-endian systems."
++#warning "Unfortunately we only work on litte-endian systems."
+ #endif
+ 
+ #if (defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64))
+@@ -42,6 +42,12 @@
+ #define DT_SUPPORTED_PPC64 0
+ #endif
+ 
++#if defined(__POWERPC__)
++#define DT_SUPPORTED_PPC 1
++#else
++#define DT_SUPPORTED_PPC 0
++#endif
++
+ #if (defined(__riscv) || defined(__riscv__)) && (__riscv_xlen==64)
+ #define DT_SUPPORTED_RISCV64 1
+ #else
+@@ -53,11 +59,12 @@
+ #endif
+ 
+ #if !DT_SUPPORTED_X86 && !DT_SUPPORTED_ARMv8A && !DT_SUPPORTED_PPC64 && !DT_SUPPORTED_RISCV64
+-#error "Unfortunately we only work on amd64, ARMv8-A, PPC64 (64-bit little-endian only) and riscv64"
++#warning "Unfortunately we only work on amd64, ARMv8-A, PPC64 (64-bit little-endian only) and riscv64"
+ #endif
+ 
+ #undef DT_SUPPORTED_RISCV64
+ #undef DT_SUPPORTED_PPC64
++#undef DT_SUPPORTED_PPC
+ #undef DT_SUPPORTED_ARMv8A
+ #undef DT_SUPPORTED_X86
+ 
+@@ -67,7 +74,7 @@
+ 
+ // double check for 32-bit architecture
+ #if defined(__SIZEOF_POINTER__) && __SIZEOF_POINTER__ < 8
+-#error "Unfortunately we only work on the 64-bit architectures amd64, ARMv8-A, PPC64 and riscv64."
++#warning "We only support 64-bit architectures: amd64, ARMv8-A, PPC64 and riscv64."
+ #endif
+ 
+ // clang-format off
+
+--- src/CMakeLists.txt	2023-06-30 14:13:18.000000000 +0800
++++ src/CMakeLists.txt	2024-04-29 17:27:08.000000000 +0800
+@@ -208,7 +208,8 @@
+ 
+ set(SOURCES ${SOURCE_FILES} ${HEADER_FILES})
+ 
+-if(CMAKE_SYSTEM_PROCESSOR STREQUAL "ppc64le")
++# There is nothing LE there.
++if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc|powerpc")
+   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/ppc64le)
+ endif()
+ 
+@@ -580,7 +581,8 @@
+   add_definitions("-DHAVE_OPENCL")
+ endif(USE_OPENCL)
+ 
+-
++# The check below does not work correctly, and this builtin not relevant anyway.
++if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "ppc|powerpc")
+ # Check for __builtin_cpu_supports here due to a bug in clang/llvm. LLVM uses
+ # libgcc to provide the symbols, so if clang wasn't compiled with libgcc, the
+ # compiler will say it's available; however the linker cannot find the symbols.
+@@ -595,6 +597,7 @@
+   add_definitions("-DHAVE_BUILTIN_CPU_SUPPORTS")
+ endif(HAVE_BUILTIN_CPU_SUPPORTS)
+ MESSAGE(STATUS "Does the compiler support __builtin_cpu_supports(): ${HAVE_BUILTIN_CPU_SUPPORTS}")
++endif()
+ 
+ check_c_source_compiles("
+ static __thread int tls;

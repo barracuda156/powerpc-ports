@@ -1,0 +1,95 @@
+--- src/control/jobs/control_jobs.c	2023-06-30 14:13:18.000000000 +0800
++++ src/control/jobs/control_jobs.c	2024-04-30 05:23:12.000000000 +0800
+@@ -947,7 +947,7 @@
+     GError *gerror = NULL;
+     if(send_to_trash)
+     {
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+       delete_success = dt_osx_file_trash(filename, &gerror);
+ #elif defined(_WIN32)
+       delete_success = dt_win_file_trash(gfile, NULL /*cancellable*/, &gerror);
+
+--- src/osx/osx.mm	2024-04-30 05:25:52.000000000 +0800
++++ src/osx/osx.mm	2024-04-30 05:23:59.000000000 +0800
+@@ -60,8 +60,7 @@
+ 
+ float dt_osx_get_ppd()
+ {
+-  @autoreleasepool
+-  {
++    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+     NSScreen *nsscreen = [NSScreen mainScreen];
+     if([nsscreen respondsToSelector: NSSelectorFromString(@"backingScaleFactor")])
+     {
+@@ -71,22 +70,21 @@
+     {
+       return [[nsscreen valueForKey: @"userSpaceScaleFactor"] floatValue];
+     }
+-  }
++    [pool release];
+ }
+ 
+ #if !GTK_CHECK_VERSION(3, 24, 14)
+ static void dt_osx_disable_fullscreen(GtkWidget *widget)
+ {
+ #ifdef GDK_WINDOWING_QUARTZ
+-  @autoreleasepool
+-  {
++    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+     GdkWindow *window = gtk_widget_get_window(widget);
+     if(window)
+     {
+       NSWindow *native = gdk_quartz_window_get_nswindow(window);
+       [native setCollectionBehavior: ([native collectionBehavior] & ~NSWindowCollectionBehaviorFullScreenPrimary) | NSWindowCollectionBehaviorFullScreenAuxiliary];
+     }
+-  }
++    [pool release];
+ #endif
+ }
+ #endif
+@@ -103,10 +101,10 @@
+ #endif
+ }
+ 
++#ifdef __clang__
+ gboolean dt_osx_file_trash(const char *filename, GError **error)
+ {
+-  @autoreleasepool
+-  {
++    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+     NSFileManager *fm = [NSFileManager defaultManager];
+     NSError *err;
+ 
+@@ -123,9 +121,10 @@
+         *error = g_error_new_literal(G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED, "trash not supported on OS X versions < 10.8");
+       return FALSE;
+     }
++    [pool release];
+     return TRUE;
+-  }
+ }
++#endif
+ 
+ char* dt_osx_get_bundle_res_path()
+ {
+@@ -151,8 +150,7 @@
+ 
+ static char* _get_user_locale()
+ {
+-  @autoreleasepool
+-  {
++    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+     NSLocale* locale_ns = [NSLocale currentLocale];
+     NSString* locale_c;
+     if([locale_ns respondsToSelector: @selector(languageCode)] && [locale_ns respondsToSelector: @selector(countryCode)])
+@@ -164,8 +162,8 @@
+       // not ideal, but better than nothing
+       locale_c = [locale_ns localeIdentifier];
+     }
++    [pool release];
+     return strdup([locale_c UTF8String]);
+-  }
+ }
+ 
+ static void _setup_ssl_trust(const char* const res_path)

@@ -28,7 +28,7 @@ long_description        Darktable is a virtual lighttable and darkroom for \
                         and enhance them.
 homepage                https://www.darktable.org/
 
-supported_archs         x86_64 arm64
+# supported_archs         x86_64 arm64
 
 github.tarball_from     releases
 dist_subdir             ${my_name}
@@ -136,8 +136,34 @@ depends_run             port:adwaita-icon-theme \
                         port:tango-icon-theme \
                         port:exiftool
 
-# sets march optimization to generic
-configure.args-append   -DBINARY_PACKAGE_BUILD=ON
+# Backports of upstream fixes:
+patchfiles-append       patch-fix-libjxl.diff \
+                        patch-with-libxml2.diff
+
+# https://trac.macports.org/ticket/69860
+patchfiles-append       patch-libavif.diff
+
+if {[string match *gcc* ${configure.compiler}]} {
+    patchfiles-append   patch-apple-gcc.diff \
+                        patch-fix-cmath-types.diff
+}
+
+platform darwin powerpc {
+    patchfiles-append   patch-Allow-building-for-32-bit-and-PPC.diff
+
+    # Enabling it leads to an obscure error:
+    # cameras.xsd: element complexType: Schemas parser error:
+    # complex type 'CFA2Type': The content model is not determinist.
+    configure.args-append \
+                        -DUSE_OPENCL=OFF
+}
+
+# Sets optimization to generic, but not for PowerPC,
+# where it is not supported.
+if {${configure.build_arch} ni [list ppc ppc64]} {
+    configure.args-append \
+                        -DBINARY_PACKAGE_BUILD=ON
+}
 
 configure.args-append   -DBUILD_CMSTEST=OFF \
                         -DBUILD_CURVE_TOOLS=ON \
@@ -195,7 +221,7 @@ universal_variant       no
 compiler.cxx_standard   2017
 
 # compiling src/osx/osx.mm with GCC results in a cascade of errors
-compiler.blacklist-append      *gcc*
+# compiler.blacklist-append      *gcc*
 
 # NOTE: Now requires a minimum of Xcode Clang 10.0.1, as of v3.6.x
 # However, runtime crashes occur with Xcode Clang 10.x and 11.x, so be sure to avoid both
