@@ -31,7 +31,7 @@ long_description    {*}${description}, including front-ends \
                     for C, C++, Objective-C, Objective-C++ and Fortran. \
                     This is an !experimental! version for Darwin PowerPC.
 
-version             13-20240406
+version             13-20240503
 revision            0
 
 set libgccname      lib${name}
@@ -39,9 +39,9 @@ set libcxxname      ${name}-libcxx
 
 subport             ${libgccname} { revision [ expr ${revision} + 0 ] }
 
-checksums           rmd160  dda5c81ef614f37d401e4dbb27a10038f66f4c0a \
-                    sha256  f9d34bce1465b6eb04b1562860682ab1eb40065e380c987532fb5004b7a763f4 \
-                    size    84392728
+checksums           rmd160  eac85ab754a6e45d25d7ecc54d2f3f2c54a7cd27 \
+                    sha256  1620c124aef30ea908602be5da804ce699d108320bf3e1078b094b78dd149b48 \
+                    size    84417232
 
 # Primary releases
 master_sites        https://ftpmirror.gnu.org/gcc/gcc-${version}/ \
