@@ -1,0 +1,21 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           R 1.0
+
+R.setup             cran nsj3 rioja 1.0-6
+revision            0
+maintainers         nomaintainer
+license             MIT
+description         Analysis of quaternary science data
+long_description    {*}${description}
+homepage            https://github.com/nsj3/rioja
+checksums           rmd160  5cff63456c05b6690348b7d9f655a06be549655e \
+                    sha256  a3093b5b3478a1af8d6bd4e02ad5ecc14f67b1cdc0ccdca5cdb7c0381a383709 \
+                    size    146323
+
+depends_lib-append  port:R-vegan
+
+depends_test-append port:R-foreach
+
+test.run            yes
