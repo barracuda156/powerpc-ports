@@ -270,8 +270,8 @@ if {${os.major} >= 18 && ${configure.sdkroot} ne ""} {
 
 # By default Catalina and Mojave support a single arch on MacPorts
 # universal building is also not working properly on Tiger (or Leopard)
-
-if {(${os.major} < 18 || ${os.major} > 19) && ${os.major} > 8} {
+# Also disable on 10.6 for now, due to https://trac.macports.org/ticket/68926
+if {(${os.major} < 18 || ${os.major} > 19) && ${os.major} > 10} {
     default_variants    +universal
 }
 
