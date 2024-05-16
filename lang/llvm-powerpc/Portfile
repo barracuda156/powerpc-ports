@@ -65,9 +65,11 @@ depends_lib-append          port:gcc10-bootstrap \
                             port:libedit \
                             port:libffi \
                             port:ncurses \
-                            port:python27 \
-                            path:lib/libxar.dylib:xar \
+                            port:python27-bootstrap \
                             port:zlib
+
+depends_skip_archcheck-append \
+                            python27-bootstrap
 
 depends_run                 bin:perl:perl5
 
@@ -118,6 +120,11 @@ patchfiles-append \
 patchfiles-append \
     0082-Fix-for-missing-gethostuuid-on-powerpc.patch
 
+# Unlike with libxml2, libxar of 10.6 is too old to be used.
+# We disable support for xar by default and enable it below.
+patchfiles-append \
+    patch-disable-xar.diff
+
 compiler.blacklist          *clang* *gcc-4.* macports-gcc-5
 
 cmake.build_type            Release
@@ -146,13 +153,16 @@ configure.args-append \
         -DLLVM_BINDINGS_LIST=none \
         -DFFI_INCLUDE_DIR=`pkg-config --cflags-only-I libffi | sed 's/-I//'` \
         -DFFI_LIBRARY_DIR=${prefix}/lib \
-        -DPYTHON_EXECUTABLE=${prefix}/bin/python2.7
+        -DPYTHON_EXECUTABLE=${prefix}/libexec/python27-bootstrap/bin/python2.7
 
 # Avoid depending on port:libxml2
 configure.args-append \
         -DLIBXML2_INCLUDE_DIR=/usr/include/libxml2 \
         -DLIBXML2_LIBRARIES=/usr/lib/libxml2.dylib \
         -DLIBXML2_XMLLINT_EXECUTABLE=/usr/bin/xmllint
+# Unfortunately, using arguments proved unreliable, it may still link
+# opportunistically. We do not want to depend on a port which requires C++11.
+conflicts_build             libxml2
 
 configure.optflags          -Os
 configure.cxxflags-append   -U__STRICT_ANSI__ \
@@ -175,6 +185,11 @@ variant emulated_tls description "Enable C11/C++11 thread support via emulated-t
     # The test for default emulated-tls has been moved into the backend
     patchfiles-append \
         0083-Support-emutls-in-LLVM.patch
+}
+
+variant xar description "Enable xar support" {
+    depends_lib-append      path:lib/libxar.dylib:xar
+    patchfiles-delete       patch-disable-xar.diff
 }
 
 default_variants-append     +emulated_tls
