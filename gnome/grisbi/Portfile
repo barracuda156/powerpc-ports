@@ -12,7 +12,6 @@ checksums           rmd160  4eca5dff3eecbe048bc679a4bc647962568ce6c7 \
                     sha256  3bc1c630a758a4b5a76116015002a9b477b495203110481ff41f3674c1df4797 \
                     size    12877828
 categories          gnome finance
-platforms           darwin
 license             GPL-2+
 maintainers         {ctreleaven @ctreleaven} openmaintainer
 installs_libs       no
@@ -56,6 +55,10 @@ post-patch {
 configure.args      --disable-frenchdoc \
                     --disable-silent-rules \
                     --without-ofx
+
+# error: redefinition of typedef 'CsvTemplateRule'
+compiler.blacklist-append \
+                    *gcc-4.0 *gcc-4.2
 
 default_variants +ofx
 
