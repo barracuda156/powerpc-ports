@@ -1,0 +1,477 @@
+From 8f02916e27f883711c13bf388d040297f0ba87e8 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sun, 2 Jun 2024 12:18:12 +0800
+Subject: [PATCH] Fix Qt4
+
+diff --git build-aux/subst-config-vals.in.sh build-aux/subst-config-vals.in.sh
+index 1b52cae23e..6c45c24efb 100644
+--- build-aux/subst-config-vals.in.sh
++++ build-aux/subst-config-vals.in.sh
+@@ -210,6 +210,7 @@ QRUPDATE_LIBS="@QRUPDATE_LIBS@"
+ QT_CPPFLAGS="@QT_CPPFLAGS@"
+ QT_LDFLAGS="@QT_LDFLAGS@"
+ QT_LIBS="@QT_LIBS@"
++QT_OPENGL_LIBS="@QT_OPENGL_LIBS@"
+ RANLIB="@RANLIB@"
+ RDYNAMIC_FLAG="@RDYNAMIC_FLAG@"
+ READLINE_LIBS="@LIBREADLINE@"
+@@ -371,6 +372,7 @@ $SED \
+   -e "s|%OCTAVE_CONF_QT_CPPFLAGS%|\"${QT_CPPFLAGS}\"|" \
+   -e "s|%OCTAVE_CONF_QT_LDFLAGS%|\"${QT_LDFLAGS}\"|" \
+   -e "s|%OCTAVE_CONF_QT_LIBS%|\"${QT_LIBS}\"|" \
++  -e "s|%OCTAVE_CONF_QT_OPENGL_LIBS%|\"${QT_OPENGL_LIBS}\"|" \
+   -e "s|%OCTAVE_CONF_RANLIB%|\"${RANLIB}\"|" \
+   -e "s|%OCTAVE_CONF_RDYNAMIC_FLAG%|\"${RDYNAMIC_FLAG}\"|" \
+   -e "s|%OCTAVE_CONF_READLINE_LIBS%|\"${READLINE_LIBS}\"|" | \
+diff --git build-aux/subst-cross-config-vals.in.sh build-aux/subst-cross-config-vals.in.sh
+index f263511eaa..53aa9a27be 100644
+--- build-aux/subst-cross-config-vals.in.sh
++++ build-aux/subst-cross-config-vals.in.sh
+@@ -214,6 +214,7 @@ QRUPDATE_LIBS="@QRUPDATE_LIBS@"
+ QT_CPPFLAGS="@QT_CPPFLAGS@"
+ QT_LDFLAGS="@QT_LDFLAGS@"
+ QT_LIBS="@QT_LIBS@"
++QT_OPENGL_LIBS="@QT_OPENGL_LIBS@"
+ RANLIB="@RANLIB@"
+ RDYNAMIC_FLAG="@RDYNAMIC_FLAG@"
+ READLINE_LIBS="@LIBREADLINE@"
+@@ -375,6 +376,7 @@ $SED \
+   -e "s|%OCTAVE_CONF_QT_CPPFLAGS%|\"${QT_CPPFLAGS}\"|" \
+   -e "s|%OCTAVE_CONF_QT_LDFLAGS%|\"${QT_LDFLAGS}\"|" \
+   -e "s|%OCTAVE_CONF_QT_LIBS%|\"${QT_LIBS}\"|" \
++  -e "s|%OCTAVE_CONF_QT_OPENGL_LIBS%|\"${QT_OPENGL_LIBS}\"|" \
+   -e "s|%OCTAVE_CONF_RANLIB%|\"${RANLIB}\"|" \
+   -e "s|%OCTAVE_CONF_RDYNAMIC_FLAG%|\"${RDYNAMIC_FLAG}\"|" \
+   -e "s|%OCTAVE_CONF_READLINE_LIBS%|\"${READLINE_LIBS}\"|" | \
+diff --git configure.ac configure.ac
+index 0aa4063402..c7251b213a 100644
+--- configure.ac
++++ configure.ac
+@@ -3114,8 +3114,8 @@ OCTAVE_GUI_LINK_DEPS=""
+ OCTAVE_GUI_LINK_OPTS=""
+ 
+ if test $build_qt_gui = yes; then
+-  LIBOCTGUI_LINK_DEPS="$QT_LIBS"
+-  LIBOCTGUI_LINK_OPTS="$QT_LDFLAGS"
++  LIBOCTGUI_LINK_DEPS="$QT_LIBS $QT_OPENGL_LIBS"
++  LIBOCTGUI_LINK_OPTS="$QT_LDFLAGS $QT_OPENGL_LDFLAGS"
+ 
+   if test $link_all_deps = yes || test -n "$QT_LDFLAGS"; then
+     LIBOCTGUI_LINK_DEPS="$LIBOCTGUI_LINK_DEPS $LIBOCTINTERP_LINK_DEPS"
+@@ -3362,6 +3362,7 @@ Octave is now configured for $canonical_host_type
+   Qt CPPFLAGS:                   $QT_CPPFLAGS
+   Qt LDFLAGS:                    $QT_LDFLAGS
+   Qt GUI libraries:              $QT_LIBS
++  Qt OpenGL libraries:           $QT_OPENGL_LIBS
+   Qt moc:                        $MOC $MOCFLAGS
+   Qt uic:                        $UIC $UICFLAGS
+   Qt rcc:                        $RCC $RCCFLAGS
+diff --git libgui/graphics/GLCanvas.cc libgui/graphics/GLCanvas.cc
+index b1dac78f35..86cb296ea1 100644
+--- libgui/graphics/GLCanvas.cc
++++ libgui/graphics/GLCanvas.cc
+@@ -37,9 +37,23 @@
+ 
+ OCTAVE_BEGIN_NAMESPACE(octave)
+ 
+-GLWidget::GLWidget (Canvas& parent_canvas, QWidget *parent)
+-  : QOpenGLWidget (parent), m_parent_canvas (parent_canvas),
+-    m_glfcns (), m_renderer (m_glfcns)
++#if defined (HAVE_QOPENGLWIDGET)
++#  define OCTAVE_QT_OPENGL_WIDGET_FORMAT_ARGS
++#else
++#  if defined (Q_OS_WIN32)
++#    define OCTAVE_QT_OPENGL_WIDGET_FORMAT_ARGS         \
++  QGLFormat (QGL::SampleBuffers | QGL::AlphaChannel     \
++             | QGL::IndirectRendering),
++#  else
++#    define OCTAVE_QT_OPENGL_WIDGET_FORMAT_ARGS \
++  QGLFormat (QGL::SampleBuffers | QGL::AlphaChannel),
++#  endif
++#endif
++
++  GLCanvas::GLCanvas (octave::interpreter& interp,
++                      const graphics_handle& gh, QWidget *xparent)
++    : OCTAVE_QT_OPENGL_WIDGET (OCTAVE_QT_OPENGL_WIDGET_FORMAT_ARGS xparent),
++      Canvas (interp, gh), m_glfcns (), m_renderer (m_glfcns)
+ {
+   setFocusPolicy (Qt::ClickFocus);
+   setFocus ();
+@@ -102,9 +116,9 @@ GLWidget::do_getPixels (graphics_object go)
+       if (go.get ("visible").string_value () == "off"
+           || go.get ("__printing__").string_value () == "on")
+         {
+-          QOpenGLFramebufferObject
++            OCTAVE_QT_OPENGL_FBO
+             fbo (pos(2), pos(3),
+-                 QOpenGLFramebufferObject::Attachment::Depth);
++                 OCTAVE_QT_OPENGL_FBO::Attachment::Depth);
+ 
+           fbo.bind ();
+ 
+@@ -153,9 +167,9 @@ GLWidget::do_print (const QString& file_cmd, const QString& term,
+           pos(2) *= dpr;
+           pos(3) *= dpr;
+ 
+-          QOpenGLFramebufferObject
++          OCTAVE_QT_OPENGL_FBO
+             fbo (pos(2), pos(3),
+-                 QOpenGLFramebufferObject::Attachment::Depth);
++                 OCTAVE_QT_OPENGL_FBO::Attachment::Depth);
+ 
+           fbo.bind ();
+ 
+@@ -249,7 +263,7 @@ void
+ GLWidget::keyPressEvent (QKeyEvent *xevent)
+ {
+   if (! m_parent_canvas.canvasKeyPressEvent (xevent))
+-    QOpenGLWidget::keyPressEvent (xevent);
++    OCTAVE_QT_OPENGL_WIDGET::keyReleaseEvent (xevent);
+ }
+ 
+ void
+diff --git libgui/graphics/GLCanvas.h libgui/graphics/GLCanvas.h
+index 9be6c6204a..8a3a6f844d 100644
+--- libgui/graphics/GLCanvas.h
++++ libgui/graphics/GLCanvas.h
+@@ -26,10 +26,21 @@
+ #if ! defined (octave_GLCanvas_h)
+ #define octave_GLCanvas_h 1
+ 
+-#include <QOffscreenSurface>
+-#include <QOpenGLContext>
+-#include <QOpenGLFramebufferObject>
+-#include <QOpenGLWidget>
++#if defined (HAVE_QOPENGLWIDGET)
++#  include <QOpenGLWidget>
++#  define OCTAVE_QT_OPENGL_WIDGET QOpenGLWidget
++#  include <QOpenGLFramebufferObject>
++#  define OCTAVE_QT_OPENGL_FBO QOpenGLFramebufferObject
++#  include <QOpenGLContext>
++#  include <QOffscreenSurface>
++#elif defined (HAVE_QGLWIDGET)
++#  include <QGLWidget>
++#  define OCTAVE_QT_OPENGL_WIDGET QGLWidget
++#  include <QGLFramebufferObject>
++#  define OCTAVE_QT_OPENGL_FBO QGLFramebufferObject
++#else
++#  error "configuration error: must have <QOpenGLWidget> or <QGLWidget>."
++#endif
+ 
+ #include "Canvas.h"
+ 
+@@ -38,17 +49,13 @@
+ 
+ OCTAVE_BEGIN_NAMESPACE(octave)
+ 
+-class GLWidget : public QOpenGLWidget
++class GLCanvas : public OCTAVE_QT_OPENGL_WIDGET, public Canvas
+ {
+-  Q_OBJECT
+-
+-public:
+-
+-  GLWidget (Canvas& parent_canvas, QWidget *parent);
+-
+-  ~GLWidget ();
+-
+-  void initializeGL ();
++  public:
++    GLCanvas (octave::interpreter& interp,
++              const graphics_handle& handle, QWidget *parent);
++    ~GLCanvas (void);
++    void initializeGL (void);
+ 
+   void draw (graphics_object go);
+   uint8NDArray  do_getPixels (graphics_object go);
+@@ -60,8 +67,7 @@ public:
+   graphics_object selectFromAxes (const graphics_object& ax,
+                                   const QPoint& pt);
+ 
+-  bool begin_rendering ();
+-  void end_rendering ();
++  QWidget * qWidget (void) { return this; }
+ 
+ protected:
+ 
+diff --git libgui/graphics/module.mk libgui/graphics/module.mk
+index 56d902f570..b04ef35eb2 100644
+--- libgui/graphics/module.mk
++++ libgui/graphics/module.mk
+@@ -127,6 +127,7 @@ nodist_%canon_reldir%_libgraphics_la_SOURCES = $(libgraphics_MOC)
+   $(FONTCONFIG_CPPFLAGS) \
+   $(HDF5_CPPFLAGS) \
+   @OCTGUI_DLL_DEFS@ \
++  @QT_OPENGL_CPPFLAGS@ \
+   @QT_CPPFLAGS@ \
+   -Ilibgui/graphics -I$(srcdir)/libgui/graphics \
+   -Ilibgui/src -I$(srcdir)/libgui/src \
+diff --git libinterp/build-env.h libinterp/build-env.h
+index 3f18f8a413..e772e77f51 100644
+--- libinterp/build-env.h
++++ libinterp/build-env.h
+@@ -144,6 +144,7 @@ extern OCTINTERP_API const char *QRUPDATE_LIBS;
+ extern OCTINTERP_API const char *QT_CPPFLAGS;
+ extern OCTINTERP_API const char *QT_LDFLAGS;
+ extern OCTINTERP_API const char *QT_LIBS;
++extern OCTINTERP_API const char *QT_OPENGL_LIBS;
+ extern OCTINTERP_API const char *RANLIB;
+ extern OCTINTERP_API const char *RDYNAMIC_FLAG;
+ extern OCTINTERP_API const char *READLINE_LIBS;
+diff --git libinterp/build-env.in.cc libinterp/build-env.in.cc
+index f5e50e2f42..9b2c32c4a2 100644
+--- libinterp/build-env.in.cc
++++ libinterp/build-env.in.cc
+@@ -251,6 +251,8 @@ const char *QT_LDFLAGS = %OCTAVE_CONF_QT_LDFLAGS%;
+ 
+ const char *QT_LIBS = %OCTAVE_CONF_QT_LIBS%;
+ 
++const char *QT_OPENGL_LIBS = %OCTAVE_CONF_QT_OPENGL_LIBS%;
++
+ const char *RANLIB = %OCTAVE_CONF_RANLIB%;
+ 
+ const char *RDYNAMIC_FLAG = %OCTAVE_CONF_RDYNAMIC_FLAG%;
+diff --git libinterp/corefcn/toplev.cc libinterp/corefcn/toplev.cc
+index 686258acd3..79b3e2ae85 100644
+--- libinterp/corefcn/toplev.cc
++++ libinterp/corefcn/toplev.cc
+@@ -540,6 +540,7 @@ specified option.
+         { "QT_CPPFLAGS", build_env::QT_CPPFLAGS },
+         { "QT_LDFLAGS", build_env::QT_LDFLAGS },
+         { "QT_LIBS", build_env::QT_LIBS },
++        { "QT_OPENGL_LIBS", build_env::QT_OPENGL_LIBS },
+         { "RANLIB", build_env::RANLIB },
+         { "RDYNAMIC_FLAG", build_env::RDYNAMIC_FLAG },
+         { "READLINE_LIBS", build_env::READLINE_LIBS },
+diff --git m4/acinclude.m4 m4/acinclude.m4
+index acb76bc900..ce025fb290 100644
+--- m4/acinclude.m4
++++ m4/acinclude.m4
+@@ -1717,6 +1717,9 @@ AC_DEFUN([OCTAVE_CHECK_QSCINTILLA], [
+ 
+   ## Check for Qt libraries
+   case "$qt_version" in
++    4)
++      octave_qscintilla_libnames="qscintilla2-qt4 qscintilla2_qt4 qt4scintilla2 qscintilla2"
++    ;;
+     5)
+       octave_qscintilla_libnames="qscintilla2-qt5 qscintilla2_qt5 qt5scintilla2"
+     ;;
+@@ -1844,6 +1847,9 @@ AC_DEFUN([OCTAVE_CHECK_QT], [
+ 
+   if test $build_qt_gui = yes; then
+     BUILD_QT_SUMMARY_MSG="yes (version: $have_qt_version)"
++    if test x"$have_qt_version" = x4; then
++      AC_DEFINE(HAVE_QT4, 1, [Define to 1 if using Qt version 4.])
++    fi
+     if test x"$have_qt_version" = x5; then
+       AC_DEFINE(HAVE_QT5, 1, [Define to 1 if using Qt version 5.])
+     fi
+@@ -1894,6 +1900,67 @@ AC_DEFUN([OCTAVE_CHECK_QT], [
+   AM_CONDITIONAL([WIN32_TERMINAL], [test $win32_terminal = yes])
+ ])
+ dnl
++dnl Check whether Qt works with full OpenGL support
++dnl
++AC_DEFUN([OCTAVE_CHECK_QT_OPENGL_OK], [
++  dnl Normally the language and compiler flags would be set and restored
++  dnl inside of the AC_CACHE_CHECK body.  Because we also need to check for
++  dnl Qt header files associated with the compilation test, set and restore
++  dnl these values outside of the AC_CACHE_CHECK for this macro only.
++  AC_LANG_PUSH(C++)
++  ac_octave_save_CPPFLAGS="$CPPFLAGS"
++  ac_octave_save_CXXFLAGS="$CXXFLAGS"
++  CPPFLAGS="$QT_OPENGL_CPPFLAGS $CXXPICFLAG $CPPFLAGS"
++  CXXFLAGS="$CXXPICFLAG $CXXFLAGS"
++  AC_CHECK_HEADERS([QOpenGLWidget QGLWidget QGLFunctions_1_1])
++  AC_CACHE_CHECK([whether Qt works with OpenGL and GLU],
++    [octave_cv_qt_opengl_ok],
++    [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
++         #if HAVE_WINDOWS_H
++         #  include <windows.h>
++         #endif
++         #if defined (HAVE_GL_GL_H)
++         #  include <GL/gl.h>
++         #elif defined (HAVE_OPENGL_GL_H)
++         #  include <OpenGL/gl.h>
++         #endif
++         #if defined (HAVE_GL_GLU_H)
++         #  include <GL/glu.h>
++         #elif defined HAVE_OPENGL_GLU_H || defined HAVE_FRAMEWORK_OPENGL
++         #  include <OpenGL/glu.h>
++         #endif
++         #if defined (HAVE_QOPENGLWIDGET)
++         #  include <QOpenGLWidget>
++         #  define OCTAVE_QT_OPENGL_WIDGET QOpenGLWidget
++         #elif defined (HAVE_QGLWIDGET)
++         #  include <QGLWidget>
++         #  define OCTAVE_QT_OPENGL_WIDGET QGLWidget
++         #endif
++         class gl_widget : public OCTAVE_QT_OPENGL_WIDGET
++         {
++         public:
++           gl_widget (QWidget *parent = 0)
++             : OCTAVE_QT_OPENGL_WIDGET (parent) { }
++           ~gl_widget () {}
++         };
++         ]], [[
++         gl_widget widget;
++       ]])],
++       octave_cv_qt_opengl_ok=yes,
++       octave_cv_qt_opengl_ok=no)
++  ])
++  CPPFLAGS="$ac_octave_save_CPPFLAGS"
++  CXXFLAGS="$ac_octave_save_CXXFLAGS"
++  AC_LANG_POP(C++)
++  if test $octave_cv_qt_opengl_ok = yes; then
++    $1
++    :
++  else
++    $2
++    :
++  fi
++])
++dnl
+ dnl Check whether the Qt::ImCursorRectangle enum value exists.
+ dnl It replaces the Qt::ImMicroFocus enum value that was deprecated
+ dnl in Qt 5.14.
+@@ -1979,8 +2046,8 @@ AC_DEFUN([OCTAVE_CHECK_QT_TOOL], [
+   fi
+ ])
+ dnl
+-dnl Check whether Qt VERSION is present, supports QScintilla,
+-dnl and will work for Octave.
++dnl Check whether Qt VERSION is present, supports QtOpenGL and
++dnl QScintilla, and will work for Octave.
+ dnl
+ dnl OCTAVE_CHECK_QT_VERSION(VERSION)
+ dnl
+@@ -2011,8 +2078,13 @@ AC_DEFUN([OCTAVE_CHECK_QT_VERSION], [AC_MSG_CHECKING([Qt version $1])
+   if test $build_qt_gui = yes; then
+     ## Check for Qt libraries
+     case "$qt_version" in
++      4)
++        QT_OPENGL_MODULE="QtOpenGL"
++        QT_MODULES="QtCore QtGui QtNetwork QtHelp QtXml"
++      ;;
+       5)
+-        QT_MODULES="Qt5Core Qt5Gui Qt5Help Qt5Network Qt5OpenGL Qt5PrintSupport Qt5Xml"
++        QT_OPENGL_MODULE="Qt5OpenGL"
++        QT_MODULES="Qt5Core Qt5Gui Qt5Help Qt5Network Qt5PrintSupport Qt5Xml"
+       ;;
+       6)
+         QT_MODULES="Qt6Core Qt6Gui Qt6Help Qt6Network Qt6OpenGL Qt6OpenGLWidgets Qt6PrintSupport Qt6Xml"
+@@ -2067,6 +2139,9 @@ AC_DEFUN([OCTAVE_CHECK_QT_VERSION], [AC_MSG_CHECKING([Qt version $1])
+       QT_CPPFLAGS="$($PKG_CONFIG --cflags-only-I $QT_MODULES | $SED -e 's/^ *$//')"
+       QT_LDFLAGS="$($PKG_CONFIG --libs-only-L $QT_MODULES | $SED -e 's/^ *$//')"
+       QT_LIBS="$($PKG_CONFIG --libs-only-l $QT_MODULES | $SED -e 's/^ *$//')"
++      QT_OPENGL_CPPFLAGS="$($PKG_CONFIG --cflags-only-I $QT_OPENGL_MODULE | $SED -e 's/^ *$//')"
++      QT_OPENGL_LDFLAGS="$($PKG_CONFIG --libs-only-L $QT_OPENGL_MODULE | $SED -e 's/^ *$//')"
++      QT_OPENGL_LIBS="$($PKG_CONFIG --libs-only-l $QT_OPENGL_MODULE | $SED -e 's/^ *$//')"
+ 
+       case $host_os in
+         *darwin*)
+@@ -2074,6 +2149,8 @@ AC_DEFUN([OCTAVE_CHECK_QT_VERSION], [AC_MSG_CHECKING([Qt version $1])
+           if test -z "$QT_LIBS"; then
+             QT_LDFLAGS="`$PKG_CONFIG --libs-only-other $QT_MODULES | tr ' ' '\n' | $GREP -e '-F' | uniq | tr '\n' ' '`"
+             QT_LIBS="`$PKG_CONFIG --libs-only-other $QT_MODULES | tr ' ' '\n' | $GREP -v -e '-F' | uniq | tr '\n' ' '`"
++            QT_OPENGL_LDFLAGS="`$PKG_CONFIG --libs-only-other $QT_OPENGL_MODULE | tr ' ' '\n' | $GREP -e '-F' | uniq | tr '\n' ' '`"
++            QT_OPENGL_LIBS="`$PKG_CONFIG --libs-only-other $QT_OPENGL_MODULE | tr ' ' '\n' | $GREP -v -e '-F' | uniq | tr '\n' ' '`"
+             ## Enabling link_all_deps works around libtool's imperfect handling
+             ## of the -F flag
+             if test -n "$QT_LDFLAGS"; then
+@@ -2083,6 +2160,13 @@ AC_DEFUN([OCTAVE_CHECK_QT_VERSION], [AC_MSG_CHECKING([Qt version $1])
+           fi
+         ;;
+       esac
++    if test $qt_version = 4; then
++      ## Check for Qt4
++      if ! `$PKG_CONFIG --atleast-version=4.0.0 QtCore`; then
++        build_qt_gui=no
++        warn_qt_version="Qt >= 4.0.0 not found; disabling Qt GUI"
++      fi
++    fi
+     fi
+   fi
+ 
+@@ -2241,6 +2325,14 @@ AC_DEFUN([OCTAVE_CHECK_QT_VERSION], [AC_MSG_CHECKING([Qt version $1])
+     OCTAVE_CHECK_QT_IMCURSORRECTANGLE_ENUM_VALUE
+     OCTAVE_CHECK_QT_SPLITBEHAVIOR_ENUM
+ 
++    if test -n "$OPENGL_LIBS"; then
++      OCTAVE_CHECK_QT_OPENGL_OK([build_qt_graphics=yes],
++        [warn_qt_opengl="Qt does not work with the OpenGL libs (GL and GLU); disabling OpenGL graphics with Qt GUI"])
++      if test $build_qt_graphics = yes; then
++        AC_DEFINE(HAVE_QT_GRAPHICS, 1, [Define to 1 if Qt works with OpenGL libs (GL and GLU)])
++      fi
++    fi
++
+     OCTAVE_CHECK_QSCINTILLA([$qt_version])
+ 
+   fi
+@@ -2261,6 +2353,9 @@ AC_DEFUN([OCTAVE_CHECK_QT_VERSION], [AC_MSG_CHECKING([Qt version $1])
+   AC_SUBST(QT_CPPFLAGS)
+   AC_SUBST(QT_LDFLAGS)
+   AC_SUBST(QT_LIBS)
++  AC_SUBST(QT_OPENGL_CPPFLAGS)
++  AC_SUBST(QT_OPENGL_LDFLAGS)
++  AC_SUBST(QT_OPENGL_LIBS)
+ ])
+ dnl
+ dnl Check if the default Fortran INTEGER is 64 bits wide.
+
+--- libgui/graphics/Canvas.cc	2024-06-02 01:23:29.000000000 +0800
++++ libgui/graphics/Canvas.cc	2024-06-02 11:15:09.000000000 +0800
+@@ -980,7 +980,7 @@
+ 
+               if (zoom_enabled (figObj))
+                 {
+-                  if (event->angleDelta().y () > 0)
++                  if (event->delta () > 0)
+                     newMouseMode = ZoomInMode;
+                   else
+                     newMouseMode = ZoomOutMode;
+@@ -1022,7 +1022,7 @@
+               {
+                 axes::properties& ap = Utils::properties<axes> (axesObj);
+ 
+-                double factor = (event->angleDelta().y () > 0 ? 0.1 : -0.1);
++                double factor = (event->delta () > 0 ? 0.1 : -0.1);
+ 
+                 if (event->modifiers () == Qt::NoModifier
+                     && mode != "horizontal")
+
+--- libgui/src/documentation.cc	2024-06-02 01:23:29.000000000 +0800
++++ libgui/src/documentation.cc	2024-06-02 11:16:14.000000000 +0800
+@@ -1130,7 +1130,7 @@
+ {
+   if (we->modifiers () == Qt::ControlModifier)
+     {
+-      if (we->angleDelta().y () > 0)
++      if (we->delta() > 0)
+         zoom_in ();
+       else
+         zoom_out ();
+
+--- libgui/qterminal/libqterminal/unix/TerminalView.cpp	2024-03-13 02:00:23.000000000 +0800
++++ libgui/qterminal/libqterminal/unix/TerminalView.cpp	2024-06-02 11:17:40.000000000 +0800
+@@ -2021,8 +2021,8 @@
+ 
+ void TerminalView::wheelEvent( QWheelEvent* ev )
+ {
+-  if (ev->angleDelta().y() == 0)
+-    return;
++   if (ev->orientation() != Qt::Vertical)
++     return;
+ 
+   if ( _mouseMarks )
+     _scrollBar->event(ev);
+@@ -2037,7 +2037,7 @@
+ #endif
+       getCharacterPosition( pos , charLine , charColumn );
+ 
+-      int delta = ev->angleDelta().y();
++      int delta = ev->delta();
+ 
+       emit mouseSignal( delta > 0 ? 4 : 5,
+                         charColumn + 1,

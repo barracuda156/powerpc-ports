@@ -393,54 +393,6 @@ index f42dac2f88..2ea9a3875a 100644
      (settings.int_value (ws_sort_column),
       static_cast<Qt::SortOrder> (settings.uint_value (ws_sort_order)));
 
-diff --git m4/acinclude.m4 m4/acinclude.m4
-index 740a1faa40..20d5854cbb 100644
---- m4/acinclude.m4
-+++ m4/acinclude.m4
-@@ -1761,6 +1761,9 @@ AC_DEFUN([OCTAVE_CHECK_QSCINTILLA], [
- 
-   ## Check for Qt libraries
-   case "$qt_version" in
-+    4)
-+      octave_qscintilla_libnames="qscintilla2-qt4 qscintilla2_qt4 qt4scintilla2 qscintilla2"
-+    ;;
-     5)
-       octave_qscintilla_libnames="qscintilla2-qt5 qscintilla2_qt5 qt5scintilla2"
-     ;;
-@@ -1888,6 +1891,9 @@ AC_DEFUN([OCTAVE_CHECK_QT], [
- 
-   if test $build_qt_gui = yes; then
-     BUILD_QT_SUMMARY_MSG="yes (version: $have_qt_version)"
-+    if test x"$have_qt_version" = x4; then
-+      AC_DEFINE(HAVE_QT4, 1, [Define to 1 if using Qt version 4.])
-+    fi
-     if test x"$have_qt_version" = x5; then
-       AC_DEFINE(HAVE_QT5, 1, [Define to 1 if using Qt version 5.])
-     fi
-@@ -2046,6 +2052,9 @@ AC_DEFUN([OCTAVE_CHECK_QT_VERSION], [AC_MSG_CHECKING([Qt version $1])
-   if test $build_qt_gui = yes; then
-     ## Check for Qt libraries
-     case "$qt_version" in
-+      4)
-+        QT_MODULES="QtCore QtGui QtNetwork QtOpenGL QtHelp QtXml"
-+      ;;
-       5)
-         QT_MODULES="Qt5Core Qt5Gui Qt5Help Qt5Network Qt5OpenGL Qt5PrintSupport Qt5Widgets Qt5Xml"
-       ;;
-@@ -2118,6 +2127,13 @@ AC_DEFUN([OCTAVE_CHECK_QT_VERSION], [AC_MSG_CHECKING([Qt version $1])
-           fi
-         ;;
-       esac
-+    if test $qt_version = 4; then
-+      ## Check for Qt4
-+      if ! `$PKG_CONFIG --atleast-version=4.0.0 QtCore`; then
-+        build_qt_gui=no
-+        warn_qt_version="Qt >= 4.0.0 not found; disabling Qt GUI"
-+      fi
-+    fi
-     fi
-   fi
- 
 --- configure	2024-03-13 02:00:23.000000000 +0800
 +++ configure	2024-06-02 09:10:39.000000000 +0800
 @@ -96521,9 +96521,9 @@
