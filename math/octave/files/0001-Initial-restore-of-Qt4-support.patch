@@ -1,0 +1,503 @@
+From 222b14701a03cb4370a728271d5e5c96aaf714ca Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sat, 1 Jun 2024 19:58:04 +0800
+Subject: [PATCH] Initial restore of Qt4 support
+
+diff --git configure.ac configure.ac
+index 8a88caa3fd..6feb679231 100644
+--- configure.ac
++++ configure.ac
+@@ -1901,9 +1901,9 @@
+   ## If QT_VERSIONS is unset, choose default depending on compiler support.
+   if test $HAVE_CXX17 = 0; then
+     dnl Qt6 requires support for C++17.
+-    QT_VERSIONS="5"
++    QT_VERSIONS="4"
+   else
+-    QT_VERSIONS="6 5"
++    QT_VERSIONS="6 5 4"
+   fi
+ fi
+ 
+diff --git libgui/graphics/Canvas.cc libgui/graphics/Canvas.cc
+index a9ac34c44e..6bf3ec9ac8 100644
+--- libgui/graphics/Canvas.cc
++++ libgui/graphics/Canvas.cc
+@@ -375,8 +375,10 @@ Canvas::select_object (graphics_object obj, QMouseEvent *event,
+ 
+ #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+           QPointF mouse_pos = event->position ();
+-#else
++#elif QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+           QPointF mouse_pos = event->localPos ();
++#else
++          QPointF mouse_pos = event->posF ();
+ #endif
+           bool rect_contains_pos = r.contains (mouse_pos);
+           if (rect_contains_pos)
+@@ -434,8 +436,10 @@ Canvas::select_object (graphics_object obj, QMouseEvent *event,
+ 
+ #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+               QPointF mouse_pos = event->position ();
+-#else
++#elif QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+               QPointF mouse_pos = event->localPos ();
++#else
++              QPointF mouse_pos = event->posF ();
+ #endif
+               bool rect_contains_pos = r.contains (mouse_pos);
+               if (rect_contains_pos)
+diff --git libgui/graphics/QtHandlesUtils.cc libgui/graphics/QtHandlesUtils.cc
+index 068d843a54..23e344be8f 100644
+--- libgui/graphics/QtHandlesUtils.cc
++++ libgui/graphics/QtHandlesUtils.cc
+@@ -405,7 +405,12 @@
+ 
+     // We assume a standard mouse with 15 degree steps and Qt returns
+     // 1/8 of a degree.
++#if defined (HAVE_QT4)
++    int ydelta = (event->orientation () == Qt::Vertical
++                    ? -(event->delta ()) : 0);
++#else
+     int ydelta = -(event->angleDelta().y ());
++#endif
+ 
+     retval.setfield ("VerticalScrollCount", octave_value (ydelta / 120));
+ 
+diff --git libgui/graphics/Table.cc libgui/graphics/Table.cc
+index eacd43d33a..f187336ac7 100644
+--- libgui/graphics/Table.cc
++++ libgui/graphics/Table.cc
+@@ -1316,7 +1316,11 @@ Table::updateEnable ()
+                                    : QAbstractItemView::NoSelection);
+ 
+   // Set rearrangeablecolumns
++#if defined (HAVE_QT4)
++  m_tableWidget->horizontalHeader ()->setMovable (enabled && rearrangeableColumns);
++#else
+   m_tableWidget->horizontalHeader ()->setSectionsMovable (enabled && rearrangeableColumns);
++#endif
+   m_tableWidget->horizontalHeader ()->setDragEnabled (enabled && rearrangeableColumns);
+   m_tableWidget->horizontalHeader ()->setDragDropMode (QAbstractItemView::InternalMove);
+ 
+@@ -1495,7 +1499,11 @@ Table::updateRearrangeableColumns ()
+   bool rearrangeableColumns = tp.is_rearrangeablecolumns ();
+   bool enabled = tp.is_enable ();
+ 
++#if defined (HAVE_QT4)
++  m_tableWidget->horizontalHeader ()->setMovable (enabled && rearrangeableColumns);
++#else
+   m_tableWidget->horizontalHeader ()->setSectionsMovable (enabled && rearrangeableColumns);
++#endif
+   m_tableWidget->horizontalHeader ()->setDragEnabled (enabled && rearrangeableColumns);
+   m_tableWidget->horizontalHeader ()->setDragDropMode (QAbstractItemView::InternalMove);
+ }
+diff --git libgui/src/files-dock-widget.cc libgui/src/files-dock-widget.cc
+index f3d5db49d4..53124c88e7 100644
+--- libgui/src/files-dock-widget.cc
++++ libgui/src/files-dock-widget.cc
+@@ -409,8 +409,13 @@ files_dock_widget::files_dock_widget (QWidget *p)
+      //        dropping support of Qt 5.4
+ 
+   // Set header properties for sorting
++#if defined (HAVE_QT4)
++  m_file_tree_view->header ()->setClickable (true);
++  m_file_tree_view->header ()->setMovable (true);
++#else
+   m_file_tree_view->header ()->setSectionsClickable (true);
+   m_file_tree_view->header ()->setSectionsMovable (true);
++#endif
+   m_file_tree_view->header ()->setSortIndicatorShown (true);
+ 
+   QStringList mru_dirs =
+diff --git libgui/src/find-files-dialog.cc libgui/src/find-files-dialog.cc
+index 39516221e3..6a2c9daea7 100644
+--- libgui/src/find-files-dialog.cc
++++ libgui/src/find-files-dialog.cc
+@@ -124,7 +124,11 @@ find_files_dialog::find_files_dialog (QWidget *p)
+   m_file_list->setSortingEnabled (true);
+   m_file_list->horizontalHeader ()->restoreState (settings.value (ff_column_state.settings_key ()).toByteArray ());
+   m_file_list->horizontalHeader ()->setSortIndicatorShown (true);
++#if defined (HAVE_QT4)
++  m_file_list->horizontalHeader ()->setClickable (true);
++#else
+   m_file_list->horizontalHeader ()->setSectionsClickable (true);
++#endif
+   m_file_list->horizontalHeader ()->setStretchLastSection (true);
+   m_file_list->sortByColumn (settings.int_value (ff_sort_files_by_column),
+                              static_cast<Qt::SortOrder>
+diff --git libgui/src/gui-settings.cc libgui/src/gui-settings.cc
+index c667debb38..7cce973890 100644
+--- libgui/src/gui-settings.cc
++++ libgui/src/gui-settings.cc
+@@ -329,6 +329,11 @@
+   if (default_family.isEmpty ())
+     {
+       // Get the system's default monospaced font
++#if defined (HAVE_QT4)
++      QFont fixed_font;
++      fixed_font.setStyleHint (QFont::Monospace);
++      QString default_family = fixed_font.defaultFamily ();
++#else
+       QFont fixed_font = QFontDatabase::systemFont (QFontDatabase::FixedFont);
+       default_family = fixed_font.defaultFamily ();
+ 
+@@ -339,6 +344,7 @@
+           // Fallback: take first from this list
+           default_family = fonts[0];
+         }
++#endif
+     }
+ 
+   // Test env variable which has preference
+diff --git libgui/src/m-editor/find-dialog.cc libgui/src/m-editor/find-dialog.cc
+index 7a23faa56e..ad18527950 100644
+--- libgui/src/m-editor/find-dialog.cc
++++ libgui/src/m-editor/find-dialog.cc
+@@ -396,7 +396,21 @@ find_dialog::init_search_text ()
+       int lbeg, lend, cbeg, cend;
+       m_edit_area->getSelection (&lbeg, &cbeg, &lend, &cend);
+       if (lbeg == lend)
++#if defined (HAVE_QT4)
++          if (m_search_line_edit->isEditable ())
++            {
++              m_search_line_edit->setEditText (m_edit_area->selectedText ());
++            }
++          else
++            {
++              int i = m_search_line_edit->findText (m_edit_area->selectedText ());
++
++              if (i > -1)
++                m_search_line_edit->setCurrentIndex (i);
++            }
++#else
+         m_search_line_edit->setCurrentText (m_edit_area->selectedText ());
++#endif
+     }
+ 
+   // set focus to "Find what" and select all text
+diff --git libgui/src/octave-dock-widget.cc libgui/src/octave-dock-widget.cc
+index e5f749c7ee..4bae25a111 100644
+--- libgui/src/octave-dock-widget.cc
++++ libgui/src/octave-dock-widget.cc
+@@ -539,7 +539,9 @@ octave_dock_widget::handle_settings ()
+   QVariant dock_geom
+     = settings.value (dw_dock_geometry.settings_key ().arg (objectName ()) + key_ext,
+                       default_dock_size);
+-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
++#if #if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
++  if (dock_geom.canConvert (QVariant::Rect))
++#elif QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+   if (dock_geom.canConvert (QMetaType (QMetaType::QRect)))
+ #else
+   if (dock_geom.canConvert (QMetaType::QRect))
+diff --git libgui/src/octave-qobject.cc libgui/src/octave-qobject.cc
+index 871ea481b1..959e7831e6 100644
+--- libgui/src/octave-qobject.cc
++++ libgui/src/octave-qobject.cc
+@@ -136,7 +136,11 @@ OCTAVE_BEGIN_NAMESPACE(octave)
+ // Disable all Qt messages by default.
+ 
+ static void
+-message_handler (QtMsgType, const QMessageLogContext&, const QString&)
++#if defined (HAVE_QT4)
++    message_handler (QtMsgType, const char *)
++#else
++    message_handler (QtMsgType, const QMessageLogContext&, const QString&)
++#endif
+ { }
+ 
+ //! Reimplement QApplication::notify.  Octave's own exceptions are
+@@ -200,13 +204,21 @@ base_qobject::base_qobject (qt_application& app_context, bool gui_app)
+   // Installing our handler suppresses the messages.
+ 
+   if (show_gui_msgs.empty ())
++#if defined (HAVE_QT4)
++    qInstallMsgHandler (message_handler);
++#else
+     qInstallMessageHandler (message_handler);
++#endif
+ 
+ #if ! defined (Q_OS_WIN32)
+   // Set the codec for all strings (before wizard or any GUI object)
+   QTextCodec::setCodecForLocale (QTextCodec::codecForName ("UTF-8"));
+ #endif
+ 
++#if defined (HAVE_QT4)
++  QTextCodec::setCodecForCStrings (QTextCodec::codecForName ("UTF-8"));
++#endif
++
+   // Register octave_value_list for connecting thread crossing signals.
+ 
+   qRegisterMetaType<octave_value_list> ("octave_value_list");
+diff --git libgui/src/shortcuts-tree-widget.cc libgui/src/shortcuts-tree-widget.cc
+index f9b9e6a3fe..87c58934b9 100644
+--- libgui/src/shortcuts-tree-widget.cc
++++ libgui/src/shortcuts-tree-widget.cc
+@@ -70,7 +70,11 @@ enter_shortcut::keyPressEvent (QKeyEvent *e)
+       if (key == Qt::Key_unknown || key == 0)
+         return;
+ 
++#if defined (HAVE_QT4)
++      Qt::KeyboardModifiers modifiers = QApplication::keyboardModifiers (); //e->modifiers ();
++#else
+       Qt::KeyboardModifiers modifiers = QGuiApplication::keyboardModifiers (); //e->modifiers ();
++#endif
+ 
+       if (m_shift_modifier || (modifiers & Qt::ShiftModifier))
+         key |= Qt::SHIFT;
+@@ -360,7 +364,11 @@ shortcuts_tree_widget::shortcuts_tree_widget (QWidget *parent)
+ {
+   QHash <QString, QTreeWidgetItem *> level_hash;
+ 
++#if defined (HAVE_QT4)
++  header ()->setResizeMode (QHeaderView::ResizeToContents);
++#else
+   header ()->setSectionResizeMode (QHeaderView::ResizeToContents);
++#endif
+ 
+   int dsc_col = tree_widget_shortcut_item::DESCRIPTION_COLUMN;
+ 
+diff --git libgui/src/variable-editor.cc libgui/src/variable-editor.cc
+index 7aa23fdfca..67e2765c4e 100644
+--- libgui/src/variable-editor.cc
++++ libgui/src/variable-editor.cc
+@@ -102,6 +102,7 @@ variable_dock_widget::variable_dock_widget (QWidget *p)
+   connect (this, &variable_dock_widget::topLevelChanged,
+            this, &variable_dock_widget::toplevel_change);
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+ #define DOCKED_FULLSCREEN_BUTTON_TOOLTIP "Fullscreen undock"
+ #define UNDOCKED_FULLSCREEN_BUTTON_TOOLTIP "Fullscreen"
+   // Add a fullscreen button
+@@ -132,6 +133,7 @@ variable_dock_widget::variable_dock_widget (QWidget *p)
+   if (first != nullptr)
+     index = h_layout->indexOf (first);
+   h_layout->insertWidget (index, fullscreen_button);
++#endif
+ 
+   // Custom title bars cause loss of decorations, add a frame
+   m_frame = new QFrame (this);
+@@ -143,6 +145,7 @@ variable_dock_widget::variable_dock_widget (QWidget *p)
+ void
+ variable_dock_widget::change_floating (bool)
+ {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+   if (isFloating ())
+     {
+       if (m_full_screen)
+@@ -156,6 +159,7 @@ variable_dock_widget::change_floating (bool)
+     }
+   else
+     m_fullscreen_action->setToolTip (tr (UNDOCKED_FULLSCREEN_BUTTON_TOOLTIP));
++#endif
+ 
+   setFloating (! isFloating ());
+ }
+@@ -207,6 +211,7 @@ variable_dock_widget::toplevel_change (bool toplevel)
+ void
+ variable_dock_widget::change_fullscreen ()
+ {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+   gui_settings settings;
+ 
+   if (! m_full_screen)
+@@ -246,6 +251,7 @@ variable_dock_widget::change_fullscreen ()
+     }
+ #undef DOCKED_FULLSCREEN_BUTTON_TOOLTIP
+ #undef UNDOCKED_FULLSCREEN_BUTTON_TOOLTIP
++#endif
+ }
+ 
+ void
+@@ -550,7 +556,11 @@ variable_editor_view::variable_editor_view (QWidget *p)
+   setHorizontalScrollMode (QAbstractItemView::ScrollPerPixel);
+   setVerticalScrollMode (QAbstractItemView::ScrollPerPixel);
+ 
++#if defined (HAVE_QT4)
++  verticalHeader ()->setResizeMode (QHeaderView::Interactive);
++#else
+   verticalHeader ()->setSectionResizeMode (QHeaderView::Interactive);
++#endif
+ }
+ 
+ void
+@@ -558,7 +568,11 @@ variable_editor_view::setModel (QAbstractItemModel *model)
+ {
+   QTableView::setModel (model);
+ 
++#if defined (HAVE_QT4)
++  horizontalHeader ()->setResizeMode (QHeaderView::Interactive);
++#else
+   horizontalHeader ()->setSectionResizeMode (QHeaderView::Interactive);
++#endif
+ 
+   m_var_model = parent ()->findChild<variable_editor_model *> ();
+ 
+@@ -1783,7 +1797,9 @@ variable_editor::construct_tool_bar ()
+   // that restores active window and focus before acting.
+   QList<HoverToolButton *> hbuttonlist
+     = m_tool_bar->findChildren<HoverToolButton *> (""
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+                                                    , Qt::FindDirectChildrenOnly
++#endif
+                                                   );
+   for (int i = 0; i < hbuttonlist.size (); i++)
+     {
+@@ -1795,7 +1811,9 @@ variable_editor::construct_tool_bar ()
+ 
+   QList<ReturnFocusToolButton *> rfbuttonlist
+     = m_tool_bar->findChildren<ReturnFocusToolButton *> (""
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+                                                          , Qt::FindDirectChildrenOnly
++#endif
+                                                         );
+   for (int i = 0; i < rfbuttonlist.size (); i++)
+     {
+diff --git libgui/src/variable-editor.h libgui/src/variable-editor.h
+index 5e863002df..ce153ea331 100644
+--- libgui/src/variable-editor.h
++++ libgui/src/variable-editor.h
+@@ -89,6 +89,7 @@ protected:
+ 
+   QFrame *m_frame;
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+   QAction *m_fullscreen_action;
+ 
+   bool m_full_screen;
+@@ -96,6 +97,7 @@ protected:
+   bool m_prev_floating;
+ 
+   QRect m_prev_geom;
++#endif
+ 
+ // See Octave bug #53807 and https://bugreports.qt.io/browse/QTBUG-44813
+ #define QTBUG_44813_FIX_VERSION 0x999999
+diff --git libgui/src/workspace-view.cc libgui/src/workspace-view.cc
+index f42dac2f88..2ea9a3875a 100644
+--- libgui/src/workspace-view.cc
++++ libgui/src/workspace-view.cc
+@@ -111,8 +111,13 @@ workspace_view::workspace_view (QWidget *p)
+   m_view->setSortingEnabled (true);
+ 
+   // Set header properties for sorting
++#if defined (HAVE_QT4)
++  m_view->horizontalHeader ()->setClickable (true);
++  m_view->horizontalHeader ()->setMovable (true);
++#else
+   m_view->horizontalHeader ()->setSectionsClickable (true);
+   m_view->horizontalHeader ()->setSectionsMovable (true);
++#endif
+   m_view->horizontalHeader ()->setSortIndicator
+     (settings.int_value (ws_sort_column),
+      static_cast<Qt::SortOrder> (settings.uint_value (ws_sort_order)));
+
+diff --git m4/acinclude.m4 m4/acinclude.m4
+index 740a1faa40..20d5854cbb 100644
+--- m4/acinclude.m4
++++ m4/acinclude.m4
+@@ -1761,6 +1761,9 @@ AC_DEFUN([OCTAVE_CHECK_QSCINTILLA], [
+ 
+   ## Check for Qt libraries
+   case "$qt_version" in
++    4)
++      octave_qscintilla_libnames="qscintilla2-qt4 qscintilla2_qt4 qt4scintilla2 qscintilla2"
++    ;;
+     5)
+       octave_qscintilla_libnames="qscintilla2-qt5 qscintilla2_qt5 qt5scintilla2"
+     ;;
+@@ -1888,6 +1891,9 @@ AC_DEFUN([OCTAVE_CHECK_QT], [
+ 
+   if test $build_qt_gui = yes; then
+     BUILD_QT_SUMMARY_MSG="yes (version: $have_qt_version)"
++    if test x"$have_qt_version" = x4; then
++      AC_DEFINE(HAVE_QT4, 1, [Define to 1 if using Qt version 4.])
++    fi
+     if test x"$have_qt_version" = x5; then
+       AC_DEFINE(HAVE_QT5, 1, [Define to 1 if using Qt version 5.])
+     fi
+@@ -2046,6 +2052,9 @@ AC_DEFUN([OCTAVE_CHECK_QT_VERSION], [AC_MSG_CHECKING([Qt version $1])
+   if test $build_qt_gui = yes; then
+     ## Check for Qt libraries
+     case "$qt_version" in
++      4)
++        QT_MODULES="QtCore QtGui QtNetwork QtOpenGL QtHelp QtXml"
++      ;;
+       5)
+         QT_MODULES="Qt5Core Qt5Gui Qt5Help Qt5Network Qt5OpenGL Qt5PrintSupport Qt5Widgets Qt5Xml"
+       ;;
+@@ -2118,6 +2127,13 @@ AC_DEFUN([OCTAVE_CHECK_QT_VERSION], [AC_MSG_CHECKING([Qt version $1])
+           fi
+         ;;
+       esac
++    if test $qt_version = 4; then
++      ## Check for Qt4
++      if ! `$PKG_CONFIG --atleast-version=4.0.0 QtCore`; then
++        build_qt_gui=no
++        warn_qt_version="Qt >= 4.0.0 not found; disabling Qt GUI"
++      fi
++    fi
+     fi
+   fi
+ 
+--- configure	2024-03-13 02:00:23.000000000 +0800
++++ configure	2024-06-02 09:10:39.000000000 +0800
+@@ -96521,9 +96521,9 @@
+ if test -z ${QT_VERSIONS+x}; then
+   ## If QT_VERSIONS is unset, choose default depending on compiler support.
+   if test $HAVE_CXX17 = 0; then
+-        QT_VERSIONS="5"
++        QT_VERSIONS="4"
+   else
+-    QT_VERSIONS="6 5"
++    QT_VERSIONS="6 5 4"
+   fi
+ fi
+ 
+@@ -96575,6 +96575,9 @@
+   if test $build_qt_gui = yes; then
+     ## Check for Qt libraries
+     case "$qt_version" in
++      4)
++        QT_MODULES="QtCore QtGui QtNetwork QtOpenGL QtHelp QtXml"
++      ;;
+       5)
+         QT_MODULES="Qt5Core Qt5Gui Qt5Help Qt5Network Qt5OpenGL Qt5PrintSupport Qt5Xml"
+       ;;
+@@ -100693,6 +100696,9 @@
+ 
+   ## Check for Qt libraries
+   case "$qt_version" in
++    4)
++      octave_qscintilla_libnames="qscintilla2-qt4 qscintilla2_qt4 qt4scintilla2 qscintilla2"
++    ;;
+     5)
+       octave_qscintilla_libnames="qscintilla2-qt5 qscintilla2_qt5 qt5scintilla2"
+     ;;
+@@ -100927,6 +100933,11 @@
+ 
+   if test $build_qt_gui = yes; then
+     BUILD_QT_SUMMARY_MSG="yes (version: $have_qt_version)"
++    if test x"$have_qt_version" = x4; then
++
++printf "%s\n" "#define HAVE_QT4 1" >>confdefs.h
++
++    fi
+     if test x"$have_qt_version" = x5; then
+ 
+ printf "%s\n" "#define HAVE_QT5 1" >>confdefs.h
+
+--- src/octave-svgconvert.cc
++++ src/octave-svgconvert.cc	2024-06-02 10:40:40.000000000 +0800
+@@ -64,9 +64,7 @@
+     m_printer.setFontEmbeddingEnabled (true);
+     m_printer.setOutputFileName (fname);
+     m_printer.setFullPage (true);
+-    m_printer.setPageSize (QPageSize (sz.size (), QPageSize::Point,
+-                                      QString ("custom"),
+-                                      QPageSize::ExactMatch));
++    m_printer.setPageSize (sz.size (), QPrinter::Point);
+ 
+     // Painter settings
+     begin (&m_printer);

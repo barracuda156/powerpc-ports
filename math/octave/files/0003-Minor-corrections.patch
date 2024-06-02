@@ -1,0 +1,92 @@
+From b42341a996b338a44c3d8fabb31c827bc441a634 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sun, 2 Jun 2024 01:06:20 +0800
+Subject: [PATCH 3/3] Minor corrections
+
+---
+ libgui/src/gui-settings.cc         |  4 +++-
+ libgui/src/m-editor/file-editor.cc |  2 --
+ libgui/src/tab-bar.cc              |  6 ------
+ m4/acinclude.m4                    | 16 ++++++++++++++++
+ 4 files changed, 19 insertions(+), 9 deletions(-)
+
+diff --git libgui/src/gui-settings.cc libgui/src/gui-settings.cc
+index 7cce973890..be599670c8 100644
+--- libgui/src/gui-settings.cc
++++ libgui/src/gui-settings.cc
+@@ -344,7 +344,9 @@ gui_settings::get_default_font_family ()
+     {
+       // Get the system's default monospaced font
+ #if defined (HAVE_QT4)
+-      default_family = global_font_family;
++      QFont fixed_font;
++      fixed_font.setStyleHint (QFont::Monospace);
++      QString default_family = fixed_font.defaultFamily ();
+ #else
+       QFont fixed_font = QFontDatabase::systemFont (QFontDatabase::FixedFont);
+       default_family = fixed_font.defaultFamily ();
+diff --git libgui/src/m-editor/file-editor.cc libgui/src/m-editor/file-editor.cc
+index c807c544b6..f0703e74c3 100644
+--- libgui/src/m-editor/file-editor.cc
++++ libgui/src/m-editor/file-editor.cc
+@@ -78,9 +78,7 @@ file_editor_tab_widget::file_editor_tab_widget (QWidget *p, file_editor *fe)
+ 
+   setTabsClosable (true);
+   setUsesScrollButtons (true);
+-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+   setMovable (true);
+-#endif
+ }
+ 
+ tab_bar *
+diff --git m4/acinclude.m4 m4/acinclude.m4
+index 740a1faa40..20d5854cbb 100644
+--- m4/acinclude.m4
++++ m4/acinclude.m4
+@@ -1761,6 +1761,9 @@ AC_DEFUN([OCTAVE_CHECK_QSCINTILLA], [
+ 
+   ## Check for Qt libraries
+   case "$qt_version" in
++    4)
++      octave_qscintilla_libnames="qscintilla2-qt4 qscintilla2_qt4 qt4scintilla2 qscintilla2"
++    ;;
+     5)
+       octave_qscintilla_libnames="qscintilla2-qt5 qscintilla2_qt5 qt5scintilla2"
+     ;;
+@@ -1888,6 +1891,9 @@ AC_DEFUN([OCTAVE_CHECK_QT], [
+ 
+   if test $build_qt_gui = yes; then
+     BUILD_QT_SUMMARY_MSG="yes (version: $have_qt_version)"
++    if test x"$have_qt_version" = x4; then
++      AC_DEFINE(HAVE_QT4, 1, [Define to 1 if using Qt version 4.])
++    fi
+     if test x"$have_qt_version" = x5; then
+       AC_DEFINE(HAVE_QT5, 1, [Define to 1 if using Qt version 5.])
+     fi
+@@ -2046,6 +2052,9 @@ AC_DEFUN([OCTAVE_CHECK_QT_VERSION], [AC_MSG_CHECKING([Qt version $1])
+   if test $build_qt_gui = yes; then
+     ## Check for Qt libraries
+     case "$qt_version" in
++      4)
++        QT_MODULES="QtCore QtGui QtNetwork QtOpenGL QtHelp QtXml"
++      ;;
+       5)
+         QT_MODULES="Qt5Core Qt5Gui Qt5Help Qt5Network Qt5OpenGL Qt5PrintSupport Qt5Widgets Qt5Xml"
+       ;;
+@@ -2118,6 +2127,13 @@ AC_DEFUN([OCTAVE_CHECK_QT_VERSION], [AC_MSG_CHECKING([Qt version $1])
+           fi
+         ;;
+       esac
++    if test $qt_version = 4; then
++      ## Check for Qt4
++      if ! `$PKG_CONFIG --atleast-version=4.0.0 QtCore`; then
++        build_qt_gui=no
++        warn_qt_version="Qt >= 4.0.0 not found; disabling Qt GUI"
++      fi
++    fi
+     fi
+   fi
+ 
+-- 
+2.45.1
+

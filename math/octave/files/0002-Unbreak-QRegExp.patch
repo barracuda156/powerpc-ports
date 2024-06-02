@@ -1,0 +1,1194 @@
+From 7f17b1ccd995154447430ada232473005902b897 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sat, 1 Jun 2024 20:07:28 +0800
+Subject: [PATCH] Unbreak QRegExp
+
+diff --git libgui/qterminal/libqterminal/QTerminal.cc libgui/qterminal/libqterminal/QTerminal.cc
+index 681d22ae49..f03ec357d9 100644
+--- libgui/qterminal/libqterminal/QTerminal.cc
++++ libgui/qterminal/libqterminal/QTerminal.cc
+@@ -25,16 +25,15 @@
+ #  include "config.h"
+ #endif
+ 
+-#include <QAction>
+-#include <QApplication>
+-#include <QClipboard>
+-#include <QColor>
+ #include <QKeySequence>
++#include <QWidget>
++#include <QStringList>
++#include <QColor>
+ #include <QList>
+ #include <QMenu>
+-#include <QRegularExpression>
+-#include <QStringList>
+-#include <QWidget>
++#include <QClipboard>
++#include <QApplication>
++#include <QAction>
+ 
+ #include "gui-preferences-global.h"
+ #include "gui-preferences-cs.h"
+@@ -86,13 +85,14 @@
+     // detecting links and error messages yet
+     if (has_selected_text)
+       {
+-        QRegularExpression file {"(?:[ \\t]+)(\\S+) at line (\\d+) column (?:\\d+)"};
+-        QRegularExpressionMatch match = file.match (selected_text);
++        QRegExp file ("(?:[ \\t]+)(\\S+) at line (\\d+) column (?:\\d+)");
++
++        int pos = file.indexIn (selected_text);
+ 
+-        if (match.hasMatch ())
++        if (pos > -1)
+           {
+-            QString file_name = match.captured (1);
+-            QString line = match.captured (2);
++            QString file_name = file.cap (1);
++            QString line = file.cap (2);
+ 
+             _edit_action->setVisible (true);
+             _edit_action->setText (tr ("Edit %1 at line %2")
+@@ -107,12 +107,12 @@
+ 
+     if (has_selected_text)
+       {
+-        QRegularExpression expr {".*\b*(\\w+)\b*.*"};
+-        QRegularExpressionMatch match = expr.match (selected_text);
++        QRegExp expr (".*\b*(\\w+)\b*.*");
+ 
+-        if (match.hasMatch ())
++        int pos = expr.indexIn (selected_text);
++        if (pos > -1)
+           {
+-            QString expr_found = match.captured (1);
++            QString expr_found = expr.cap (1);
+ 
+             m_edit_selected_action->setVisible (true);
+             m_edit_selected_action->setText (tr ("Edit %1").arg (expr_found));
+@@ -152,7 +152,7 @@
+ void
+ QTerminal::run_selection ()
+ {
+-  QStringList commands = selectedText ().split (QRegularExpression {"[\r\n]"},
++  QStringList commands = selectedText ().split (QRegExp ("[\r\n]"),
+ #if defined (HAVE_QT_SPLITBEHAVIOR_ENUM)
+                                                 Qt::SkipEmptyParts);
+ #else
+diff --git libgui/qterminal/libqterminal/unix/Emulation.cpp libgui/qterminal/libqterminal/unix/Emulation.cpp
+index 603411d68a..85d943ea26 100644
+--- libgui/qterminal/libqterminal/unix/Emulation.cpp
++++ libgui/qterminal/libqterminal/unix/Emulation.cpp
+@@ -36,6 +36,7 @@
+ #include <QApplication>
+ #include <QClipboard>
+ #include <QHash>
++#include <QRegExp>
+ #include <QKeyEvent>
+ #include <QTextStream>
+ #include <QThread>
+diff --git libgui/qterminal/libqterminal/unix/Filter.cpp libgui/qterminal/libqterminal/unix/Filter.cpp
+index cb7241d707..c79f5eac3f 100644
+--- libgui/qterminal/libqterminal/unix/Filter.cpp
++++ libgui/qterminal/libqterminal/unix/Filter.cpp
+@@ -349,11 +349,11 @@ QStringList RegExpFilter::HotSpot::capturedTexts() const
+     return _capturedTexts;
+ }
+ 
+-void RegExpFilter::setRegExp (const QRegularExpression& regExp)
++void RegExpFilter::setRegExp(const QRegExp& regExp)
+ {
+     _searchText = regExp;
+ }
+-QRegularExpression RegExpFilter::regExp () const
++QRegExp RegExpFilter::regExp() const
+ {
+     return _searchText;
+ }
+@@ -371,35 +371,36 @@ void RegExpFilter::process ()
+     // ignore any regular expressions which match an empty string.
+     // otherwise the while loop below will run indefinitely
+     static const QString emptyString("");
+-    QRegularExpressionMatch match = _searchText.match (emptyString);
+-    if ( match.hasMatch () )
++    if ( _searchText.exactMatch(emptyString) )
+         return;
+ 
+-    match = _searchText.match (*text, pos);
+-    while (match.hasMatch ())
++    while(pos >= 0)
+     {
+-        pos = match.capturedStart ();
+-        int startLine = 0;
+-        int endLine = 0;
+-        int startColumn = 0;
+-        int endColumn = 0;
++        pos = _searchText.indexIn(*text,pos);
+ 
+-        //kDebug() << "pos from " << pos << " to " << pos + _searchText.matchedLength();
++        if ( pos >= 0 )
++        {
++
++            int startLine = 0;
++            int endLine = 0;
++            int startColumn = 0;
++            int endColumn = 0;
+ 
+-        getLineColumn (match.capturedStart (), startLine, startColumn);
+-        getLineColumn (match.capturedEnd (), endLine, endColumn);
++        //kDebug() << "pos from " << pos << " to " << pos + _searchText.matchedLength();
+ 
+-        RegExpFilter::HotSpot* spot = newHotSpot(startLine,startColumn,
+-                                       endLine,endColumn,_type);
+-        spot->setCapturedTexts (match.capturedTexts ());
++            getLineColumn(pos,startLine,startColumn);
++            getLineColumn(pos + _searchText.matchedLength(),endLine,endColumn);
+ 
+-        addHotSpot( spot );
+-        pos += match.capturedLength ();
++            RegExpFilter::HotSpot* spot = newHotSpot(startLine,startColumn,
++                                           endLine,endColumn,_type);
++            spot->setCapturedTexts(_searchText.capturedTexts());
+ 
+-        // if matchedLength == 0, the program will get stuck in an infinite loop
+-        Q_ASSERT( match.capturedLength () > 0 );
++            addHotSpot( spot );
++            pos += _searchText.matchedLength();
+ 
+-        match = _searchText.match (*text, pos);
++            // if matchedLength == 0, the program will get stuck in an infinite loop
++            Q_ASSERT( _searchText.matchedLength() > 0 );
++        }
+     }
+ }
+ 
+@@ -427,40 +428,42 @@ void UrlFilter::process ()
+     // ignore any regular expressions which match an empty string.
+     // otherwise the while loop below will run indefinitely
+     static const QString emptyString("");
+-    QRegularExpressionMatch match = _searchText.match (emptyString);
+-    if ( match.hasMatch () )
++    if ( _searchText.exactMatch(emptyString) )
+         return;
+ 
+-    match = _searchText.match (*text, pos);
+-    while (match.hasMatch ())
++    while(pos >= 0)
+     {
+-        int startLine = 0;
+-        int endLine = 0;
+-        int startColumn = 0;
+-        int endColumn = 0;
++        pos = _searchText.indexIn(*text,pos);
+ 
+-        //kDebug() << "pos from " << pos << " to " << pos + _searchText.matchedLength();
++        if ( pos >= 0 )
++        {
++
++            int startLine = 0;
++            int endLine = 0;
++            int startColumn = 0;
++            int endColumn = 0;
+ 
+-        getLineColumn (match.capturedStart (), startLine, startColumn);
+-        getLineColumn (match.capturedEnd (), endLine, endColumn);
++        //kDebug() << "pos from " << pos << " to " << pos + _searchText.matchedLength();
+ 
+-        UrlFilter::HotSpot* spot = newHotSpot(startLine,startColumn,
+-                                              endLine,endColumn,_type);
+-        spot->setCapturedTexts(match.capturedTexts ());
++            getLineColumn(pos,startLine,startColumn);
++            getLineColumn(pos + _searchText.matchedLength(),endLine,endColumn);
+ 
+-        // Connect the signal of the urlobject to the slot of the filter;
+-        // the filter is then signaling to the main window
+-        connect (spot->get_urlObject (),
+-                 SIGNAL (request_open_file_signal (const QString&, int)),
+-                 this, SLOT (request_open_file (const QString&, int)));
++            UrlFilter::HotSpot* spot = newHotSpot(startLine,startColumn,
++                                           endLine,endColumn,_type);
++            spot->setCapturedTexts(_searchText.capturedTexts());
+ 
+-        addHotSpot( spot );
+-        pos += match.capturedLength();
++            // Connect the signal of the urlobject to the slot of the filter;
++            // the filter is then signaling to the main window
++            connect (spot->get_urlObject (),
++                     SIGNAL (request_open_file_signal (const QString&, int)),
++                     this, SLOT (request_open_file (const QString&, int)));
+ 
+-        // if matchedLength == 0, the program will get stuck in an infinite loop
+-        Q_ASSERT( match.capturedLength () > 0 );
++            addHotSpot( spot );
++            pos += _searchText.matchedLength();
+ 
+-        match = _searchText.match (*text, pos);
++            // if matchedLength == 0, the program will get stuck in an infinite loop
++            Q_ASSERT( _searchText.matchedLength() > 0 );
++        }
+     }
+ }
+ 
+@@ -488,20 +491,16 @@ UrlFilter::HotSpot::UrlType UrlFilter::HotSpot::urlType () const
+ {
+     QString url = capturedTexts().first();
+ 
+-    QRegularExpressionMatch match = FullUrlRegExp.match (url);
+-    if ( match.hasMatch () )
++    if ( FullUrlRegExp.exactMatch(url) )
+         return StandardUrl;
+-    match = EmailAddressRegExp.match (url);
+-    if ( match.hasMatch () )
++    else if ( EmailAddressRegExp.exactMatch(url) )
+         return Email;
+-    match = ErrorLinkRegExp.match (url);
+-    if ( match.hasMatch () )
++    else if ( ErrorLinkRegExp.exactMatch(url) )
+         return ErrorLink;
+-    match = ParseErrorLinkRegExp.match (url);
+-    if ( match.hasMatch () )
++    else if ( ParseErrorLinkRegExp.exactMatch(url) )
+         return ParseErrorLink;
+-
+-    return Unknown;
++    else
++        return Unknown;
+ }
+ 
+ void UrlFilter::HotSpot::activate (QObject* object)
+@@ -537,11 +536,11 @@ void UrlFilter::HotSpot::activate (QObject* object)
+           }
+         else if (kind == ErrorLink)
+           {
+-            QRegularExpressionMatch match = ErrorLinkRegExp.match (url);
+-            if (match.hasMatch ())
++            int pos = ErrorLinkRegExp.indexIn (url);
++            if (pos > -1)
+               {
+-                QString file_name = match.captured (1);
+-                QString line = match.captured (2);
++                QString file_name = ErrorLinkRegExp.cap (1);
++                QString line = ErrorLinkRegExp.cap (2);
+                 // call the urlobject's method for opening a file; this
+                 // method then signals to the filter
+                 _urlObject->request_open_file (file_name, line.toInt ());
+@@ -549,11 +548,11 @@ void UrlFilter::HotSpot::activate (QObject* object)
+           }
+         else if (kind == ParseErrorLink)
+           {
+-            QRegularExpressionMatch match = ParseErrorLinkRegExp.match (url);
+-            if (match.hasMatch ())
++            int pos = ParseErrorLinkRegExp.indexIn (url);
++            if (pos > -1)
+               {
+-                QString line = match.captured (1);
+-                QString file_name = match.captured (2);
++                QString line = ParseErrorLinkRegExp.cap (1);
++                QString file_name = ParseErrorLinkRegExp.cap (2);
+                 // call the urlobject's method for opening a file; this
+                 // method then signals to the filter
+                 _urlObject->request_open_file (file_name, line.toInt ());
+@@ -573,27 +572,21 @@ void UrlFilter::HotSpot::activate (QObject* object)
+ //regexp matches:
+ // full url:
+ // protocolname:// or www. followed by anything other than whitespaces, <, >, ' or ", and ends before whitespaces, <, >, ', ", ], !, comma and dot
+-const QRegularExpression
+-UrlFilter::FullUrlRegExp {"(www\\.(?!\\.)|[a-z][a-z0-9+.-]*://)[^\\s<>'\"]+[^!,\\.\\s<>'\"\\]]"};
++const QRegExp UrlFilter::FullUrlRegExp("(www\\.(?!\\.)|[a-z][a-z0-9+.-]*://)[^\\s<>'\"]+[^!,\\.\\s<>'\"\\]]");
+ // email address:
+ // [word chars, dots or dashes]@[word chars, dots or dashes].[word chars]
+-const QRegularExpression
+-UrlFilter::EmailAddressRegExp {"\\b(\\w|\\.|-)+@(\\w|\\.|-)+\\.\\w+\\b"};
++const QRegExp UrlFilter::EmailAddressRegExp("\\b(\\w|\\.|-)+@(\\w|\\.|-)+\\.\\w+\\b");
+ // matches full url or email address
+-const QRegularExpression
+-UrlFilter::CompleteUrlRegExp {'(' + FullUrlRegExp.pattern() + '|' +
+-                              EmailAddressRegExp.pattern() + ')'};
++const QRegExp UrlFilter::CompleteUrlRegExp('('+FullUrlRegExp.pattern()+'|'+
++                                            EmailAddressRegExp.pattern()+')');
+ // error link:
+ //   normal error
+-const QRegularExpression
+-UrlFilter::ErrorLinkRegExp {"(\\S+) at line (\\d+) column (?:\\d+)"};
++const QRegExp UrlFilter::ErrorLinkRegExp ("(\\S+) at line (\\d+) column (?:\\d+)");
+ //   parse error
+-const QRegularExpression
+-UrlFilter::ParseErrorLinkRegExp {"parse error near line (\\d+) of file (\\S+)"};
++const QRegExp UrlFilter::ParseErrorLinkRegExp ("parse error near line (\\d+) of file (\\S+)");
+ //   complete regexp
+-const QRegularExpression
+-UrlFilter::CompleteErrorLinkRegExp {'('+ErrorLinkRegExp.pattern ()+'|'+
+-                                    ParseErrorLinkRegExp.pattern ()+')'};
++const QRegExp UrlFilter::CompleteErrorLinkRegExp ('('+ErrorLinkRegExp.pattern ()+'|'+
++                                                     ParseErrorLinkRegExp.pattern ()+')');
+ 
+ 
+ UrlFilter::UrlFilter (Type t)
+@@ -638,11 +631,11 @@ QList<QAction*> UrlFilter::HotSpot::actions ()
+     else if ( kind == ErrorLink )
+     {
+       QString url = capturedTexts().first();
+-      QRegularExpressionMatch match = ErrorLinkRegExp.match (url);
+-      if (match.hasMatch ())
++      int pos = ErrorLinkRegExp.indexIn (url);
++      if (pos >= 0)
+         {
+-          QString file_name = match.captured (1);
+-          QString line = match.captured (2);
++          QString file_name = ErrorLinkRegExp.cap (1);
++          QString line = ErrorLinkRegExp.cap (2);
+           openAction->setText(tr ("Edit %1 at line %2")
+                               .arg (file_name).arg (line));
+         }
+@@ -650,11 +643,11 @@ QList<QAction*> UrlFilter::HotSpot::actions ()
+     else if ( kind == ParseErrorLink )
+     {
+       QString url = capturedTexts().first();
+-      QRegularExpressionMatch match = ParseErrorLinkRegExp.match (url);
+-      if (match.hasMatch ())
++      int pos = ParseErrorLinkRegExp.indexIn (url);
++      if (pos >= 0)
+         {
+-          QString line = match.captured (1);
+-          QString file_name = match.captured (2);
++          QString line = ParseErrorLinkRegExp.cap (1);
++          QString file_name = ParseErrorLinkRegExp.cap (2);
+           openAction->setText(tr ("Edit %1 at line %2")
+                               .arg (file_name).arg (line));
+         }
+diff --git libgui/qterminal/libqterminal/unix/Filter.h libgui/qterminal/libqterminal/unix/Filter.h
+index d7f147b6c3..e9db4f6207 100644
+--- libgui/qterminal/libqterminal/unix/Filter.h
++++ libgui/qterminal/libqterminal/unix/Filter.h
+@@ -28,7 +28,7 @@
+ #include <QHash>
+ #include <QList>
+ #include <QObject>
+-#include <QRegularExpression>
++#include <QRegExp>
+ #include <QStringList>
+ 
+ // Local
+@@ -230,9 +230,9 @@ public:
+      * Regular expressions which match the empty string are treated as not matching
+      * anything.
+      */
+-    void setRegExp(const QRegularExpression& text);
++    void setRegExp(const QRegExp& text);
+     /** Returns the regular expression which the filter searches for in blocks of text */
+-    QRegularExpression regExp() const;
++    QRegExp regExp() const;
+ 
+     /**
+      * Reimplemented to search the filter's text buffer for text matching regExp()
+@@ -256,7 +256,7 @@ protected:
+                                     int endLine,int endColumn, Type);
+     Type _type;
+ 
+-    QRegularExpression _searchText;
++    QRegExp _searchText;
+ };
+ 
+ class FilterObject;
+@@ -316,14 +316,14 @@ protected:
+ 
+ private:
+ 
+-    static const QRegularExpression FullUrlRegExp;
+-    static const QRegularExpression EmailAddressRegExp;
+-    static const QRegularExpression ErrorLinkRegExp;
+-    static const QRegularExpression ParseErrorLinkRegExp;
+-    static const QRegularExpression CompleteErrorLinkRegExp;
++    static const QRegExp FullUrlRegExp;
++    static const QRegExp EmailAddressRegExp;
++    static const QRegExp ErrorLinkRegExp;
++    static const QRegExp ParseErrorLinkRegExp;
++    static const QRegExp CompleteErrorLinkRegExp;
+ 
+     // combined OR of FullUrlRegExp and EmailAddressRegExp
+-    static const QRegularExpression CompleteUrlRegExp;
++    static const QRegExp CompleteUrlRegExp;
+ };
+ 
+ class FilterObject : public QObject
+diff --git libgui/qterminal/libqterminal/unix/KeyboardTranslator.cpp libgui/qterminal/libqterminal/unix/KeyboardTranslator.cpp
+index 339345a893..1c0bcc400b 100644
+--- libgui/qterminal/libqterminal/unix/KeyboardTranslator.cpp
++++ libgui/qterminal/libqterminal/unix/KeyboardTranslator.cpp
+@@ -35,7 +35,6 @@
+ #include <QBuffer>
+ #include <QFile>
+ #include <QFileInfo>
+-#include <QRegularExpression>
+ 
+ // FIXME: We should not have a special case for Mac here.  Instead, we
+ // should be loading .keytab files at run time, and ideally, allowing
+@@ -521,46 +520,44 @@ KeyboardTranslatorReader::tokenize (const QString& line)
+     QString text = line.simplified();
+ 
+     // comment line: # comment
+-    static QRegularExpression comment {"\\#.*"};
++    static QRegExp comment("\\#.*");
+     // title line: keyboard "title"
+-    static QRegularExpression title {"keyboard\\s+\"(.*)\""};
++    static QRegExp title("keyboard\\s+\"(.*)\"");
+     // key line: key KeySequence : "output"
+     // key line: key KeySequence : command
+-    static QRegularExpression key {"key\\s+([\\w\\+\\s\\-]+)\\s*:\\s*(\"(.*)\"|\\w+)"};
++    static QRegExp key("key\\s+([\\w\\+\\s\\-]+)\\s*:\\s*(\"(.*)\"|\\w+)");
+ 
+     QList<Token> list;
+ 
+-    if ( text.isEmpty() || comment.match (text).hasMatch () )
++    if ( text.isEmpty() || comment.exactMatch(text) )
+     {
+         return list;
+     }
+ 
+-    QRegularExpressionMatch match;
+-    if ((match = title.match (text)).hasMatch ())
++    if ( title.exactMatch(text) )
+     {
+         Token titleToken = { Token::TitleKeyword , QString() };
+-        Token textToken = { Token::TitleText , match.captured (1) };
++        Token textToken = { Token::TitleText , title.capturedTexts()[1] };
+ 
+         list << titleToken << textToken;
+     }
+-    else if  ((match = key.match (text)).hasMatch ())
++    else if  ( key.exactMatch(text) )
+     {
+         Token keyToken = { Token::KeyKeyword , QString() };
+-        Token sequenceToken = { Token::KeySequence,
+-                                match.captured (1).remove (' ') };
++        Token sequenceToken = { Token::KeySequence , key.capturedTexts()[1].remove(' ') };
+ 
+         list << keyToken << sequenceToken;
+ 
+-        if ( match.captured (3).isEmpty () )
++        if ( key.capturedTexts()[3].isEmpty() )
+         {
+             // capturedTexts()[2] is a command
+-            Token commandToken = { Token::Command , match.captured (2) };
++            Token commandToken = { Token::Command , key.capturedTexts()[2] };
+             list << commandToken;
+         }
+         else
+         {
+             // capturedTexts()[3] is the output string
+-            Token outputToken = { Token::OutputText , match.captured (3) };
++            Token outputToken = { Token::OutputText , key.capturedTexts()[3] };
+             list << outputToken;
+         }
+     }
+diff --git libgui/qterminal/libqterminal/unix/TerminalModel.cpp libgui/qterminal/libqterminal/unix/TerminalModel.cpp
+index 6d35b898cc..41cc44e80b 100644
+--- libgui/qterminal/libqterminal/unix/TerminalModel.cpp
++++ libgui/qterminal/libqterminal/unix/TerminalModel.cpp
+@@ -36,6 +36,7 @@
+ #include <QApplication>
+ #include <QDir>
+ #include <QFile>
++#include <QRegExp>
+ #include <QStringList>
+ 
+ #include "unix/TerminalView.h"
+diff --git libgui/src/dialog.cc libgui/src/dialog.cc
+index 25c3c139f3..217189d567 100644
+--- libgui/src/dialog.cc
++++ libgui/src/dialog.cc
+@@ -39,7 +39,6 @@
+ #include <QLabel>
+ #include <QMessageBox>
+ #include <QPushButton>
+-#include <QRegularExpression>
+ #include <QVBoxLayout>
+ 
+ #include "dialog.h"
+@@ -69,7 +68,7 @@ QString
+ QUIWidgetCreator::rm_amp (const QString& text)
+ {
+   QString text_wo_amp = text;
+-  text_wo_amp.replace (QRegularExpression {"&(\\w)"}, "\\1");
++  text_wo_amp.replace (QRegExp ("&(\\w)"), "\\1");
+   return text_wo_amp;
+ }
+ 
+diff --git libgui/src/documentation.cc libgui/src/documentation.cc
+index bc71675b6a..7dc0e7c949 100644
+--- libgui/src/documentation.cc
++++ libgui/src/documentation.cc
+@@ -47,7 +47,6 @@
+ #include <QLabel>
+ #include <QLineEdit>
+ #include <QMessageBox>
+-#include <QRegularExpression>
+ #include <QTabWidget>
+ #include <QTimer>
+ #include <QWheelEvent>
+@@ -465,10 +464,9 @@ documentation::global_search ()
+     return;
+ 
+   // Get quoted search strings first, then take first string as fall back
+-  QRegularExpression rx {"\"([^\"]*)\""};
+-  QRegularExpressionMatch match = rx.match (query_string);
+-  if (match.hasMatch ())
+-    m_internal_search = match.captured (1);
++  QRegExp rx ("\"([^\"]*)\"");
++  if (rx.indexIn (query_string, 0) != -1)
++    m_internal_search = rx.cap (1);
+   else
+ #if defined (HAVE_QT_SPLITBEHAVIOR_ENUM)
+     m_internal_search = query_string.split (" ", Qt::SkipEmptyParts).first ();
+@@ -963,7 +961,7 @@ documentation::title_and_anchor (const QString& title, const QUrl& url)
+   QString retval = title;
+   QString u = url.toString ();
+ 
+-  retval.remove (QRegularExpression {"\\s*\\(*GNU Octave \\(version [^\\)]*\\)[: \\)]*"});
++  retval.remove (QRegExp ("\\s*\\(*GNU Octave \\(version [^\\)]*\\)[: \\)]*"));
+ 
+   // Since the title only contains the section name and not the
+   // specific anchor, extract the latter from the url and append
+@@ -973,22 +971,19 @@ documentation::title_and_anchor (const QString& title, const QUrl& url)
+       // Get the anchor from the url
+       QString anchor = u.split ('#').last ();
+       // Remove internal string parts
+-      anchor.remove (QRegularExpression {"^index-"});
+-      anchor.remove (QRegularExpression {"^SEC_"});
+-      anchor.remove (QRegularExpression {"^XREF"});
++      anchor.remove (QRegExp ("^index-"));
++      anchor.remove (QRegExp ("^SEC_"));
++      anchor.remove (QRegExp ("^XREF"));
+       anchor.remove ("Concept-Index_cp_letter-");
+       anchor.replace ("-", " ");
+ 
+       // replace encoded special chars by their unencoded versions
+-      QRegularExpression rx {"_00([0-7][0-9a-f])"};
+-      QRegularExpressionMatch match = rx.match (anchor, 0);
++      QRegExp rx = QRegExp ("_00([0-7][0-9a-f])");
+       int pos = 0;
+-      while (match.hasMatch ())
++      while ((pos = rx.indexIn(anchor, pos)) != -1)
+         {
+-          anchor.replace ("_00" + match.captured (1),
+-                          QChar (match.captured (1).toInt (nullptr, 16)));
+-          pos += match.capturedLength ();
+-          match = rx.match (anchor, pos);
++          anchor.replace ("_00"+rx.cap (1), QChar (rx.cap (1).toInt (nullptr, 16)));
++          pos += rx.matchedLength();
+         }
+ 
+       if (retval != anchor)
+diff --git libgui/src/external-editor-interface.cc libgui/src/external-editor-interface.cc
+index 8a65729570..85f92e246c 100644
+--- libgui/src/external-editor-interface.cc
++++ libgui/src/external-editor-interface.cc
+@@ -29,7 +29,6 @@
+ 
+ #include <QMessageBox>
+ #include <QProcess>
+-#include <QRegularExpression>
+ 
+ #include "external-editor-interface.h"
+ #include "gui-settings.h"
+@@ -56,7 +55,7 @@ external_editor_interface::call_custom_editor (const QString& file, int line)
+   editor.replace ("%f", file);
+   editor.replace ("%l", QString::number (line));
+ 
+-  QStringList arguments = editor.split (QRegularExpression {"\\s+"});
++  QStringList arguments = editor.split (QRegExp("\\s+"));
+   editor = arguments.takeFirst ();
+ 
+   // start the process and check for success
+diff --git libgui/src/m-editor/file-editor-tab.cc libgui/src/m-editor/file-editor-tab.cc
+index e3aa9929dc..dfb6619338 100644
+--- libgui/src/m-editor/file-editor-tab.cc
++++ libgui/src/m-editor/file-editor-tab.cc
+@@ -44,10 +44,8 @@
+ #include <QMessageBox>
+ #include <QPrintDialog>
+ #include <QPushButton>
+-#include <QRegularExpression>
+ #include <QScrollBar>
+ #include <QSaveFile>
+-#include <QStandardPaths>
+ #include <QStyle>
+ #include <QTextBlock>
+ #include <QTextStream>
+@@ -329,42 +327,38 @@
+ 
+ void file_editor_tab::handle_context_menu_edit (const QString& word_at_cursor)
+ {
+-  // Search for a function with that name in the current file
+-  // This is done first because local functions and subfunctions have priority
+-  // over other functions with the same name in the load path.
+-  QRegularExpression rxfun1 {"^[\t ]*function[^=]+=[\t ]*"
+-                             + word_at_cursor + "[\t ]*\\([^\\)]*\\)[\t ]*$"};
+-  QRegularExpression rxfun2 {"^[\t ]*function[\t ]+"
+-                             + word_at_cursor + "[\t ]*\\([^\\)]*\\)[\t ]*$"};
+-  QRegularExpression rxfun3 {"^[\t ]*function[\t ]+"
+-                             + word_at_cursor + "[\t ]*$"};
+-  QRegularExpression rxfun4 {"^[\t ]*function[^=]+=[\t ]*"
+-                             + word_at_cursor + "[\t ]*$"};
++  // Search for a subfunction in actual file (this is done first because
++  // Octave finds this function before others with the same name in the
++  // search path.
++  QRegExp rxfun1 ("^[\t ]*function[^=]+=[\t ]*"
++                  + word_at_cursor + "[\t ]*\\([^\\)]*\\)[\t ]*$");
++  QRegExp rxfun2 ("^[\t ]*function[\t ]+"
++                  + word_at_cursor + "[\t ]*\\([^\\)]*\\)[\t ]*$");
++  QRegExp rxfun3 ("^[\t ]*function[\t ]+"
++                  + word_at_cursor + "[\t ]*$");
++  QRegExp rxfun4 ("^[\t ]*function[^=]+=[\t ]*"
++                  + word_at_cursor + "[\t ]*$");
+ 
+-  QRegularExpressionMatch match;
++  int pos_fct = -1;
+   QStringList lines = m_edit_area->text ().split ("\n");
+ 
+   int line;
+   for (line = 0; line < lines.count (); line++)
+     {
+-      match = rxfun1.match (lines.at (line));
+-      if (match.hasMatch ())
++      if ((pos_fct = rxfun1.indexIn (lines.at (line))) != -1)
+         break;
+-      match = rxfun2.match (lines.at (line));
+-      if (match.hasMatch ())
++      if ((pos_fct = rxfun2.indexIn (lines.at (line))) != -1)
+         break;
+-      match = rxfun3.match (lines.at (line));
+-      if (match.hasMatch ())
++      if ((pos_fct = rxfun3.indexIn (lines.at (line))) != -1)
+         break;
+-      match = rxfun4.match (lines.at (line));
+-      if (match.hasMatch ())
++      if ((pos_fct = rxfun4.indexIn (lines.at (line))) != -1)
+         break;
+     }
+ 
+-  if (match.hasMatch ())
++  if (pos_fct > -1)
+     {
+       // reg expr. found: it is an internal function
+-      m_edit_area->setCursorPosition (line, match.capturedStart ());
++      m_edit_area->setCursorPosition (line, pos_fct);
+       m_edit_area->SendScintilla (2232, line);     // SCI_ENSUREVISIBLE
+       // SCI_VISIBLEFROMDOCLINE
+       int vis_line = m_edit_area->SendScintilla (2220, line);
+@@ -897,7 +891,7 @@
+                   QString keyword = QString (lexer->keywords (i));
+ 
+                   QStringList keyword_list
+-                    = keyword.split (QRegularExpression {R"(\s+)"});
++                    = keyword.split (QRegExp (R"(\s+)"));
+ 
+                   for (int j = 0; j < keyword_list.size (); j++)
+                     m_lexer_apis->add (keyword_list.at (j));
+@@ -1565,7 +1559,7 @@
+ 
+ void file_editor_tab::do_comment_selected_text (bool comment, bool input_str)
+ {
+-  QRegularExpression rxc;
++  QRegExp rxc;
+   QString ws = "^(?:[ \\t]*)";
+   QStringList comment_str = m_edit_area->comment_string (comment);
+   QString used_comment_str = comment_str.at (0);
+@@ -1622,7 +1616,7 @@
+             regexp = regexp + QString ("|");
+           regexp = regexp + comment_str_sorted.at (i);
+         }
+-      rxc = QRegularExpression {ws + "(" + regexp + ")"};
++      rxc = QRegExp (ws + "(" + regexp + ")");
+     }
+ 
+   // Do the commenting/uncommenting
+@@ -1634,7 +1628,7 @@
+       int lineFrom, lineTo, colFrom, colTo;
+       int change_col_from = 1;
+       int change_col_to = 1;
+-      bool removed = false;
++      bool removed;
+ 
+       m_edit_area->getSelection (&lineFrom, &colFrom, &lineTo, &colTo);
+ 
+@@ -1650,13 +1644,11 @@
+           else
+             {
+               QString line (m_edit_area->text (i));
+-              QRegularExpressionMatch match = rxc.match (line);
+-
+-              if (match.hasMatch ())
++              if ((removed = line.contains (rxc)))
+                 {
+-                  len = match.capturedLength ();   // complete length
+-                  QString matched_text = match.captured (0);
+-                  lenc = matched_text.remove (QRegularExpression {ws}).length ();  // only comment string
++                  len = rxc.matchedLength ();   // complete length
++                  QString matched_text = rxc.capturedTexts ().at (0);
++                  lenc = matched_text.remove (QRegExp (ws)).length ();  // only comment string
+                   m_edit_area->setSelection (i, len-lenc, i, len);
+                   m_edit_area->removeSelectedText ();
+                 }
+@@ -1698,12 +1690,11 @@
+       else
+         {
+           QString line (m_edit_area->text (cpline));
+-          QRegularExpressionMatch match = rxc.match (line);
+-          if (match.hasMatch ())
++          if (line.contains (rxc))
+             {
+-              len = match.capturedLength ();  // complete length
+-              QString matched_text = match.captured (0);
+-              lenc = matched_text.remove (QRegularExpression {ws}).length ();  // only comment string
++              len = rxc.matchedLength ();   // complete length
++              QString matched_text = rxc.capturedTexts ().at (0);
++              lenc = matched_text.remove (QRegExp (ws)).length ();  // only comment string
+               m_edit_area->setSelection (cpline, len-lenc, cpline, len);
+               m_edit_area->removeSelectedText ();
+             }
+@@ -2600,14 +2591,13 @@
+ 
+   QFileDialog *file_dialog = qobject_cast<QFileDialog *> (sender ());
+ 
+-  // regexp for suffix in filter
+-  QRegularExpression rx {"\\*\\.([^ ^\\)]*)[ \\)]"};
+-  QRegularExpressionMatch match = rx.match (filter);
++  QRegExp rx ("\\*\\.([^ ^\\)]*)[ \\)]");   // regexp for suffix in filter
++  int index = rx.indexIn (filter, 0);       // get first suffix in filter
+ 
+-  if (match.hasMatch ())
+-    file_dialog->setDefaultSuffix (match.captured (1)); // found a suffix, set default
++  if (index > -1)
++    file_dialog->setDefaultSuffix (rx.cap (1)); // found a suffix, set default
+   else
+-    file_dialog->setDefaultSuffix ("");  // not found, clear default
++    file_dialog->setDefaultSuffix ("");         // not found, clear default
+ }
+ 
+ bool file_editor_tab::check_valid_identifier (QString file_name)
+@@ -3433,31 +3423,26 @@
+ 
+ QString file_editor_tab::get_function_name ()
+ {
+-  QRegularExpression rxfun1 {"^[\t ]*function[^=]+=([^\\(]+)\\([^\\)]*\\)[\t ]*$"};
+-  QRegularExpression rxfun2 {"^[\t ]*function[\t ]+([^\\(]+)\\([^\\)]*\\)[\t ]*$"};
+-  QRegularExpression rxfun3 {"^[\t ]*function[^=]+=[\t ]*([^\\s]+)[\t ]*$"};
+-  QRegularExpression rxfun4 {"^[\t ]*function[\t ]+([^\\s]+)[\t ]*$"};
+-  QRegularExpression rxfun5 {"^[\t ]*classdef[\t ]+([^\\s]+)[\t ]*$"};
++  QRegExp rxfun1 ("^[\t ]*function[^=]+=([^\\(]+)\\([^\\)]*\\)[\t ]*$");
++  QRegExp rxfun2 ("^[\t ]*function[\t ]+([^\\(]+)\\([^\\)]*\\)[\t ]*$");
++  QRegExp rxfun3 ("^[\t ]*function[^=]+=[\t ]*([^\\s]+)[\t ]*$");
++  QRegExp rxfun4 ("^[\t ]*function[\t ]+([^\\s]+)[\t ]*$");
++  QRegExp rxfun5 ("^[\t ]*classdef[\t ]+([^\\s]+)[\t ]*$");
+ 
+   QStringList lines = m_edit_area->text ().split ("\n");
+ 
+   for (int i = 0; i < lines.count (); i++)
+     {
+-      QRegularExpressionMatch match = rxfun1.match (lines.at (i));
+-      if (match.hasMatch ())
+-        return match.captured (1).remove (QRegularExpression {"[ \t]*"});
+-      match = rxfun2.match (lines.at (i));
+-      if (match.hasMatch ())
+-        return match.captured (1).remove (QRegularExpression {"[ \t]*"});
+-      match = rxfun3.match (lines.at (i));
+-      if (match.hasMatch ())
+-        return match.captured (1).remove (QRegularExpression {"[ \t]*"});
+-      match = rxfun4.match (lines.at (i));
+-      if (match.hasMatch ())
+-        return match.captured (1).remove (QRegularExpression {"[ \t]*"});
+-      match = rxfun5.match (lines.at (i));
+-      if (match.hasMatch ())
+-        return match.captured (1).remove (QRegularExpression {"[ \t]*"});
++      if (rxfun1.indexIn (lines.at (i)) != -1)
++        return rxfun1.cap (1).remove (QRegExp ("[ \t]*"));
++      else if (rxfun2.indexIn (lines.at (i)) != -1)
++        return rxfun2.cap (1).remove (QRegExp ("[ \t]*"));
++      else if (rxfun3.indexIn (lines.at (i)) != -1)
++        return rxfun3.cap (1).remove (QRegExp ("[ \t]*"));
++      else if (rxfun4.indexIn (lines.at (i)) != -1)
++        return rxfun4.cap (1).remove (QRegExp ("[ \t]*"));
++      else if (rxfun5.indexIn (lines.at (i)) != -1)
++        return rxfun5.cap (1).remove (QRegExp ("[ \t]*"));
+     }
+ 
+   return QString ();
+diff --git libgui/src/m-editor/octave-qscintilla.cc libgui/src/m-editor/octave-qscintilla.cc
+index 0c5a68ffc4..cfb9c0ac1f 100644
+--- libgui/src/m-editor/octave-qscintilla.cc
++++ libgui/src/m-editor/octave-qscintilla.cc
+@@ -36,7 +36,6 @@
+ #include <QMessageBox>
+ #include <QMimeData>
+ #include <QPointer>
+-#include <QRegularExpression>
+ #include <QTemporaryFile>
+ #include <QToolTip>
+ #include <QVBoxLayout>
+@@ -554,32 +553,31 @@
+ {
+   QString prevline = text (line);
+ 
+-  QRegularExpression bkey {"^[\t ]*(if|for|while|switch"
+-                           "|do|function|properties|events|classdef"
+-                           "|unwind_protect|try"
+-                           "|parfor|methods)"
+-                           "[\r]?[\n\t #%]"};
++  QRegExp bkey = QRegExp ("^[\t ]*(if|for|while|switch"
++                          "|do|function|properties|events|classdef"
++                          "|unwind_protect|try"
++                          "|parfor|methods)"
++                          "[\r]?[\n\t #%]");
+   // last word except for comments, assuming no ' or " in comment.
+   // rx_end = QRegExp ("(\\w+)[ \t;\r\n]*([%#][^\"']*)?$");
+ 
+   // last word except for comments,
+   // allowing % and # in single or double quoted strings
+   // FIXME: This will get confused by transpose.
+-  QRegularExpression ekey {"(?:(?:['\"][^'\"]*['\"])?[^%#]*)*"
+-                           "(\\w+)[ \t;\r\n]*(?:[%#].*)?$"};
++  QRegExp ekey = QRegExp ("(?:(?:['\"][^'\"]*['\"])?[^%#]*)*"
++                          "(\\w+)[ \t;\r\n]*(?:[%#].*)?$");
+ 
+-  QRegularExpressionMatch bmatch = bkey.match (prevline);
++  int bpos = bkey.indexIn (prevline, 0);
++  int epos;
+ 
+-  if (bmatch.hasMatch ())
++  if (bpos > -1)
+     {
+       // Found keyword after that indentation should be added
+ 
+       // Check for existing end statement in the same line
+-      QRegularExpressionMatch ematch = ekey.match (prevline,
+-                                                   bmatch.capturedStart ());
+-      QString first_word = bmatch.captured (1);
+-      bool inline_end = ematch.hasMatch ()
+-                        && is_end (ematch.captured (1), first_word);
++      epos = ekey.indexIn (prevline, bpos);
++      QString first_word = bkey.cap(1);
++      bool inline_end = (epos > -1) && is_end (ekey.cap(1), first_word);
+ 
+       if (do_smart_indent && ! inline_end)
+         {
+@@ -590,9 +588,7 @@
+ 
+       if (do_auto_close
+           && ! inline_end
+-          && ! first_word.contains
+-                            (QRegularExpression
+-                             {"(?:case|otherwise|unwind_protect_cleanup)"}))
++          && ! first_word.contains (QRegExp ("(?:case|otherwise|unwind_protect_cleanup)")))
+         {
+           // Do auto close
+           auto_close (do_auto_close, line, prevline, first_word);
+@@ -601,8 +597,8 @@
+       return;
+     }
+ 
+-  QRegularExpression mkey {"^[\t ]*(?:else|elseif|catch|unwind_protect_cleanup)"
+-                           "[\r]?[\t #%\n]"};
++  QRegExp mkey = QRegExp ("^[\t ]*(?:else|elseif|catch|unwind_protect_cleanup)"
++                          "[\r]?[\t #%\n]");
+   if (prevline.contains (mkey))
+     {
+       int prev_ind = indentation (line-1);
+@@ -618,14 +614,14 @@
+       return;
+     }
+ 
+-  QRegularExpression case_key {"^[\t ]*(?:case|otherwise)[\r]?[\t #%\n]"};
++  QRegExp case_key = QRegExp ("^[\t ]*(?:case|otherwise)[\r]?[\t #%\n]");
+   if (prevline.contains (case_key) && do_smart_indent)
+     {
+       QString last_line = text (line-1);
+       int prev_ind = indentation (line-1);
+       int act_ind = indentation (line);
+ 
+-      if (last_line.contains (QRegularExpression {"^[\t ]*switch"}))
++      if (last_line.contains (QRegExp ("^[\t ]*switch")))
+         {
+           indent (line+1);
+           act_ind = indentation (line+1);
+@@ -642,9 +638,8 @@
+       setCursorPosition (line+1, act_ind);
+     }
+ 
+-  ekey = QRegularExpression
+-           {"^[\t ]*(?:end|endif|endfor|endwhile|until|endfunction"
+-            "|endswitch|end_try_catch|end_unwind_protect)[\r]?[\t #%\n(;]"};
++  ekey = QRegExp ("^[\t ]*(?:end|endif|endfor|endwhile|until|endfunction"
++                  "|endswitch|end_try_catch|end_unwind_protect)[\r]?[\t #%\n(;]");
+   if (prevline.contains (ekey))
+     {
+       if (indentation (line-1) <= indentation (line))
+@@ -668,40 +663,38 @@
+ void octave_qscintilla::smart_indent_line_or_selected_text (int lineFrom,
+                                                             int lineTo)
+ {
+-  QRegularExpression blank_line_regexp {"^[\t ]*$"};
++  QRegExp blank_line_regexp = QRegExp ("^[\t ]*$");
+ 
+   // end[xxxxx] [# comment] at end of a line
+-  QRegularExpression
+-  end_word_regexp {"(?:(?:['\"][^'\"]*['\"])?[^%#]*)*"
+-                   "(?:end\\w*)[\r\n\t ;]*(?:[%#].*)?$"};
+-
+-  QRegularExpression
+-  begin_block_regexp {"^[\t ]*(?:if|elseif|else"
+-                      "|for|while|do|parfor"
+-                      "|switch|case|otherwise"
+-                      "|function"
+-                      "|classdef|properties|events|enumeration|methods"
+-                      "|unwind_protect|unwind_protect_cleanup|try|catch)"
+-                      "[\r\n\t #%]"};
+-
+-  QRegularExpression
+-  mid_block_regexp {"^[\t ]*(?:elseif|else"
+-                    "|unwind_protect_cleanup|catch)"
+-                    "[\r\n\t #%]"};
+-
+-  QRegularExpression
+-  end_block_regexp {"^[\t ]*(?:end"
+-                    "|end(for|function|if|parfor|switch|while"
+-                    "|classdef|enumeration|events|methods|properties)"
+-                    "|end_(try_catch|unwind_protect)"
+-                    "|until)"
+-                    "[\r\n\t #%]"};
+-
+-  QRegularExpression
+-  case_block_regexp {"^[\t ]*(?:case|otherwise)"
+-                     "[\r\n\t #%]"};
+-
+-  QRegularExpressionMatch match;
++  QRegExp end_word_regexp
++    = QRegExp ("(?:(?:['\"][^'\"]*['\"])?[^%#]*)*"
++               "(?:end\\w*)[\r\n\t ;]*(?:[%#].*)?$");
++
++  QRegExp begin_block_regexp
++    = QRegExp ("^[\t ]*(?:if|elseif|else"
++               "|for|while|do|parfor"
++               "|switch|case|otherwise"
++               "|function"
++               "|classdef|properties|events|enumeration|methods"
++               "|unwind_protect|unwind_protect_cleanup|try|catch)"
++               "[\r\n\t #%]");
++
++  QRegExp mid_block_regexp
++    = QRegExp ("^[\t ]*(?:elseif|else"
++               "|unwind_protect_cleanup|catch)"
++               "[\r\n\t #%]");
++
++  QRegExp end_block_regexp
++    = QRegExp ("^[\t ]*(?:end"
++               "|end(for|function|if|parfor|switch|while"
++               "|classdef|enumeration|events|methods|properties)"
++               "|end_(try_catch|unwind_protect)"
++               "|until)"
++               "[\r\n\t #%]");
++
++  QRegExp case_block_regexp
++    = QRegExp ("^[\t ]*(?:case|otherwise)"
++               "[\r\n\t #%]");
+ 
+   int indent_column = -1;
+   int indent_increment = indentationWidth ();
+@@ -711,8 +704,7 @@
+     {
+       QString line_text = text (line);
+ 
+-      match = blank_line_regexp.match (line_text);
+-      if (! match.hasMatch ())
++      if (blank_line_regexp.indexIn (line_text) < 0)
+         {
+           // Found first non-blank line above beginning of region or
+           // current line.  Base indentation from this line, increasing
+@@ -721,8 +713,7 @@
+ 
+           indent_column = indentation (line);
+ 
+-          match = begin_block_regexp.match (line_text);
+-          if (match.hasMatch ())
++          if (begin_block_regexp.indexIn (line_text) > -1)
+             {
+               indent_column += indent_increment;
+               if (line_text.contains ("switch"))
+@@ -741,8 +732,7 @@
+     {
+       QString line_text = text (line);
+ 
+-      match = end_block_regexp.match (line_text);
+-      if (match.hasMatch ())
++      if (end_block_regexp.indexIn (line_text) > -1)
+         {
+           indent_column -= indent_increment;
+           if (line_text.contains ("endswitch"))
+@@ -754,35 +744,31 @@
+             }
+         }
+ 
+-      match = mid_block_regexp.match (line_text);
+-      if (match.hasMatch ())
++      if (mid_block_regexp.indexIn (line_text) > -1)
+         indent_column -= indent_increment;
+ 
+-      match = case_block_regexp.match (line_text);
+-      if (match.hasMatch ())
++      if (case_block_regexp.indexIn (line_text) > -1)
+         {
+-          match = case_block_regexp.match (prev_line);
+-          if (! match.hasMatch ()
+-              && ! prev_line.contains ("switch"))
++          if (case_block_regexp.indexIn (prev_line) < 0
++              && !prev_line.contains("switch"))
+             indent_column -= indent_increment;
+           in_switch = true;
+         }
+ 
+       setIndentation (line, indent_column);
+ 
+-      match = begin_block_regexp.match (line_text);
+-      if (match.hasMatch ())
++      int bpos = begin_block_regexp.indexIn (line_text);
++      if (bpos > -1)
+         {
+           // Check for existing end statement in the same line
+-          match = end_word_regexp.match (line_text, match.capturedStart ());
+-          if (! match.hasMatch ())
++          int epos = end_word_regexp.indexIn (line_text, bpos);
++          if (epos == -1)
+             indent_column += indent_increment;
+           if (line_text.contains ("switch"))
+             in_switch = true;
+         }
+ 
+-      match = blank_line_regexp.match (line_text);
+-      if (! match.hasMatch ())
++      if (blank_line_regexp.indexIn (line_text) < 0)
+         prev_line = line_text;
+     }
+ }
+@@ -855,7 +841,7 @@
+   QString hist = QString ();
+ 
+   // Split contents into single lines and complete commands
+-  QStringList lines = selectedText ().split (QRegularExpression {"[\r\n]"},
++  QStringList lines = selectedText ().split (QRegExp ("[\r\n]"),
+ #if defined (HAVE_QT_SPLITBEHAVIOR_ENUM)
+                                              Qt::SkipEmptyParts);
+ #else
+@@ -988,7 +974,7 @@
+              max_stack_size = 2;
+            if (stack.size () <= max_stack_size)
+              {
+-               QRegularExpression rx {"source: error sourcing file [^\n]*$"};
++               QRegExp rx ("source: error sourcing file [^\n]*$");
+                if (new_msg.contains (rx))
+                  {
+                    // Selected code has syntax errors
+@@ -1009,11 +995,12 @@
+ 
+                    for (int i = 0; i < rx_list.length (); i++)
+                      {
+-                       rx = QRegularExpression {rx_list.at (i)};
+-                       QRegularExpressionMatch match = rx.match(new_msg);
+-                       if (match.hasMatch ())
++                       int pos = 0;
++                       rx = QRegExp (rx_list.at (i));
++                       pos = rx.indexIn (new_msg, pos);
++                       if (pos != -1)
+                          {
+-                           err_line = match.captured (1).toInt ();
++                           err_line = rx.cap (1).toInt ();
+                            new_msg = new_msg.replace (rx, replace_list.at (i));
+                          }
+                      }
+@@ -1321,9 +1308,9 @@
+         return;
+       if (next_start == start)      // same => check if already is "end"
+         {
+-          QRegularExpression rx_start {R"((\w+))"};
+-          QRegularExpressionMatch match = rx_start.match (next_line, start);
+-          if (match.hasMatch () && is_end (match.captured (1), first_word))
++          QRegExp rx_start = QRegExp (R"((\w+))");
++          int tmp = rx_start.indexIn (next_line, start);
++          if (tmp != -1 && is_end (rx_start.cap(1), first_word))
+             return;
+         }
+     }
+diff --git libgui/src/qt-interpreter-events.cc libgui/src/qt-interpreter-events.cc
+index 36508fa576..43c9976b2c 100644
+--- libgui/src/qt-interpreter-events.cc
++++ libgui/src/qt-interpreter-events.cc
+@@ -35,7 +35,6 @@
+ #include <QIcon>
+ #include <QMetaType>
+ #include <QPushButton>
+-#include <QRegularExpression>
+ #include <QStringList>
+ 
+ #include "dialog.h"
+@@ -97,7 +96,7 @@ make_filter_list (const event_manager::filter_list& lst)
+ 
+       // Strip out extensions from name and replace ';' with spaces in list.
+ 
+-      name.replace (QRegularExpression {R"(\(.*\))"}, "");
++      name.replace (QRegExp (R"(\(.*\))"), "");
+       ext.replace (";", " ");
+ 
+       if (name.isEmpty ())
+diff --git libgui/src/variable-editor.cc libgui/src/variable-editor.cc
+index 67e2765c4e..23cc111496 100644
+--- libgui/src/variable-editor.cc
++++ libgui/src/variable-editor.cc
+@@ -39,7 +39,6 @@
+ #include <QMenu>
+ #include <QPalette>
+ #include <QPointer>
+-#include <QRegularExpression>
+ #include <QScreen>
+ #include <QScrollBar>
+ #include <QStackedWidget>
+@@ -441,7 +440,7 @@
+ 
+   if (name.endsWith (')') || name.endsWith ('}'))
+     {
+-      name.remove (QRegularExpression {"[({][^({]*[)}]$)"});
++      name.remove ( QRegExp ("[({][^({]*[)}]$)") );
+       emit edit_variable_signal (name, octave_value ());
+     }
+ }
+diff --git src/octave-svgconvert.cc src/octave-svgconvert.cc
+index 214e1bd96f..17ece91bff 100644
+--- src/octave-svgconvert.cc
++++ src/octave-svgconvert.cc
+@@ -44,7 +44,7 @@
+ #include <QImage>
+ #include <QPainter>
+ #include <QPrinter>
+-#include <QRegularExpression>
++#include <QRegExp>
+ 
+ // Include a set of path rendering functions extracted from Qt-5.12 source
+ #include "octave-qsvghandler.h"
+@@ -143,9 +143,12 @@ qstr2ptsvectord (QString str)
+ QString
+ get_field (QString str, QString field)
+ {
+-  QRegularExpression rx (field + "\\(([^\\)]*)\\)");
+-  QRegularExpressionMatch match = rx.match (str);
+-  QString retval = match.captured (1);
++  QString retval;
++  QRegExp rx (field + "\\(([^\\)]*)\\)");
++  int pos = 0;
++  pos = rx.indexIn (str, pos);
++  if (pos > -1)
++    retval = rx.cap (1);
+ 
+   return retval;
+ }
+-- 
+2.45.1
+

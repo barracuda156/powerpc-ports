@@ -1,0 +1,55 @@
+--- libgui/graphics/Canvas.cc	2024-06-02 01:23:29.000000000 +0800
++++ libgui/graphics/Canvas.cc	2024-06-02 11:15:09.000000000 +0800
+@@ -980,7 +980,7 @@
+ 
+               if (zoom_enabled (figObj))
+                 {
+-                  if (event->angleDelta().y () > 0)
++                  if (event->delta () > 0)
+                     newMouseMode = ZoomInMode;
+                   else
+                     newMouseMode = ZoomOutMode;
+@@ -1022,7 +1022,7 @@
+               {
+                 axes::properties& ap = Utils::properties<axes> (axesObj);
+ 
+-                double factor = (event->angleDelta().y () > 0 ? 0.1 : -0.1);
++                double factor = (event->delta () > 0 ? 0.1 : -0.1);
+ 
+                 if (event->modifiers () == Qt::NoModifier
+                     && mode != "horizontal")
+
+--- libgui/src/documentation.cc	2024-06-02 01:23:29.000000000 +0800
++++ libgui/src/documentation.cc	2024-06-02 11:16:14.000000000 +0800
+@@ -1130,7 +1130,7 @@
+ {
+   if (we->modifiers () == Qt::ControlModifier)
+     {
+-      if (we->angleDelta().y () > 0)
++      if (we->delta() > 0)
+         zoom_in ();
+       else
+         zoom_out ();
+
+--- libgui/qterminal/libqterminal/unix/TerminalView.cpp	2024-03-13 02:00:23.000000000 +0800
++++ libgui/qterminal/libqterminal/unix/TerminalView.cpp	2024-06-02 11:17:40.000000000 +0800
+@@ -2021,8 +2021,8 @@
+ 
+ void TerminalView::wheelEvent( QWheelEvent* ev )
+ {
+-  if (ev->angleDelta().y() == 0)
+-    return;
++   if (ev->orientation() != Qt::Vertical)
++     return;
+ 
+   if ( _mouseMarks )
+     _scrollBar->event(ev);
+@@ -2037,7 +2037,7 @@
+ #endif
+       getCharacterPosition( pos , charLine , charColumn );
+ 
+-      int delta = ev->angleDelta().y();
++      int delta = ev->delta();
+ 
+       emit mouseSignal( delta > 0 ? 4 : 5,
+                         charColumn + 1,

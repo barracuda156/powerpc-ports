@@ -438,7 +438,7 @@ pre-configure {
 }
 
 variant java description {enable Java interface} {
-    PortGroup java 1.0
+    PortGroup            java 1.0
 
     configure.args-replace --disable-java --enable-java
     java.version ${java_version}+
@@ -448,8 +448,18 @@ variant java description {enable Java interface} {
 #    https://trac.macports.org/ticket/51480
 #default_variants-append +java
 
-variant qt5 description {build the GUI using Qt5} {
-    PortGroup qt5 1.0
+variant qt4 conflicts qt5 description {build the GUI using Qt4} {
+    PortGroup            qt4 1.0
+
+    depends_lib-append port:qscintilla-qt4 port:qt4-mac-sqlite3-plugin
+    configure.args-replace --without-qt --with-qt=4
+
+    patchfiles-append    0001-Initial-restore-of-Qt4-support.patch \
+                         0002-Unbreak-QRegExp.patch
+}
+
+variant qt5 conflicts qt4 description {build the GUI using Qt5} {
+    PortGroup            qt5 1.0
 
     qt5.depends_component qttools sqlite-plugin
     depends_lib-append port:qscintilla-qt5
@@ -465,7 +475,7 @@ variant qt5 description {build the GUI using Qt5} {
     destroot.env-append  PATH=${qt_dir}/bin:$env(PATH)
     test.env-append      PATH=${qt_dir}/bin:$env(PATH)
 }
-if { ![variant_isset qt5] } {
+if { ![variant_isset qt4] && ![variant_isset qt5] } {
     # Cutoff for default values
     #    macOS 10.7 - last OS supported by Qt 4
     #       see http://doc.qt.io/qt-4.8/supported-platforms.html
@@ -474,6 +484,8 @@ if { ![variant_isset qt5] } {
     #    macOS 10.11 - oldest OS supported for qscintilla-qt5, as of 2022-09-21
     if {${os.major} >= 15 || ${os.platform} ne "darwin"} {
         default_variants-append +qt5
+    } else {
+        default_variants-append +qt4
     }
 }
 
@@ -484,7 +496,7 @@ variant fltk description {enable fltk as a graphics toolkit for plotting} {
 # see https://github.com/macports/macports-ports/pull/1865 for a discussion on fltk
 #default_variants-append +fltk
 
-if {[variant_isset fltk] || [variant_isset qt5]} {
+if {[variant_isset fltk] || [variant_isset qt4] || [variant_isset qt5]} {
     # native_graphics (fltk) and gui (Qt) require OpenGL and font and printing capabilities
     depends_lib-append  \
         port:fontconfig \
@@ -494,8 +506,12 @@ if {[variant_isset fltk] || [variant_isset qt5]} {
     configure.args-replace --without-opengl --with-framework-opengl
 }
 
-if { [variant_isset fltk] && [variant_isset qt5] } {
+if { ([variant_isset fltk] && [variant_isset qt4]) || ([variant_isset fltk] && [variant_isset qt5]) } {
     notes-append "unless octave is run with --no-gui-libs, graphics_toolkit(\"fltk\") will cause a crash"
+}
+
+if {[variant_isset qt4]} {
+    notes-append "on-disk documentation is not building at present with qt4 variant, but online is available"
 }
 
 variant sound description {enable audio support (file I/O and playback)} {
@@ -523,7 +539,7 @@ variant app description "build application bundle to launch ${subport}" {
         xinstall -d -m 0755 ${worksrcpath}/${appName}/Contents/MacOS
 
         set script [open "${worksrcpath}/${appName}/Contents/MacOS/Octave" w 0755]
-        if { [variant_isset qt5] } {
+        if { [variant_isset qt4] || [variant_isset qt5] } {
             puts ${script} "#!/bin/sh"
             puts ${script} ""
             puts ${script} "${prefix}/bin/octave-${version} --gui \"\$@\""
@@ -595,14 +611,13 @@ variant app description "build application bundle to launch ${subport}" {
         copy ${worksrcpath}/${appName} ${destroot}${applications_dir}
     }
 }
-if { [variant_isset qt5] } {
+if {[variant_isset qt4] || [variant_isset qt5] } {
     default_variants-append +app
 }
 
-
 # the qt gui uses a few Objective-C calls, and for some reason
 # libobjc.dylib is not being automatically linked in on older systems
-if { [variant_isset qt5] } {
+if {[variant_isset qt4] || [variant_isset qt5] } {
    if { ${os.platform} eq "darwin" && ${os.major} < 18 } {
        configure.ldflags-append -lobjc
    }
@@ -626,7 +641,10 @@ variant docs description {build documentation files} {
 
     configure.args-replace --disable-docs --enable-docs
 }
-default_variants-append +docs
+# the documentation is not building when using qt4 at present
+if {![variant_isset qt4]} {
+    default_variants-append +docs
+}
 
 # GraphicsMagick and octave need to be built with the same C++ standard library
 # or else undefined symbols:
