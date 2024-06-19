@@ -66,11 +66,15 @@ use_xz              yes
 
 bootstrap.force_gcc10   yes
 
+# I build against isl-devel. See the ticket.
+# path:lib/pkgconfig/isl.pc:isl
+# https://trac.macports.org/ticket/70257
+
 depends_build-append \
                     port:texinfo
 depends_lib-append  port:cctools \
                     port:gmp \
-                    path:lib/pkgconfig/isl.pc:isl \
+                    port:isl-devel \
                     port:ld64 \
                     port:libiconv \
                     port:libmpc \
