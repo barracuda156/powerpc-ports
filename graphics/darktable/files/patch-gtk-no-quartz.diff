@@ -1,0 +1,214 @@
+--- src/CMakeLists.txt.orig	2023-06-30 14:13:18.000000000 +0800
++++ src/CMakeLists.txt	2024-05-02 08:44:51.000000000 +0800
+@@ -154,18 +154,6 @@
+   )
+ FILE(GLOB HEADER_FILES "*.h" "common/*.h" "external/OpenCL/CL/*.h" "control/*.h" "iop/*.h" "libs/*.h" "views/*.h")
+ 
+-if(APPLE)
+-  list(APPEND SOURCE_FILES "osx/osx.mm")
+-  list(APPEND HEADER_FILES "osx/osx.h")
+-  include(CheckLanguage)
+-  check_language(OBJCXX)
+-  if(CMAKE_OBJCXX_COMPILER)
+-    enable_language(OBJCXX)
+-  else()
+-    set_source_files_properties(osx/osx.mm PROPERTIES LANGUAGE CXX)
+-  endif()
+-endif(APPLE)
+-
+ if(WIN32)
+   list(APPEND SOURCE_FILES "win/strptime.c")
+   list(APPEND HEADER_FILES "win/strptime.h")
+
+--- src/main.c.orig	2023-06-30 14:13:18.000000000 +0800
++++ src/main.c	2024-05-19 17:01:49.000000000 +0800
+@@ -19,7 +19,7 @@
+ #include "gui/gtk.h"
+ #include <stdlib.h>
+ 
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+ #include "osx/osx.h"
+ #endif
+ 
+@@ -30,7 +30,7 @@
+ 
+ int main(int argc, char *argv[])
+ {
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+   dt_osx_prepare_environment();
+ #endif
+ #ifdef _WIN32
+
+--- src/chart/main.c.orig	2023-06-30 14:13:18.000000000 +0800
++++ src/chart/main.c	2024-05-19 16:46:49.000000000 +0800
+@@ -30,7 +30,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ 
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+ #include "osx/osx.h"
+ #endif
+ 
+@@ -1903,7 +1903,7 @@
+ 
+ int main(int argc, char *argv[])
+ {
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+   dt_osx_prepare_environment();
+ #endif
+ #ifdef _WIN32
+
+--- src/cli/main.c.orig	2023-06-30 14:13:18.000000000 +0800
++++ src/cli/main.c	2024-05-19 16:47:37.000000000 +0800
+@@ -46,7 +46,7 @@
+ #include <sys/time.h>
+ #include <unistd.h>
+ 
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+ #include "osx/osx.h"
+ #endif
+ 
+@@ -177,7 +177,7 @@
+ 
+ int main(int argc, char *arg[])
+ {
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+   dt_osx_prepare_environment();
+ #endif
+ 
+--- src/cltest/main.c.orig	2023-06-30 14:13:18.000000000 +0800
++++ src/cltest/main.c	2024-05-19 16:48:24.000000000 +0800
+@@ -19,7 +19,7 @@
+ #include "common/darktable.h"
+ #include "common/opencl.h"
+ 
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+ #include "osx/osx.h"
+ #endif
+ 
+@@ -30,7 +30,7 @@
+ 
+ int main(int argc, char *arg[])
+ {
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+   dt_osx_prepare_environment();
+ #endif
+   int result = 1;
+
+--- src/common/file_location.c.orig	2023-06-30 14:13:18.000000000 +0800
++++ src/common/file_location.c	2024-05-19 16:54:30.000000000 +0800
+@@ -31,7 +31,7 @@
+ #include <config.h>
+ #endif
+ 
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+ #include "osx/osx.h"
+ #endif
+ 
+@@ -132,7 +132,7 @@
+       // default_value is relative.
+       // combine basename (application_directory) and relative path (default_value).
+       gchar complete_path[PATH_MAX] = { 0 };
+-#if defined(__APPLE__)
++#if defined(__APPLE__) && defined(__clang__)
+       char *bundle_path = dt_osx_get_bundle_res_path();
+       if(bundle_path)
+       {
+
+--- src/common/l10n.c.orig	2023-06-30 14:13:18.000000000 +0800
++++ src/common/l10n.c	2024-05-19 16:56:32.000000000 +0800
+@@ -26,7 +26,7 @@
+ #include <gtk/gtk.h>
+ #include <json-glib/json-glib.h>
+ 
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+ #include "osx/osx.h"
+ #endif
+ 
+@@ -37,7 +37,7 @@
+ 
+ static gchar* _dt_full_locale_name(const char *locale)
+ {
+-#if defined(__linux__) || defined(__APPLE__)
++#if defined(__linux__) || (defined(__APPLE__) && defined(__clang__))
+   gchar *output = NULL;
+   GError *error = NULL;
+   if(!g_spawn_command_line_sync("locale -a", &output, NULL, NULL, &error))
+@@ -119,7 +119,7 @@
+   JsonParser *parser = NULL;
+   GError *error = NULL;
+   char *filename = NULL;
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+   char *res_path = dt_osx_get_bundle_res_path();
+ #endif
+ 
+@@ -129,7 +129,7 @@
+   filename = g_build_filename(datadir, "..",  "iso-codes",
+                               "json", "iso_639-2.json", NULL);
+ #else
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+   if(res_path)
+     filename = g_build_filename(res_path, "share",  "iso-codes",
+                                 "json", "iso_639-2.json", NULL);
+@@ -153,7 +153,7 @@
+   dt_loc_get_localedir(localedir, sizeof(localedir));
+   bindtextdomain("iso_639-2", localedir);
+ #else
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+   if(res_path)
+   {
+     char localedir[PATH_MAX] = { 0 };
+@@ -297,7 +297,7 @@
+ 
+ end:
+   // cleanup
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+   g_free(res_path);
+ #endif
+   g_free(filename);
+
+--- src/generate-cache/main.c.orig	2024-05-19 16:59:51.000000000 +0800
++++ src/generate-cache/main.c	2024-05-19 17:00:18.000000000 +0800
+@@ -37,7 +37,7 @@
+ #include "config.h"              // for GETTEXT_PACKAGE, etc
+ #include "control/conf.h"        // for dt_conf_get_bool
+ 
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+ #include "osx/osx.h"
+ #endif
+ 
+@@ -144,7 +144,7 @@
+ 
+ int main(int argc, char *arg[])
+ {
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+   dt_osx_prepare_environment();
+ #endif
+ 
+--- src/gui/gtk.c.orig	2023-06-30 14:13:18.000000000 +0800
++++ src/gui/gtk.c	2024-05-19 17:00:49.000000000 +0800
+@@ -167,7 +167,7 @@
+   /* redraw center view */
+   gtk_widget_queue_draw(widget);
+ 
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(__clang__)
+   // workaround for GTK Quartz backend bug
+   gtk_window_set_title(GTK_WINDOW(widget), widget == dt_ui_main_window(darktable.gui->ui)
+                                          ? "darktable" : _("darktable - darkroom preview"));

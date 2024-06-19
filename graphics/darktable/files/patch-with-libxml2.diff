@@ -1,0 +1,16 @@
+Backport of https://github.com/darktable-org/rawspeed/commit/f57725c15dee8b9c66042fd5c1dcf012e8ebac57
+
+--- src/external/rawspeed/data/cameras.xsd	2023-06-13 05:39:40.000000000 +0800
++++ src/external/rawspeed/data/cameras.xsd	2024-04-30 04:19:14.000000000 +0800
+@@ -193,10 +193,7 @@
+   </xs:simpleType>
+   <xs:complexType name="CFA2Type">
+     <xs:sequence>
+-      <xs:choice>
+-        <xs:element type="ColorRowType" name="ColorRow" minOccurs="2" maxOccurs="2"/>
+-        <xs:element type="ColorRowType" name="ColorRow" minOccurs="6" maxOccurs="6"/>
+-      </xs:choice>
++      <xs:element type="ColorRowType" name="ColorRow" minOccurs="2" maxOccurs="6"/>
+     </xs:sequence>
+     <xs:attribute type="CFA2TypeWidthType" name="width" use="required"/>
+     <xs:attribute type="CFA2TypeHeightType" name="height" use="required"/>

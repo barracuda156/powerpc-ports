@@ -1,0 +1,11 @@
+--- src/CMakeLists.txt	2023-06-30 14:13:18.000000000 +0800
++++ src/CMakeLists.txt	2024-04-29 17:29:06.000000000 +0800
+@@ -353,7 +353,7 @@
+ endif(USE_WEBP)
+ 
+ if (USE_AVIF)
+-    find_package(libavif 0.8.2 CONFIG)
++    find_package(libavif CONFIG)
+     if (TARGET avif)
+         list(APPEND LIBS avif)
+         add_definitions(-DHAVE_LIBAVIF=1)
