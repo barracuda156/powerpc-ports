@@ -19,5 +19,6 @@ checksums           rmd160  5b9b35aad2ae4d3c326b125cd170141c001fdabd \
 platforms           darwin
 
 if {${perl5.major} != ""} {
-    patchfiles      patch-macos-10.10+.diff
+    patchfiles      patch-macos-10.10+.diff \
+                    patch-10A190.diff
 }
