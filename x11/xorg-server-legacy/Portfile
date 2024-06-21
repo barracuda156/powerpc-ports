@@ -13,7 +13,7 @@ github.setup    XQuartz xorg-server 16f52e51a203bdb90de5d94478aa9bca4e9c2e67
 name            xorg-server-legacy
 conflicts       xorg-server-1.18 xorg-server xorg-server-devel
 version         1.20.10
-revision        3
+revision        2
 categories      x11 devel
 license         X11
 maintainers     {jeremyhu @jeremyhu} openmaintainer
