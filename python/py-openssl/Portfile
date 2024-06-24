@@ -56,7 +56,7 @@ if {${name} ne ${subport}} {
                         sha256  5d1d93fb3d55be740e444b991bccc5db26b1cfd3666cbbd8b6d01dc7a6cc5430 \
                         size    172965
         revision        0
-        epoch           1
+        epoch           2
     } else {
         variant docs description {build html documentation} {
             depends_build-append    port:py${python.version}-sphinx \
