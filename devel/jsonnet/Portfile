@@ -9,7 +9,6 @@ categories          devel
 
 license             Apache-2
 maintainers         nomaintainer
-platforms           darwin
 
 description         The data templating language
 
@@ -21,7 +20,8 @@ checksums           rmd160  e43a5cee00aaea3782407c9ce0b87d28f34fc3b9 \
                     sha256  9f4450ff784952a0f5c593ce7dabd83cbda2eed62a4b01cc2ba507b32483c8dd \
                     size    21859800
 
-patchfiles-append   patch-Makefile.diff
+patchfiles-append   patch-Makefile.diff \
+                    patch-fix-gcc.diff
 
 post-patch {
     reinplace "s|@@PREFIX@@|${prefix}|g" Makefile
