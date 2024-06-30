@@ -27,6 +27,7 @@ checksums               rmd160  dff1bcbfc8a579b02f9a6ea577d10c585198fd42 \
                         size    118458067
 github.tarball_from     archive
 
+# https://github.com/mono/mono/issues/21785
 fetch.type              git
 post-fetch {
     system -W ${worksrcpath} "git submodule update --init"
@@ -40,8 +41,10 @@ post-fetch {
 patch.pre_args-replace  -p0 -p1
 patchfiles-append       patch-aot-compiler.c.diff
 
-# https://github.com/mono/mono/issues/20990
+# https://github.com/mono/mono/issues/21786
 patchfiles-append       mono-6.12.0.122-gss.patch
+# Should be either fixed to use kerberos5 or otherwise heimdal:
+# # https://github.com/mono/mono/issues/20990
 
 # https://github.com/mono/mono/issues/21649
 # Also see: https://github.com/mistydemeo/tigerbrew/issues/605
@@ -79,14 +82,24 @@ configure.args-append   --enable-nls=no \
                         --with-sigaltstack=no \
                         --disable-silent-rules
 
-# Temporary fix for broken configure.
-# https://trac.macports.org/ticket/67383
+platform powerpc {
+    # https://github.com/mono/mono/commit/5d96019cc21ef7228d89becac3a69870c797e5f9
+    configure.args-append \
+                        --with-tls=pthread
+}
+
 platform darwin powerpc {
     configure.args-append \
                         --enable-dtrace=no \
-                        --enable-gss=no \
-                        --disable-mcs-build \
                         --enable-llvm=no
+    # Temporary fix for broken configure.
+    # https://trac.macports.org/ticket/67383
+    # https://github.com/mono/mono/issues/21786
+    configure.args-append \
+                        --enable-gss=no
+    # mcs build must be fixed instead:
+    configure.args-append \
+                        --disable-mcs-build
 }
 
 test.run                yes
