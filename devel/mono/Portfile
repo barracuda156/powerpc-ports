@@ -56,7 +56,9 @@ patchfiles-append       0001-utils-mono-proclib.c-unbreak-build-on-10.9.patch \
                         0006-configure.ac-add-Darwin-PPC.patch \
                         0007-utils-initial-mach-support-for-PPC.patch \
                         0008-Revert-ELF-specific-changes-for-Darwin.patch \
-                        0009-utils-mono-threads-mach.c-fix-for-missing-pthread_th.patch
+                        0009-utils-mono-threads-mach.c-fix-for-missing-pthread_th.patch \
+                        0010-configure.ac-minor-fixes-for-powerpc.patch \
+                        0011-mono-mmap.c-restore-correct-behavior-of-MAP_32BIT-on.patch
 
 configure.cmd           ./autogen.sh
 

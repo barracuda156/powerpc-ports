@@ -1,0 +1,25 @@
+From ab326109b10ecfb155a232bd86ed16c94d3b7510 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sun, 30 Jun 2024 21:31:07 +0800
+Subject: [PATCH 10/11] configure.ac: minor fixes for powerpc
+
+---
+ configure.ac | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/configure.ac b/configure.ac
+index 785f0d37caa..d0328c8d790 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -4604,6 +4604,11 @@ case "$host" in
+ 			BTLS_SUPPORTED=yes
+ 			BTLS_PLATFORM=powerpc
+ 			;;
++		  darwin*)
++			BTLS_SUPPORTED=no
++			BTLS_PLATFORM=powerpc
++			with_tls=pthread
++			;;
+ 		esac
+ 		;;
+ 	armv7k-*-darwin*)
