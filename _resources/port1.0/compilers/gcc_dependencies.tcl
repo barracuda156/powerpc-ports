@@ -1,4 +1,4 @@
-# set library dependencies of  GCC compilers to the variable libgccs based on gcc_version
+# set library dependencies of GCC compilers to the variable libgccs based on gcc_version
 
 # GCC version providing the primary runtime
 # Note settings here *must* match those in the lang/libgcc port and compilers PG
