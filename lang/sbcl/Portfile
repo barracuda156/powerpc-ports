@@ -11,7 +11,7 @@ name            sbcl
 #
 # Please bump the revisions of math/maxima, math/fricas and possibly
 # math/maxima-devel when this port changes.
-version         2.4.4
+version         2.4.6
 revision        0
 epoch           1
 
@@ -36,9 +36,13 @@ homepage        http://www.sbcl.org
 patchfiles      0001-fix-building-when-root-directory-contain-non-ASCII-c.patch \
                 0002-add-MacPorts-XDG_DATA_DIRS.patch
 
-checksums           rmd160  0cd9d9f156883991a3113f7f5499176c86b8c4a4 \
-                    sha256  8a932627b3f1d8e9618f1cdc225edcb002456804697e2c87d140683764a106d5 \
-                    size    8065883
+# https://github.com/sbcl/sbcl/pull/62
+patchfiles-append \
+                0003-runtime.c-fix-time-header-for-LISP_FEATURE_AVOID_CLO.patch
+
+checksums       rmd160  e34b55c8859b1e24dffc2ac9f37fb80eab673bac \
+                sha256  a489907842dae09a1726d62985bf7a56670aaea2f3eca1fb7023bca67c3f3091 \
+                size    8078027
 if {${name} eq ${subport}} {
     master_sites \
                 sourceforge
@@ -55,15 +59,16 @@ subport sbcl-devel {
     PortGroup   github  1.0
 
     github.setup \
-                sbcl sbcl 9c63b7eaeb9e53cb4f73709d9d397f4ad4a939f9
-    version     20240106
+                sbcl sbcl c0cc52a8abd1bcbb386043b5e8d41c320fc220c4
+    version     20240704
     revision    0
 
     conflicts   sbcl
 
-    checksums   rmd160  c442a1bdb9061f4eaa4248f2f9895177fcb525b2 \
-                sha256  b774aaf314515c4c55b59cf674eda985f57983470836917dd21bdbff39de17ab \
-                size    9801341
+    checksums   rmd160  c1ffb5ad096ee2d4ec67e00276004e274626293e \
+                sha256  d308f81afb614210c3b498f5b650c1be484fc1648b5b9c64cc52ece32cc923df \
+                size    10240039
+    github.tarball_from archive
 
     pre-build {
         system -W ${worksrcpath} "echo '\"${version}\"' > version.lisp-expr"
@@ -88,12 +93,17 @@ post-patch {
                 ${worksrcpath}/doc/sbcl.1
 
     # This is the way to bypass path to MacPorts includes into sbcl.mk
+    # For now added `-Wno-error=int-conversion -Wno-error=incompatible-pointer-types` due to:
+    # monitor.c:329:20: error: assignment to 'pthread_key_t' {aka 'long unsigned int'}
+    # from 'struct thread *' makes integer from pointer without a cast [-Wint-conversion]
+    # search.c:381:40: error: passing argument 2 of 'bsearch_lesseql_uword'
+    # from incompatible pointer type [-Wincompatible-pointer-types]
     set config_path ${worksrcpath}/src/runtime
     foreach f [glob -tails -directory ${config_path} Config.*-darwin] {
         ui_debug "Adding MacPorts paths into ${f}"
         set config [open ${config_path}/$f a]
-        puts ${config} "CFLAGS += -I${prefix}/include [legacysupport::get_cpp_flags]"
-        puts ${config} "DEPEND_FLAGS += -I${prefix}/include [legacysupport::get_cpp_flags]"
+        puts ${config} "CFLAGS += -I${prefix}/include [legacysupport::get_cpp_flags] -D_DARWIN_C_SOURCE -Wno-error=int-conversion -Wno-error=incompatible-pointer-types"
+        puts ${config} "DEPEND_FLAGS += -I${prefix}/include [legacysupport::get_cpp_flags] -Wno-error=int-conversion -Wno-error=incompatible-pointer-types"
         puts ${config} "OS_LIBS += -L${prefix}/lib [legacysupport::get_library_link_flags]"
         close ${config}
     }
