@@ -11,7 +11,7 @@ diff --git gcc/config/darwin.h gcc/config/darwin.h
 index 28cc97eeccf..43536f1fc65 100644
 --- gcc/config/darwin.h
 +++ gcc/config/darwin.h
-@@ -381,7 +381,6 @@
+@@ -419,7 +419,6 @@
        %{%:sanitize(address): -lasan } \
        %{%:sanitize(undefined): -lubsan } \
        %(link_ssp) \
@@ -19,14 +19,14 @@ index 28cc97eeccf..43536f1fc65 100644
        %(link_gcc_c_sequence) \
        %{!nodefaultexport: \
  	%{%:version-compare(>= 10.11 asm_macosx_version_min= -U): \
-@@ -511,17 +510,17 @@
+@@ -551,17 +550,17 @@
  #undef REAL_LIBGCC_SPEC
  #define REAL_LIBGCC_SPEC \
  "%{static-libgcc|static:						  \
 -    %:version-compare(!> 10.6 mmacosx-version-min= -lgcc_eh);		  \
 +    %:version-compare(!> 10.7 mmacosx-version-min= -lgcc_eh);		  \
     shared-libgcc|fexceptions|fobjc-exceptions|fgnu-runtime:		  \
-     %:version-compare(!> 10.11 mmacosx-version-min= -lgcc_s.1.1)	  \
+    " DARWIN_SHARED_LIBGCC "						  \
      %:version-compare(!> 10.3.9 mmacosx-version-min= -lgcc_eh)		  \
      %:version-compare(>< 10.3.9 10.5 mmacosx-version-min= -lgcc_s.10.4)   \
 -    %:version-compare(>< 10.5 10.6 mmacosx-version-min= -lgcc_s.10.5)	  \
@@ -35,8 +35,8 @@ index 28cc97eeccf..43536f1fc65 100644
  
  #define DARWIN_WEAK_CRTS \
  "%{static-libgcc|static:						  \
--   %:version-compare(>= 10.6 mmacosx-version-min= -lemutls_w) ; \
-+   %:version-compare(>= 10.7 mmacosx-version-min= -lemutls_w) ; \
-    shared-libgcc|fexceptions|fobjc-exceptions|fgnu-runtime: \
-      %:version-compare(>= 10.11 mmacosx-version-min= -lemutls_w) ; \
-    : -lemutls_w \
+-    %{%:version-compare(>= 10.6 mmacosx-version-min= -lemutls_w):	  \
++    %{%:version-compare(>= 10.7 mmacosx-version-min= -lemutls_w):	  \
+       " DARWIN_HEAP_T_LIB "} ;						  \
+    shared-libgcc|fexceptions|fobjc-exceptions|fgnu-runtime: " \
+      DARWIN_SHARED_WEAK_ADDS " ; \
