@@ -1,17 +1,14 @@
-# https://github.com/iains/darwin-toolchains-start-here/discussions/40
-
-From 44702d52fa57cf2034010ff8cba0853368eb89a1 Mon Sep 17 00:00:00 2001
+From 89c702ba7e409dc2253de6f7372ec89595030e17 Mon Sep 17 00:00:00 2001
 From: Sergey Fedorov <vital.had@gmail.com>
 Date: Sat, 28 Jan 2023 06:52:06 +0800
 Subject: [PATCH] libgfortran: implement fpu-ppc for macOS
 
-Signed-off-by: Sergey Fedorov <vital.had@gmail.com>
 ---
  .../gfortran.dg/ieee/signaling_2_c.c          |   9 +
  gcc/testsuite/gfortran.dg/round_4.f90         |   2 +-
- libgfortran/config/fpu-ppc.h                  | 438 ++++++++++++++++++
+ libgfortran/config/fpu-ppc.h                  | 414 ++++++++++++++++++
  libgfortran/configure.host                    |   9 +
- 4 files changed, 457 insertions(+), 1 deletion(-)
+ 4 files changed, 433 insertions(+), 1 deletion(-)
  create mode 100644 libgfortran/config/fpu-ppc.h
 
 diff --git gcc/testsuite/gfortran.dg/ieee/signaling_2_c.c gcc/testsuite/gfortran.dg/ieee/signaling_2_c.c
@@ -50,10 +47,10 @@ index ae0c1253848..d836b3c89e0 100644
  !
 diff --git libgfortran/config/fpu-ppc.h libgfortran/config/fpu-ppc.h
 new file mode 100644
-index 00000000000..d6c7bd8d4e8
+index 00000000000..6e4b76d6c4c
 --- /dev/null
 +++ libgfortran/config/fpu-ppc.h
-@@ -0,0 +1,438 @@
+@@ -0,0 +1,414 @@
 +/* FPU-related code for PowerPC.
 +   Copyright (C) 2023 Free Software Foundation, Inc.
 +   Contributed by Sergey Fedorov <vital.had@gmail.com>
@@ -79,44 +76,68 @@ index 00000000000..d6c7bd8d4e8
 +see the files COPYING3 and COPYING.RUNTIME respectively. If not, see
 +<http://www.gnu.org/licenses/>. */
 +
-+#include <fenv.h>
++/* While some of the definitions and functions used here are available
++   with Apple libm, we on purpose avoid pulling it in: to avoid potential
++   conflicts and not self-impose unnecessary constraints. */
 +
 +/* FP exception flags */
++#define FE_INEXACT      0x02000000
++#define FE_DIVBYZERO    0x04000000
++#define FE_UNDERFLOW    0x08000000
++#define FE_OVERFLOW     0x10000000
++#define FE_INVALID      0x20000000
++
++#define FE_ALL_EXCEPT   0x3E000000
++#define FE_NO_EXCEPT    0xC1FFFFFF
++
++/* Extra invalid flags */
 +#define FE_INVALID_SNAN 0x01000000
 +#define FE_INVALID_ISI  0x00800000
 +#define FE_INVALID_IDI  0x00400000
 +#define FE_INVALID_ZDZ  0x00200000
 +#define FE_INVALID_IMZ  0x00100000
 +#define FE_INVALID_XVC  0x00080000
-+#define FE_INVALID_SOFT 0x00000400  /* May not be supported. */
-+#define FE_INVALID_SQRT 0x00000200  /* May not be supported. */
++#define FE_INVALID_SOFT 0x00000400
++#define FE_INVALID_SQRT 0x00000200
 +#define FE_INVALID_CVI  0x00000100
-+#define FE_NO_EXCEPT    0xC1FFFFFF
-+/* Values in fenv_private.h and fp_regs.h are inconsistent: the former omits VX_SOFT,
-+   but includes VX_SQRT, it is reverse in fp_regs.h. It is unclear which is correct,
-+   if any. Here we assume both to be supported. FreeBSD also adds FE_INVALID in, which is
-+   arguably wrong. Notice, that implementation of feraiseexcept uses FE_INVALID_SOFT. */
-+#define FE_ALL_INVALID  0x01F80300
-+#define FE_NO_INVALID   0xFE07FCFF
-+#define FE_ALL_FLAGS    0xFFF80300
-+#define FE_NO_FLAGS     0x0007FCFF
-+#define FE_NO_ENABLES   0xFFFFFF07
++
++/* Rounding modes */
++#define FE_TONEAREST    0x00000000
++#define FE_TOWARDZERO   0x00000001
++#define FE_UPWARD       0x00000002
++#define FE_DOWNWARD     0x00000003
++
++/* There is no consistency re what is to be included in all_invalid.
++   Apple libm has 0x01f80300, Openlibm/FreeBSD/NetBSD has 0x21f80700
++   and OpenBSD has 0x01f80700. In particular, FE_INVALID_SOFT and
++   FE_INVALID are contested. */
++#define FE_ALL_INVALID  0x01F80700
++#define FE_NO_INVALID   0xFE07F8FF
++
++/* Apple libm has 0xFFF80300 and 0x0007FCFF here. */
++#define FE_ALL_FLAGS    0xFFF80700
++#define FE_NO_FLAGS     0x0007F8FF
 +
 +#define FE_ALL_RND      0x00000003
 +#define FE_NO_RND       0xFFFFFFFC
 +
-+#define FE_EXCEPT_SHIFT 22
-+#define EXCEPT_MASK     FE_ALL_EXCEPT >> FE_EXCEPT_SHIFT
 +/* Floating-point exception summary (FX) bit. */
 +#define FE_SET_FX       0x80000000
 +#define FE_CLR_FX       0x7FFFFFFF
-+/* From libm it appears that FE_INVALID_SOFT is unsupported.
-+   Glibc also uses FE_INVALID_SNAN for that case. */
++
++/* Some implementations use FE_INVALID_SOFT here. */
 +#define SET_INVALID     0x01000000
 +
-+/* Check we can actually store the FPU state in the allocated size. */
-+_Static_assert (sizeof(fenv_t) <= (size_t) GFC_FPE_STATE_BUFFER_SIZE,
-+   "GFC_FPE_STATE_BUFFER_SIZE is too small");
++#define FE_EXCEPT_SHIFT 22
++#define EXCEPT_MASK     FE_ALL_EXCEPT >> FE_EXCEPT_SHIFT
++
++typedef unsigned int    fenv_t;
++typedef unsigned int    fexcept_t;
++
++/* default environment object */
++extern const fenv_t     _FE_DFL_ENV;
++/* pointer to default environment */
++#define FE_DFL_ENV      &_FE_DFL_ENV
 +
 +typedef union {
 +    struct {
@@ -129,6 +150,11 @@ index 00000000000..d6c7bd8d4e8
 +#define HEXDOUBLE(hi, lo) {{ hi, lo }}
 +
 +
++/* Check we can actually store the FPU state in the allocated size. */
++_Static_assert (sizeof(fenv_t) <= (size_t) GFC_FPE_STATE_BUFFER_SIZE,
++   "GFC_FPE_STATE_BUFFER_SIZE is too small");
++
++
 +static inline int fegetexcept(void)
 +{
 +    hexdouble fe;
@@ -137,7 +163,7 @@ index 00000000000..d6c7bd8d4e8
 +    return ((fe.i.lo & EXCEPT_MASK) << FE_EXCEPT_SHIFT);
 +}
 +
-+int feclearexcept(int excepts)
++static inline int feclearexcept(int excepts)
 +{
 +    hexdouble fe;
 +
@@ -152,7 +178,7 @@ index 00000000000..d6c7bd8d4e8
 +}
 +
 +/* It is not possible to set VX bit directly. */
-+int feraiseexcept(int excepts)
++static inline int feraiseexcept(int excepts)
 +{
 +    hexdouble fe;
 +
@@ -164,23 +190,13 @@ index 00000000000..d6c7bd8d4e8
 +    return 0;
 +}
 +
-+int fetestexcept(int excepts)
++static inline int fetestexcept(int excepts)
 +{
 +    hexdouble fe;
 +
++    excepts &= FE_ALL_EXCEPT;
 +    fe.d = __builtin_mffs();
-+    return (fe.i.lo & excepts);
-+}
-+
-+int feholdexcept(fenv_t *envp)
-+{
-+    hexdouble fe;
-+
-+    fe.d = __builtin_mffs();
-+    *envp = fe.i.lo;
-+    fe.i.lo &= (FE_NO_FLAGS & FE_NO_ENABLES);
-+    __builtin_mtfsf(0xFF, fe.d);
-+    return 0;
++    return (fe.i.lo & (excepts & FE_ALL_EXCEPT));
 +}
 +
 +static inline int feenableexcept(int mask)
@@ -207,37 +223,7 @@ index 00000000000..d6c7bd8d4e8
 +    return ((oldmask & EXCEPT_MASK) << FE_EXCEPT_SHIFT);
 +}
 +
-+int fegetexceptflag(fexcept_t *flagp, int excepts)
-+{
-+    hexdouble fe;
-+    fenv_t excstate;
-+
-+    fe.d = __builtin_mffs();
-+    excstate = fe.i.lo & FE_ALL_FLAGS;
-+    excepts &= excstate;
-+    if ((excepts & FE_INVALID) == 0)
-+        excstate &= FE_NO_INVALID;
-+    *flagp = excstate & (excepts | FE_NO_EXCEPT);
-+    return 0;
-+}
-+
-+int fesetexceptflag(const fexcept_t *flagp, int excepts)
-+{
-+    hexdouble fe;
-+
-+    fe.d = __builtin_mffs();
-+    if (excepts & FE_INVALID)
-+        fe.i.lo = (fe.i.lo & FE_NO_INVALID) | (*flagp & FE_ALL_INVALID);
-+    fe.i.lo = (fe.i.lo & (~excepts)) | (*flagp & excepts);
-+    if (fe.i.lo & FE_ALL_EXCEPT)
-+        fe.i.lo |= FE_SET_FX;
-+    else
-+        fe.i.lo &= FE_CLR_FX;
-+    __builtin_mtfsf(0xFF, fe.d);
-+    return 0;
-+}
-+
-+int fegetround(void)
++static inline int fegetround(void)
 +{
 +    hexdouble fe;
 +
@@ -245,21 +231,19 @@ index 00000000000..d6c7bd8d4e8
 +    return (fe.i.lo & FE_ALL_RND);
 +}
 +
-+int fesetround(int round)
++static inline int fesetround(int round)
 +{
 +    hexdouble fe;
 +
 +    if (round & FE_NO_RND)
 +        return (-1);
-+    else {
-+        fe.d = __builtin_mffs();
-+        fe.i.lo = (fe.i.lo & FE_NO_RND) | round;
-+        __builtin_mtfsf(0xFF, fe.d);
-+        return 0;
-+    }
++    fe.d = __builtin_mffs();
++    fe.i.lo = (fe.i.lo & FE_NO_RND) | round;
++    __builtin_mtfsf(0xFF, fe.d);
++    return 0;
 +}
 +
-+int fegetenv(fenv_t *envp)
++static inline int fegetenv(fenv_t *envp)
 +{
 +    hexdouble fe;
 +
@@ -268,22 +252,11 @@ index 00000000000..d6c7bd8d4e8
 +    return 0;
 +}
 +
-+int fesetenv(const fenv_t *envp)
++static inline int fesetenv(const fenv_t *envp)
 +{
 +    hexdouble fe;
 +
 +    fe.i.lo = *envp;
-+    __builtin_mtfsf(0xFF, fe.d);
-+    return 0;
-+}
-+
-+int feupdateenv(const fenv_t *envp)
-+{
-+    hexdouble fe;
-+
-+    fe.d = __builtin_mffs();
-+    fe.i.lo &= FE_ALL_EXCEPT;
-+    fe.i.lo |= *envp;
 +    __builtin_mtfsf(0xFF, fe.d);
 +    return 0;
 +}
@@ -493,7 +466,7 @@ index 00000000000..d6c7bd8d4e8
 +{
 +}
 diff --git libgfortran/configure.host libgfortran/configure.host
-index 3d6c2db7772..6013f0838ca 100644
+index b15969f0e65..e88ef8fc75f 100644
 --- libgfortran/configure.host
 +++ libgfortran/configure.host
 @@ -61,6 +61,15 @@ case "${host_cpu}" in
