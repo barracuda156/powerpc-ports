@@ -31,7 +31,7 @@ long_description    {*}${description}, including front-ends \
                     for C, C++, Objective-C, Objective-C++ and Fortran. \
                     This is an !experimental! version for Darwin PowerPC.
 
-version             13-20240503
+version             15-20240630
 revision            0
 
 set libgccname      lib${name}
@@ -39,9 +39,9 @@ set libcxxname      ${name}-libcxx
 
 subport             ${libgccname} { revision [ expr ${revision} + 0 ] }
 
-checksums           rmd160  eac85ab754a6e45d25d7ecc54d2f3f2c54a7cd27 \
-                    sha256  1620c124aef30ea908602be5da804ce699d108320bf3e1078b094b78dd149b48 \
-                    size    84417232
+checksums           rmd160  5a5baf2efa5750eb6952fe48c3cd061b58039b37 \
+                    sha256  e5d214bafbce9fc30ac916603765f3bf4bd79faee4ad0d2693772b066638568f \
+                    size    88427396
 
 # Primary releases
 master_sites        https://ftpmirror.gnu.org/gcc/gcc-${version}/ \
@@ -66,15 +66,11 @@ use_xz              yes
 
 bootstrap.force_gcc10   yes
 
-# I build against isl-devel. See the ticket.
-# path:lib/pkgconfig/isl.pc:isl
-# https://trac.macports.org/ticket/70257
-
 depends_build-append \
                     port:texinfo
 depends_lib-append  port:cctools \
                     port:gmp \
-                    port:isl-devel \
+                    path:lib/pkgconfig/isl.pc:isl \
                     port:ld64 \
                     port:libiconv \
                     port:libmpc \
@@ -106,6 +102,9 @@ proc get_clean_sysroot {} {
     # if the sdkroot is one of the current, rapidly changing SDKS, use the generic one
     return [regsub {MacOSX1[1-9]\.[0-9]+\.sdk} ${configure.sdkroot} {MacOSX.sdk}]
 }
+
+# TODO: perhaps switch to a new version of configure.
+# See: https://github.com/iains/gcc-13-branch/issues/20
 
 set mp_extra_rpath  ${prefix}/lib/libgcc
 
@@ -177,10 +176,6 @@ if { ${subport} ne ${libcxxname} } {
     }
 }
 
-# Patch generated from https://github.com/iains/gcc-13-branch
-# git diff --no-prefix releases/gcc-13.3.0 gcc-13-3-darwin-pre-0
-# patchfiles-append   patch-darwin-gcc-${version}.diff
-
 # Do not abort if 'system' headers in /opt/local/include/gcc are missing
 patchfiles-append   patch-disable-sys-header-missing-abort.diff
 
@@ -196,9 +191,6 @@ patchfiles-append   patch-disable-sys-header-missing-abort.diff
 #  - https://trac.macports.org/ticket/68683
 #  - https://github.com/gcc-mirror/gcc/commit/b410cf1dc056aab195c5408871ffca932df8a78a
 patchfiles-append   patch-gcc10-disable-macports-cctools-as-changes.diff
-
-# Backports from upstream, to be dropped on the next update:
-patchfiles-append   eb6061e72e3f3b48d6c6d28e3a241c30049ea36f.diff
 
 # https://github.com/iains/darwin-toolchains-start-here/discussions/13
 patchfiles-append   patch-contrib-fat-gcc.sh.diff
@@ -337,60 +329,7 @@ proc dylib_list {location} {
 if {${subport} eq ${libgccname}} {
 
     # Always provides primary runtime so always in conflict
-    conflicts libgcc libgcc-devel libgcc13
-
-    # Activate hack for new libgcc
-    # https://trac.macports.org/wiki/PortfileRecipes#deactivatehack
-    pre-activate {
-        if {![catch {set installed [lindex [registry_active libgcc7] 0]}]} {
-            # Extract the epoch of the installed libgcc7
-            set _epoch [lindex $installed 5]
-            # If < 4 need to deactivate
-            if {[vercmp $_epoch < 4]} {
-                registry_deactivate_composite libgcc7 "" [list ports_nodepcheck 1]
-            }
-        }
-        if {![catch {set installed [lindex [registry_active libgcc8] 0]}]} {
-            # Extract the epoch of the installed libgcc8
-            set _epoch [lindex $installed 5]
-            # If < 5 need to deactivate
-            if {[vercmp $_epoch < 5]} {
-                registry_deactivate_composite libgcc8 "" [list ports_nodepcheck 1]
-            }
-        }
-        if {![catch {set installed [lindex [registry_active libgcc10] 0]}]} {
-            # Extract the epoch of the installed libgcc10
-            set _epoch [lindex $installed 5]
-            # If < 6 need to deactivate
-            if {[vercmp $_epoch < 6]} {
-                registry_deactivate_composite libgcc10 "" [list ports_nodepcheck 1]
-            }
-        }
-        if {![catch {set installed [lindex [registry_active libgcc11] 0]}]} {
-            # Extract the epoch of the installed libgcc11
-            set _epoch [lindex $installed 5]
-            # If < 1 need to deactivate
-            if {[vercmp $_epoch < 1]} {
-                registry_deactivate_composite libgcc11 "" [list ports_nodepcheck 1]
-            }
-        }
-        if {![catch {set installed [lindex [registry_active libgcc12] 0]}]} {
-            # Extract the epoch of the installed libgcc12
-            set _epoch [lindex $installed 5]
-            # If < 1 need to deactivate
-            if {[vercmp $_epoch < 1]} {
-                registry_deactivate_composite libgcc12 "" [list ports_nodepcheck 1]
-            }
-        }
-        if {![catch {set installed [lindex [registry_active libgcc-devel] 0]}]} {
-            # Extract the epoch of the installed libgcc-devel
-            set _epoch [lindex $installed 5]
-            # If < 5 need to deactivate
-            if {[vercmp $_epoch < 5]} {
-                registry_deactivate_composite libgcc-devel "" [list ports_nodepcheck 1]
-            }
-        }
-    }
+    conflicts libgcc libgcc-devel libgcc14
 
     # http://trac.macports.org/ticket/35770
     # http://trac.macports.org/ticket/38814
