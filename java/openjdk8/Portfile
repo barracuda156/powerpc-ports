@@ -1,44 +1,51 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
+PortGroup           conflicts_build 1.0
 
 name                openjdk8
 # use format based on macports:
 # https://guide.macports.org/chunked/reference.portgroup.html#reference.portgroup.java
 # https://github.com/openjdk/jdk8u/tags
 # Tags: https://github.com/openjdk/jdk8u/tags
-set major 8
-set update 372
+set major           8
+set update          412
 # Set to the build of the 'jdk8u${update}-b${build}' tag that corresponds to the latest tag with '-ga'
-set build 07
+set build           08
 version             ${major}u${update}
-revision            2
-categories          java devel
+revision            0
+categories          java devel lang
 supported_archs     ppc x86_64 arm64
 license             GPL-2+
 maintainers         {outlook.com:usersword123 @usersxx} openmaintainer
 description         OpenJDK 8
 long_description    JDK 8 and JRE 8 builds of OpenJDK, the Open-Source implementation \
                     of the Java Platform, Standard Edition, and related projects.
-homepage            https://openjdk.org/
+homepage            https://openjdk.org
 master_sites        https://git.openjdk.org/jdk8u/archive/refs/tags/
 distname            jdk${major}u${update}-ga
 worksrcdir          jdk8u-${distname}
 
-checksums           rmd160  7ffec6da71e24d2913b717b5f31d6be9c2fa7b7e \
-                    sha256  3235a744b51896beb1e8b738412982ebc06e2affb9d50ae3371203d9a46504da \
-                    size    88002433
+checksums           rmd160  c2089245d29564136f039fa6964fe9bd76103db9 \
+                    sha256  f63bb60fbc6e798b0bbf5b6477765c66740a2b3cceab2d6713be879057f1c99b \
+                    size    93003614
 
-patchfiles          0001-8181503-Can-t-compile-hotspot-with-c-11.patch \
-                    0002-Support-XCode-3-14.patch \
-                    0003-Ignore-__NSAutoreleaseNoPool-errors.patch \
-                    0004-8030812-Change-the-solaris-DTrace-implementation-to-.patch \
-                    0005-os_perf_bsd-allow-to-compile-with-ZERO-CPU.patch \
-                    0006-Disable-C-11-warnings.patch \
-                    0007-Added-macosx-bin-zero-jvm.cfg.patch \
-                    0008-ExtendedOptionsImpl.c-define-TCP_KEEPINTVL-and-TCP_K.patch \
-                    Support-arm64-and-fix-zero-assembler.diff \
-                    finite.patch
+patchfiles          0001-Support-XCode-3-14.patch \
+                    0002-Ignore-__NSAutoreleaseNoPool-errors.patch \
+                    0003-os_perf_bsd-allow-to-compile-with-ZERO-CPU.patch \
+                    0004-Added-macosx-bin-zero-jvm.cfg.patch \
+                    0005-ExtendedOptionsImpl.c-define-TCP_KEEPINTVL-and-TCP_K.patch
+
+# Use patches where they are needed, avoid patching unnecessarily.
+if {${configure.build_arch} ni [list ppc ppc64]} {
+    patchfiles-append \
+                    0006-8030812-Change-the-solaris-DTrace-implementation-to-.patch \
+                    0007-finite.patch
+    # This patch creates a conflict in definitions and breaks ppc build:
+    # https://trac.macports.org/ticket/69922
+    patchfiles-append \
+                    0008-Support-arm64-and-fix-zero-assembler.diff
+}
 
 # NSFullSizeContentViewWindowMask is available since 10.10
 if {${os.platform} eq "darwin" && ${os.major} < 14} {
@@ -46,24 +53,61 @@ if {${os.platform} eq "darwin" && ${os.major} < 14} {
                     0009-Revert-8211301-macos-support-full-window-content-opt.patch
 }
 
+# If we build with Xcode gcc, we do not need any C11.
+if {![string match gcc-4.* ${configure.compiler}]} {
+    patchfiles-append \
+                    0010-8181503-Can-t-compile-hotspot-with-c-11.patch \
+                    0011-Disable-C-11-warnings.patch
+}
+
+patchfiles-append   0012-Provide-definition-of-__private_extern__-where-undef.patch \
+                    0013-Fix-timebomb-bug-in-GenerateCurrencyData.patch
+
+# PowerPC-only fixes.
+platform powerpc {
+    patchfiles-append \
+                    1001-os_bsd_zero.cpp-implement-sync_val_compare_and_swap_.patch \
+                    1002-CoreLibraries.gmk-do-not-hardcode-arch.patch \
+                    1003-java_md_macosx-fix-broken-ObjC-code.patch \
+                    1004-os_bsd-add-ppc64-case.patch \
+                    1005-jniTypes_ppc-downgrade-error-to-warning.patch \
+                    1006-os_bsd.cpp-fix-vm_statistics.patch \
+                    1007-Awt2dLibraries-add-fnested-functions.patch \
+                    1008-java_md_macosx.c-define-preferredJVM.patch \
+                    1009-os_bsd.cpp-allow-headless-on-Apple.patch \
+                    1010-Makefile-fix-LP64-define.patch \
+                    1011-No-dtrace-for-now.patch \
+                    1012-toolchain.m4-hack-around-a-broken-Xcode-version-dete.patch \
+                    1013-os_bsd.cpp-fix-running-VM.patch \
+                    1014-portconfig-try-fix-broken-pipe.patch \
+                    1015-Some-hacks-to-fix-the-build-for-powerpc.patch
+}
+
+# Active libnet breaks linking of libnio which should link
+# to JDK’s own internal libnet.
+# libjpeg-turbo: https://trac.macports.org/ticket/67123
+conflicts_build     libjpeg-turbo libnet
+
 depends_lib         port:freetype \
                     port:libiconv
 depends_build       port:autoconf \
+                    port:bash \
                     port:gmake \
-                    port:pkgconfig \
-                    port:bash
-
-set tpath /Library/Java
-use_xcode           yes
-use_configure    yes
-if {${configure.build_arch} in [list i386 ppc]} {
-    set datamodel 32
-} else {
-    set datamodel 64
-}
+                    path:bin/pkg-config:pkgconfig
 
 # Update config.{guess,sub} to recognise arm64
 depends_build-append    port:automake
+
+set tpath /Library/Java
+
+use_xcode           yes
+
+if {${configure.build_arch} in [list i386 ppc]} {
+    set datamodel   32
+} else {
+    set datamodel   64
+}
+
 post-patch {
     set automake_dirs [glob -directory ${prefix}/share automake-*]
     set automake_dir [lindex [lsort -command vercmp $automake_dirs] end]
@@ -76,6 +120,16 @@ post-patch {
 configure.cmd       ${prefix}/bin/bash ./configure
 configure.pre_args  --prefix=${tpath}
 set bug_url "https://trac.macports.org/newticket?port=${name}"
+
+if {[string match macports-gcc* ${configure.compiler}]} {
+    # Not needed for Xcode gcc. gcc14 converted
+    # some warnings into errors by default, turn those off:
+    configure.cflags-append \
+                    -Wno-implicit-function-declaration \
+                    -Wno-incompatible-pointer-types \
+                    -Wno-int-conversion
+}
+
 # default configure args
 configure.args      --with-debug-level=release \
                     --with-freetype-include=${prefix}/include/freetype2 \
@@ -91,7 +145,8 @@ configure.args      --with-debug-level=release \
                     --with-vendor-vm-bug-url="${bug_url}" \
                     --with-update-version=${update} \
                     --with-conf-name=openjdk8 \
-                    --with-native-debug-symbols=none
+                    --with-native-debug-symbols=none \
+                    --with-num-cores=${buildmakejobs}
 
 if {[option configure.ccache]} {
     # replace MacPorts ccache integration into JDK
@@ -112,6 +167,8 @@ if { [string match *clang* ${configure.compiler}] } {
 build.pre_args-prepend \
                     COMPILER_WARNINGS_FATAL=false
 
+build.cmd           ${prefix}/bin/gmake
+
 post-patch {
     # NOTE: JDK had hardcoded MACOSX_VERSION_MIN as 10.9.0 when uses clang toolchain
     # and 10.7.0 for gcc toolchain.
@@ -123,17 +180,40 @@ post-patch {
 }
 
 if {${configure.build_arch} eq "ppc"} {
-    depends_build-append       port:openjdk7-bootstrap
-    configure.args-append      --with-boot-jdk=/Library/Java/JavaVirtualMachines/openjdk7-bootstrap
-    configure.post_args --disable-headful
+    depends_build-append    port:openjdk7-bootstrap
+    configure.args-append   --with-boot-jdk=/Library/Java/JavaVirtualMachines/openjdk7-bootstrap
+    configure.post_args     --disable-headful
+
+    # https://chromium.googlesource.com/chromium/src/+/52.0.2743.117/docs/mac_build_instructions.md
+    # unable to execute command: posix_spawn failed: Resource temporarily unavailable
+    # https://github.com/nilsvanvelzen/mac_ppc_openjdk8u60/issues/2
+    pre-fetch {
+        ui_msg "Consider running \`sudo sysctl -w kern.maxproc=2500\` and \`sudo sysctl -w kern.maxprocperuid=2500\` before building"
+    }
+
     post-patch {
+        # Obviously, 10.7 cannot work for ppc. Fix the target:
+        reinplace "s|MACOSX_VERSION_MIN=10.7.0|MACOSX_VERSION_MIN=${macosx_deployment_target}.0|g" \
+            ${worksrcpath}/common/autoconf/flags.m4 \
+            ${worksrcpath}/common/autoconf/generated-configure.sh
+        reinplace "s|REQUIRED_OS_VERSION=11.2|REQUIRED_OS_VERSION=${macosx_deployment_target}|g" \
+            ${worksrcpath}/common/autoconf/platform.m4
         reinplace "s|WARNINGS_ARE_ERRORS = -Werror|WARNING_FLAGS =|g" hotspot/make/bsd/makefiles/gcc.make
         reinplace "s|WARNING_FLAGS = -Wpointer-arith -Wsign-compare -Wundef -Wunused-function -Wformat=2|WARNING_FLAGS = |g" hotspot/make/bsd/makefiles/gcc.make
-        reinplace "s|@ZERO_ARCHDEF@|PPC|g" hotspot/make/bsd/platform_zero.in
+        reinplace "s|@ZERO_ARCHDEF@|PPC32|g" hotspot/make/bsd/platform_zero.in
         reinplace "s|@ZERO_LIBARCH@|ppc|g" hotspot/make/bsd/platform_zero.in
-        reinplace "s|dtraceCheck| |g" hotspot/make/bsd/makefiles/vm.make
-        reinplace "s|LP64=1|LP64=0|g" hotspot/make/bsd/Makefile
     }
+
+    # https://github.com/nilsvanvelzen/mac_ppc_openjdk8u60/commit/ea85e37ea7d7299007697afc3ca9ef2fd1fde2a9
+    # This error may occur, and there is no perfect solution. Requiring to build on a single core will
+    # dramatically increase build time, which is already long. A confirmed-to-work hack is to switch
+    # to a manual build in a case of a linkage failure: cd to extracted sources, sudo gmake + args used by MacPorts.
+    # Once the build completes, you can resume a standard MacPorts installation. There is no need to reconfigure,
+    # just run `sudo port build` or `sudo port install`.
+    pre-build {
+        ui_msg "Linking may fail when building in parallel. In such a case use --with-num-cores=1"
+    }
+
 } elseif {${configure.build_arch} in "arm64 x86_64"} {
     if {${os.platform} eq "darwin" && ${os.major} < 11} {
         # NOTE: openjdk8-bootstrap's doesn't work enough to bootstrap openjdk on 10.6
@@ -149,26 +229,26 @@ if {${configure.build_arch} eq "ppc"} {
         }
     }
 
-    depends_build-append       port:openjdk8-bootstrap
-    configure.args-append      --with-boot-jdk=/Library/Java/JavaVirtualMachines/openjdk8-bootstrap/Contents/Home
+    depends_build-append    port:openjdk8-bootstrap
+    configure.args-append   --with-boot-jdk=/Library/Java/JavaVirtualMachines/openjdk8-bootstrap/Contents/Home
 }
 
 variant server \
     conflicts core zero zeroshark \
     description {JVM with normal interpreter and a tiered C1/C2 compiler} {
-    configure.args-append  --with-jvm-variants=server
+    configure.args-append   --with-jvm-variants=server
 }
 
 variant release \
     conflicts debug \
     description {OpenJDK with no debug information, all optimizations and no asserts} {
-    configure.args-append  --with-debug-level=release 
+    configure.args-append   --with-debug-level=release
 }
 
 variant debug \
     conflicts release \
     description {OpenJDK with debug information, all optimizations and all asserts} {
-    configure.args-append  --with-debug-level=fastdebug
+    configure.args-append   --with-debug-level=fastdebug
     configure.args-delete   --with-native-debug-symbols=none
 }
 
@@ -182,28 +262,28 @@ variant zero \
     conflicts core zeroshark server \
     description {JVM with no assembler, no machine code interpreter and no compiler} {
     set archuc [string toupper ${configure.build_arch}]
-    depends_lib-append         port:libffi
-    configure.args-append  --with-jvm-variants=zero \
-                           --with-extra-cflags="${configure.cflags} -I${prefix}/include -arch ${configure.build_arch}" \
-                           --with-extra-cxxflags="${configure.cxxflags} -arch ${configure.build_arch}" \
-                           --with-extra-ldflags="${configure.ldflags} -I${prefix}/lib -arch ${configure.build_arch}"
-    configure.args-delete  --with-extra-cflags="${configure.cflags}" \
-                           --with-extra-cxxflags="${configure.cxxflags}" \
-                           --with-extra-ldflags="${configure.ldflags}"
+    depends_lib-append      port:libffi
+    configure.args-append   --with-jvm-variants=zero \
+                            --with-extra-cflags="${configure.cflags} -I${prefix}/include -arch ${configure.build_arch}" \
+                            --with-extra-cxxflags="${configure.cxxflags} -arch ${configure.build_arch}" \
+                            --with-extra-ldflags="${configure.ldflags} -I${prefix}/lib -arch ${configure.build_arch}"
+    configure.args-delete   --with-extra-cflags="${configure.cflags}" \
+                            --with-extra-cxxflags="${configure.cxxflags}" \
+                            --with-extra-ldflags="${configure.ldflags}"
 }
 
 variant zeroshark \
     conflicts core zero server \
     description {JVM with no assembler, zero interpreter and shark/llvm compiler backend} {
     set archuc [string toupper ${configure.build_arch}]
-    depends_lib-append         port:libffi
-    configure.args-append  --with-jvm-variants=zeroshark \
-                           --with-extra-cflags="${configure.cflags} -I${prefix}/include -arch ${configure.build_arch}" \
-                           --with-extra-cxxflags="${configure.cxxflags} -arch ${configure.build_arch}" \
-                           --with-extra-ldflags="${configure.ldflags} -I${prefix}/lib -arch ${configure.build_arch}"
-    configure.args-delete  --with-extra-cflags="${configure.cflags}" \
-                           --with-extra-cxxflags="${configure.cxxflags}" \
-                           --with-extra-ldflags="${configure.ldflags}"
+    depends_lib-append      port:libffi
+    configure.args-append   --with-jvm-variants=zeroshark \
+                            --with-extra-cflags="${configure.cflags} -I${prefix}/include -arch ${configure.build_arch}" \
+                            --with-extra-cxxflags="${configure.cxxflags} -arch ${configure.build_arch}" \
+                            --with-extra-ldflags="${configure.ldflags} -I${prefix}/lib -arch ${configure.build_arch}"
+    configure.args-delete   --with-extra-cflags="${configure.cflags}" \
+                            --with-extra-cxxflags="${configure.cxxflags}" \
+                            --with-extra-ldflags="${configure.ldflags}"
 }
 
 if {![variant_isset debug] && ![variant_isset release]} {
@@ -224,25 +304,54 @@ if {![variant_isset core] && ![variant_isset zeroshark] && ![variant_isset zero]
 
 build.type          gnu
 build.target        images
+
 use_parallel_build  no
+
 set jdkn jdk1.${major}.0_${update}.jdk
 set jren jre1.${major}.0_${update}.jre
-set jdk_bundle_dir build/openjdk8/images/j2sdk-bundle/${jdkn}/Contents
-set jre_bundle_dir build/openjdk8/images/j2re-bundle/${jren}/Contents
 set jdk_path ${tpath}/JavaVirtualMachines/${name}
 set jre_path ${tpath}/JavaVirtualMachines/${name}-jre
 
-test.run            yes
-test.cmd            ${jdk_bundle_dir}/Home/bin/java
-test.target         --version
+if {[variant_isset zero] && ${configure.build_arch} in [list ppc ppc64]} {
+    # JVM needs libfontconfig:
+    depends_lib-append port:fontconfig
 
-destroot {
-    xinstall -m 755 -d ${destroot}${jdk_path}
-    xinstall -m 755 -d ${destroot}${jre_path}
-    copy ${worksrcpath}/${jdk_bundle_dir} ${destroot}${jdk_path}
-    copy ${worksrcpath}/${jre_bundle_dir} ${destroot}${jre_path}
+    # We do not build macOS-style bundles here, so paths differ:
+    set jdk_bundle_dir build/openjdk8/images/j2sdk-image
+    set jre_bundle_dir build/openjdk8/images/j2re-image
+
+    # But we want to install in a macOS-style:
+    destroot {
+        xinstall -m 755 -d ${destroot}${jdk_path}/Contents
+        xinstall -m 755 -d ${destroot}${jre_path}/Contents
+        # This renames j2*-image dirs to respective Homes:
+        move ${worksrcpath}/${jdk_bundle_dir} ${destroot}${jdk_path}/Contents/Home
+        move ${worksrcpath}/${jre_bundle_dir} ${destroot}${jre_path}/Contents/Home
+        # We need these:
+        system "ln -s ${prefix}/lib/libfontconfig.1.dylib ${destroot}${jdk_path}/Contents/Home/jre/lib/libfontconfig.dylib"
+        system "ln -s ${prefix}/lib/libfontconfig.1.dylib ${destroot}${jre_path}/Contents/Home/lib/libfontconfig.dylib"
+    }
+    # Binaries are gone from worksrcpath, so run from destroot:
+    test.cmd        ${destroot}${jdk_path}/Contents/Home/bin/java
+
+} else {
+    set jdk_bundle_dir build/openjdk8/images/j2sdk-bundle/${jdkn}/Contents
+    set jre_bundle_dir build/openjdk8/images/j2re-bundle/${jren}/Contents
+
+    destroot {
+        xinstall -m 755 -d ${destroot}${jdk_path}
+        xinstall -m 755 -d ${destroot}${jre_path}
+        copy ${worksrcpath}/${jdk_bundle_dir} ${destroot}${jdk_path}
+        copy ${worksrcpath}/${jre_bundle_dir} ${destroot}${jre_path}
+    }
+
+    test.cmd        ${worksrcpath}/${jdk_bundle_dir}/Home/bin/java
 }
+
 destroot.violate_mtree      yes
+
+test.run            yes
+test.target         -version
 
 post-destroot {
     delete ${worksrcpath}
@@ -254,7 +363,7 @@ export JAVA_HOME=${jdk_path}/Contents/Home
 If you want to make the JRE installed by the ${name} the default JRE, add this to shell profile:
 export JAVA_HOME=${jre_path}/Contents/Home
 "
-    
+
 livecheck.type      regex
 livecheck.url       https://github.com/openjdk/jdk8u/tags
 livecheck.regex     jdk(8u\[0-9\]+)-ga

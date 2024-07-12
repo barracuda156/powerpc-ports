@@ -90,21 +90,19 @@ diff --git jdk/src/macosx/native/sun/awt/AWTWindow.m jdk/src/macosx/native/sun/a
 index 92fff249ccf..2036b6a3036 100644
 --- jdk/src/macosx/native/sun/awt/AWTWindow.m
 +++ jdk/src/macosx/native/sun/awt/AWTWindow.m
-@@ -202,10 +202,9 @@ AWT_NS_WINDOW_IMPLEMENTATION
+@@ -202,9 +202,8 @@
      NSUInteger type = 0;
      if (IS(styleBits, DECORATED)) {
          type |= NSTitledWindowMask;
 -        if (IS(styleBits, CLOSEABLE))            type |= NSClosableWindowMask;
--        if (IS(styleBits, MINIMIZABLE))          type |= NSMiniaturizableWindowMask;
 -        if (IS(styleBits, RESIZABLE))            type |= NSResizableWindowMask;
 -        if (IS(styleBits, FULL_WINDOW_CONTENT))  type |= NSFullSizeContentViewWindowMask;
 +        if (IS(styleBits, CLOSEABLE))   type |= NSClosableWindowMask;
-+        if (IS(styleBits, MINIMIZABLE)) type |= NSMiniaturizableWindowMask;
 +        if (IS(styleBits, RESIZABLE))   type |= NSResizableWindowMask;
      } else {
          type |= NSBorderlessWindowMask;
      }
-@@ -264,9 +263,6 @@ AWT_NS_WINDOW_IMPLEMENTATION
+@@ -264,9 +263,6 @@
          }
      }
  
@@ -114,7 +112,7 @@ index 92fff249ccf..2036b6a3036 100644
  }
  
  - (id) initWithPlatformWindow:(JNFWeakJObjectWrapper *)platformWindow
-@@ -1020,29 +1016,9 @@ JNF_COCOA_ENTER(env);
+@@ -1020,29 +1016,9 @@
          AWTWindow *window = (AWTWindow*)[nsWindow delegate];
  
          // scans the bit field, and only updates the values requested by the mask
@@ -145,7 +143,7 @@ index 92fff249ccf..2036b6a3036 100644
          // resets the NSWindow's style mask if the mask intersects any of those bits
          if (mask & MASK(_STYLE_PROP_BITMASK)) {
              [nsWindow setStyleMask:[AWTWindow styleMaskForStyleBits:newBits]];
-@@ -1054,10 +1030,6 @@ JNF_COCOA_ENTER(env);
+@@ -1054,10 +1030,6 @@
          }
  
          window.styleBits = newBits;
@@ -156,6 +154,3 @@ index 92fff249ccf..2036b6a3036 100644
      }];
  
  JNF_COCOA_EXIT(env);
--- 
-2.37.3
-
