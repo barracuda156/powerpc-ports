@@ -5,7 +5,7 @@ PortGroup           qt4 1.0
 
 name                qtscriptgenerator
 version             0.2.0
-revision            1
+revision            2
 categories          devel kde4
 license             LGPL-2.1
 maintainers         {michaelld @michaelld} openmaintainer
@@ -13,8 +13,7 @@ description         QtScript bindings generator.
 long_description    Qt Script Generator is a tool that generates \
     Qt bindings for Qt Script. With the generated bindings you get \
     access to substantial portions of the Qt API from within Qt Script.
-platforms           darwin
-homepage            http://labs.trolltech.com/page/Projects/QtScript/Generator
+homepage            https://github.com/qt-labs/qtscriptgenerator
 distname            ${name}-src-${version}
 master_sites        http://qtscriptgenerator.googlecode.com/files/
 checksums           md5     9f82b0aa212f7938de37df46cd27165c \
@@ -32,9 +31,9 @@ patchfiles          patch-generator.diff \
                     debian_qs_eval_globalize.diff \
                     upstream_memory_alignment_fix.diff \
                     upstream_support_later_phonon.diff \
-                    remove-QtScriptFutureIterator.diff \
                     patch-include-everything.diff \
-                    patch-build-system-for-MacPorts.diff
+                    patch-build-system-for-MacPorts.diff \
+                    1509a9b466b7793c19b833de073748a33b71b35a.patch
 
 # check for +debug variant of this port, and make sure phonon was
 # installed with +debug as well; if not, error out.  phonon checks to
