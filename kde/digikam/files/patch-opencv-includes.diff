@@ -1,0 +1,25 @@
+--- extra/kipi-plugins/removeredeyes/detection/locators/haarclassifier/haarclassifierlocator.cpp	2015-10-14 05:58:21.000000000 +0800
++++ extra/kipi-plugins/removeredeyes/detection/locators/haarclassifier/haarclassifierlocator.cpp	2024-07-17 17:51:00.000000000 +0800
+@@ -34,6 +34,10 @@
+ #include <kconfig.h>
+ #include <kconfiggroup.h>
+ 
++// OpenCV includes
++
++#include <opencv2/imgproc.hpp>
++
+ // Local includes
+ 
+ #include "BlobResult.h"
+
+--- extra/kipi-plugins/removeredeyes/libcvblobs/Blob.h	2015-10-14 05:58:21.000000000 +0800
++++ extra/kipi-plugins/removeredeyes/libcvblobs/Blob.h	2024-07-17 18:28:29.000000000 +0800
+@@ -101,7 +101,7 @@
+ 
+     //! Pinta l'interior d'un blob d'un color determinat
+     //! Paints the blob in an image
+-    void FillBlob( IplImage* imatge, CvScalar color, int offsetX = 0, int offsetY = 0 ) const;
++    void FillBlob( IplImage* imatge, cv::Scalar color, int offsetX = 0, int offsetY = 0 ) const;
+ 
+     //! Functions GET sobre els valors dels blobs
+     //! Get functions

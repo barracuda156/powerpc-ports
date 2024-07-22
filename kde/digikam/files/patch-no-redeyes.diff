@@ -1,0 +1,21 @@
+--- extra/kipi-plugins/CMakeLists.txt
++++ extra/kipi-plugins/CMakeLists.txt	2024-07-17 19:58:17.000000000 +0800
+@@ -287,7 +287,6 @@
+     PRINT_COMPONENT_COMPILE_STATUS("AcquireImages"      KSANE_FOUND)
+     PRINT_COMPONENT_COMPILE_STATUS("DNGConverter"       BUILD_DNGCONVERTER)
+     PRINT_COMPONENT_COMPILE_STATUS("DLNAExport"         (HUPNP_FOUND AND HUPNPAV_FOUND) OR (NOT (HUPNP_FOUND AND HUPNPAV_FOUND) AND QTSOAP_FOUND))
+-    PRINT_COMPONENT_COMPILE_STATUS("RemoveRedEyes"      OpenCV_FOUND)
+     PRINT_COMPONENT_COMPILE_STATUS("Debian Screenshots" QJSON_FOUND)
+     PRINT_COMPONENT_COMPILE_STATUS("Facebook"           QJSON_FOUND)
+     PRINT_COMPONENT_COMPILE_STATUS("Imgur"              QJSON_FOUND)
+@@ -432,10 +431,6 @@
+             add_subdirectory(ipodexport)
+         endif()
+ 
+-        if(OpenCV_FOUND)
+-            add_subdirectory(removeredeyes)
+-        endif()
+-
+         if(QJSON_FOUND)
+             add_subdirectory(debianscreenshots)
+             add_subdirectory(facebook)
