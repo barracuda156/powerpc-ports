@@ -1,0 +1,41 @@
+# https://stackoverflow.com/questions/47284705/c1z-dynamic-exception-specification-error
+
+--- core/libs/threadimageio/pgfutils.cpp
++++ core/libs/threadimageio/pgfutils.cpp	2024-07-17 16:09:08.000000000 +0800
+@@ -52,7 +52,15 @@
+ 
+ // LibPGF includes
+ 
+-#include <PGFimage.h>
++#if __cplusplus >= 201703L
++    #include <stdexcept>
++    #include <string>
++    #include <memory>
++
++    #define throw(...)
++    #include <PGFimage.h>
++    #undef throw
++#endif
+ 
+ namespace Digikam
+ {
+
+--- core/libs/dimg/loaders/pgfloader.cpp
++++ core/libs/dimg/loaders/pgfloader.cpp	2024-07-17 15:57:47.000000000 +0800
+@@ -67,7 +67,15 @@
+ 
+ // Libpgf includes
+ 
+-#include <PGFimage.h>
++#if __cplusplus >= 201703L
++    #include <stdexcept>
++    #include <string>
++    #include <memory>
++
++    #define throw(...)
++    #include <PGFimage.h>
++    #undef throw
++#endif
+ 
+ // Local includes
+ 
