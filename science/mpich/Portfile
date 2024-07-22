@@ -205,6 +205,12 @@ if {${subport_enabled}} {
                     -latomic
     }
 
+    if {[string match *gcc* ${configure.compiler}]} {
+        # https://trac.macports.org/ticket/70418
+        configure.cflags-append \
+                    -Wno-error=incompatible-pointer-types
+    }
+
     # We're making compiler wrappers here... don't default to -O2 for wrappers.
     # Actual library code is compiled with -O2 via --enable-fast=O2 configure arg
     configure.optflags-delete   -O2 -Os
