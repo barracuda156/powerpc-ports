@@ -1,0 +1,25 @@
+From 0f159981176faa6da701f112bfe557b79804d468 Mon Sep 17 00:00:00 2001
+From: Gilles Caulier <caulier.gilles@gmail.com>
+Date: Mon, 14 Dec 2015 22:40:55 +0059
+Subject: [PATCH] fix compilation with Lensfun 0.3.2 It still compatible with
+ older lensfun releases. BUGS: 356672 FIXED-IN: 5.0.0
+
+---
+ libs/dimg/filters/lens/lensfuniface.h | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/libs/dimg/filters/lens/lensfuniface.h b/libs/dimg/filters/lens/lensfuniface.h
+index 148be26e7b3..1a9c5405b7c 100644
+--- core/libs/dimg/filters/lens/lensfuniface.h
++++ core/libs/dimg/filters/lens/lensfuniface.h
+@@ -24,10 +24,7 @@
+ 
+ // Lib LensFun includes
+ 
+-extern "C"
+-{
+ #include <lensfun.h>
+-}
+ 
+ // Local includes
+ 
