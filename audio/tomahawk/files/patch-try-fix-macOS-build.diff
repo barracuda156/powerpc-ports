@@ -1,0 +1,502 @@
+From efc6a9d80d0223723d83b64c55a3bed9c004d43b Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sun, 21 Jul 2024 19:25:03 +0800
+Subject: [PATCH] Revert breakages, try fix macOS
+
+---
+ src/tomahawk/CMakeLists.osx.cmake      |   1 -
+ src/tomahawk/CMakeLists.txt            |   2 -
+ src/tomahawk/TomahawkApp.cpp           |   5 -
+ src/tomahawk/TomahawkWindow.cpp        |  36 ------
+ src/tomahawk/TomahawkWindow.h          |   3 -
+ src/tomahawk/Tomahawkapp_MacDelegate.h |  44 +++++++
+ src/tomahawk/mac/MacDelegate.h         |  40 ------
+ src/tomahawk/mac/TomahawkApp_Mac.h     |   5 -
+ src/tomahawk/mac/TomahawkApp_Mac.mm    | 171 ++++---------------------
+ thirdparty/CMakeLists.txt              |   3 -
+ 10 files changed, 68 insertions(+), 242 deletions(-)
+ create mode 100644 src/tomahawk/Tomahawkapp_MacDelegate.h
+ delete mode 100644 src/tomahawk/mac/MacDelegate.h
+
+diff --git src/tomahawk/CMakeLists.osx.cmake src/tomahawk/CMakeLists.osx.cmake
+index d56b963b9..5140044f0 100644
+--- src/tomahawk/CMakeLists.osx.cmake
++++ src/tomahawk/CMakeLists.osx.cmake
+@@ -6,7 +6,6 @@ SET( OS_SPECIFIC_LINK_LIBRARIES
+     ${COREFOUNDATION_LIBRARY}
+ 
+     crypto
+-    SPMediaKeyTap
+ 
+     /System/Library/Frameworks/AppKit.framework
+     /System/Library/Frameworks/Carbon.framework
+diff --git src/tomahawk/CMakeLists.txt src/tomahawk/CMakeLists.txt
+index 0197e2cdb..6ab634157 100644
+--- src/tomahawk/CMakeLists.txt
++++ src/tomahawk/CMakeLists.txt
+@@ -118,8 +118,6 @@ ENDIF( UNIX )
+ IF( APPLE )
+     SET( CMAKE_LINKER_FLAGS "-headerpad_max_install_names ${CMAKE_LINKER_FLAGS}" )
+ 
+-    INCLUDE_DIRECTORIES( ${CMAKE_SOURCE_DIR}/thirdparty/SPMediaKeyTap )
+-
+     SET( tomahawkSources ${tomahawkSources} mac/TomahawkApp_Mac.mm mac/MacShortcutHandler.cpp )
+ ENDIF( APPLE )
+ 
+diff --git src/tomahawk/TomahawkApp.cpp src/tomahawk/TomahawkApp.cpp
+index 66a9413a2..84cb18bb0 100644
+--- src/tomahawk/TomahawkApp.cpp
++++ src/tomahawk/TomahawkApp.cpp
+@@ -700,11 +700,6 @@ TomahawkApp::onInfoSystemReady()
+     QNetworkReply* r = Tomahawk::Utils::nam()->get( request );
+     connect( r, SIGNAL( finished() ), this, SLOT( spotifyApiCheckFinished() ) );
+ 
+-#ifdef Q_OS_MAC
+-    // Make sure to do this after main window is inited
+-    Tomahawk::enableFullscreen( m_mainwindow );
+-#endif
+-
+     initEnergyEventHandler();
+ 
+     if ( arguments().count() > 1 )
+diff --git src/tomahawk/TomahawkWindow.cpp src/tomahawk/TomahawkWindow.cpp
+index 9062d12a2..4ef45dcc2 100644
+--- src/tomahawk/TomahawkWindow.cpp
++++ src/tomahawk/TomahawkWindow.cpp
+@@ -1131,42 +1131,6 @@ TomahawkWindow::showOfflineSources()
+ }
+ 
+ 
+-void
+-TomahawkWindow::fullScreenEntered()
+-{
+-    TomahawkSettings::instance()->setFullscreenEnabled( true );
+-//    statusBar()->setSizeGripEnabled( false );
+-
+-    // Since we just disabled the size-grip the entire statusbar will shift a bit to the right
+-    // The volume bar would now have no margin to the right screen edge. Prevent that.
+-//    QMargins margins = statusBar()->contentsMargins();
+-//    margins.setRight( 24 );
+-//    statusBar()->setContentsMargins( margins );
+-
+-#if defined( Q_WS_MAC )
+-    ActionCollection::instance()->getAction( "fullscreen" )->setText( tr( "Exit Full Screen" ) );
+-#endif
+-}
+-
+-
+-void
+-TomahawkWindow::fullScreenExited()
+-{
+-    TomahawkSettings::instance()->setFullscreenEnabled( false );
+-//    statusBar()->setSizeGripEnabled( true );
+-
+-    // Since we just enabled the size-grip the entire statusbar will shift a bit to the left
+-    // The volume bar would now have too big a margin to the right screen edge. Prevent that.
+-//    QMargins margins = statusBar()->contentsMargins();
+-//    margins.setRight( 0 );
+-//    statusBar()->setContentsMargins( margins );
+-
+-#if defined( Q_WS_MAC )
+-    ActionCollection::instance()->getAction( "fullscreen" )->setText( tr( "Enter Full Screen" ) );
+-#endif
+-}
+-
+-
+ void
+ TomahawkWindow::loadPlaylist()
+ {
+diff --git src/tomahawk/TomahawkWindow.h src/tomahawk/TomahawkWindow.h
+index 1e7cd0a36..f227a04c7 100644
+--- src/tomahawk/TomahawkWindow.h
++++ src/tomahawk/TomahawkWindow.h
+@@ -111,9 +111,6 @@ public slots:
+     void rescanCollectionManually();
+     void showOfflineSources();
+ 
+-    void fullScreenEntered();
+-    void fullScreenExited();
+-
+ private slots:
+     void onHistoryBackAvailable( bool avail );
+     void onHistoryForwardAvailable( bool avail );
+diff --git src/tomahawk/Tomahawkapp_MacDelegate.h src/tomahawk/Tomahawkapp_MacDelegate.h
+new file mode 100644
+index 000000000..2585b3aa8
+--- /dev/null
++++ src/tomahawk/Tomahawkapp_MacDelegate.h
+@@ -0,0 +1,44 @@
++/* === This file is part of Tomahawk Player - <http://tomahawk-player.org> ===
++ * 
++ *   Copyright 2010-2011, Christian Muehlhaeuser <muesli@tomahawk-player.org>
++ *
++ *   Tomahawk is free software: you can redistribute it and/or modify
++ *   it under the terms of the GNU General Public License as published by
++ *   the Free Software Foundation, either version 3 of the License, or
++ *   (at your option) any later version.
++ *
++ *   Tomahawk is distributed in the hope that it will be useful,
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++ *   GNU General Public License for more details.
++ *
++ *   You should have received a copy of the GNU General Public License
++ *   along with Tomahawk. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#import <AppKit/NSApplication.h>
++#include <AvailabilityMacros.h>
++
++#include "config.h"
++
++// this file  copied and inspired by mac_startup.* in clementine player,
++// copyright David Sansome 2010
++namespace Tomahawk {
++    class PlatformInterface;
++}
++
++#if (MAC_OS_X_VERSION_MAX_ALLOWED >= 1060) && !defined(__ppc__)
++@interface AppDelegate : NSObject <NSApplicationDelegate> {
++#else
++@interface AppDelegate : NSObject {
++#endif
++  Tomahawk::PlatformInterface* application_handler_;
++  //NSMenu* dock_menu_;
++}
++
++- (id) initWithHandler: (Tomahawk::PlatformInterface*)handler;
++// NSApplicationDelegate
++- (BOOL) applicationShouldHandleReopen: (NSApplication*)app hasVisibleWindows:(BOOL)flag;
++//- (NSMenu*) applicationDockMenu: (NSApplication*)sender;
++//- (void) setDockMenu: (NSMenu*)menu;
++@end
+diff --git src/tomahawk/mac/MacDelegate.h src/tomahawk/mac/MacDelegate.h
+deleted file mode 100644
+index c9c0e0e3a..000000000
+--- src/tomahawk/mac/MacDelegate.h
++++ /dev/null
+@@ -1,40 +0,0 @@
+-#ifndef MACDELEGATE_H
+-#define MACDELEGATE_H
+-
+-// This file inspired by clementine's MacDelegate.h
+-
+-#import <Cocoa/Cocoa.h>
+-
+-#include "SPMediaKeyTap.h"
+-
+-namespace Tomahawk {
+-    class MacShortcutHandler;
+-    class PlatformInterface;
+-}
+-
+-#if ( defined MAC_OS_X_VERSION_10_7 || defined SNOW_LEOPARD )
+-@interface AppDelegate :NSObject <NSApplicationDelegate> {
+-#else
+-@interface AppDelegate :NSObject {
+-#endif
+-  Tomahawk::PlatformInterface* application_handler_;
+-  NSMenu* dock_menu_;
+-  SPMediaKeyTap* key_tap_;
+-  Tomahawk::MacShortcutHandler* shortcut_handler_;
+-}
+-
+-- (id) initWithHandler: (Tomahawk::PlatformInterface*)handler;
+-// NSApplicationDelegate
+-- (BOOL) applicationShouldHandleReopen: (NSApplication*)app hasVisibleWindows:(BOOL)flag;
+-- (NSMenu*) applicationDockMenu: (NSApplication*)sender;
+-- (void) setDockMenu: (NSMenu*)menu;
+-- (Tomahawk::MacShortcutHandler*) shortcutHandler;
+-- (void) setShortcutHandler: (Tomahawk::MacShortcutHandler*)backend;
+-- (void)applicationDidFinishLaunching:(NSNotification*)aNotification;
+-- (NSApplicationTerminateReply) applicationShouldTerminate:(NSApplication*)sender;
+-- (void) mediaKeyTap: (SPMediaKeyTap*)keyTap receivedMediaKeyEvent:(NSEvent*)event;
+-@end
+-
+-
+-
+-#endif // MACDELEGATE_H
+diff --git src/tomahawk/mac/TomahawkApp_Mac.h src/tomahawk/mac/TomahawkApp_Mac.h
+index 5de03cc04..5e9cbcae7 100644
+--- src/tomahawk/mac/TomahawkApp_Mac.h
++++ src/tomahawk/mac/TomahawkApp_Mac.h
+@@ -23,7 +23,6 @@
+ // copyright David Sansome 2010
+ 
+ class QString;
+-class QObject;
+ 
+ namespace Tomahawk {
+ 
+@@ -45,10 +44,6 @@ void setShortcutHandler(Tomahawk::MacShortcutHandler* engine);
+ void setApplicationHandler(PlatformInterface* handler);
+ void checkForUpdates();
+ 
+-// Pass in a QObject with slots "fullScreenEntered() and fullScreenExited() in order to be notified
+-void toggleFullscreen();
+-void enableFullscreen( QObject* notifier );
+-
+ };
+ 
+ #endif
+diff --git src/tomahawk/mac/TomahawkApp_Mac.mm src/tomahawk/mac/TomahawkApp_Mac.mm
+index cc50a017f..ccd223449 100644
+--- src/tomahawk/mac/TomahawkApp_Mac.mm
++++ src/tomahawk/mac/TomahawkApp_Mac.mm
+@@ -21,22 +21,19 @@
+ #include "MacDelegate.h"
+ #include "MacShortcutHandler.h"
+ #include "config.h"
+-#include "TomahawkWindow.h"
+ #include "audio/AudioEngine.h"
++#include "Tomahawkapp_MacDelegate.h"
+ 
+-#import <Cocoa/Cocoa.h>
++#include <AvailabilityMacros.h>
++#include <Cocoa/Cocoa.h>
+ 
+ #ifdef HAVE_SPARKLE
+ #import <Sparkle/SUUpdater.h>
+ #endif
+ 
+-#include <QDebug>
+ #include <QApplication>
+-#include <QObject>
+-#include <QMetaObject>
+ 
+ @interface MacApplication :NSApplication {
+-    AppDelegate* delegate_;
+     Tomahawk::MacShortcutHandler* shortcut_handler_;
+     Tomahawk::PlatformInterface* application_handler_;
+ }
+@@ -46,6 +43,7 @@
+ 
+ - (Tomahawk::PlatformInterface*) application_handler;
+ - (void) setApplicationHandler: (Tomahawk::PlatformInterface*)handler;
++- (void) mediaKeyEvent: (int)key state: (BOOL)state repeat: (BOOL)repeat;
+ 
+ #ifdef HAVE_SPARKLE
+ // SUUpdaterDelegate
+@@ -59,9 +57,8 @@
+ 
+ - (id) init {
+   if ((self = [super init])) {
+-      application_handler_ = nil;
+-      shortcut_handler_ = nil;
+-      //dock_menu_ = nil;
++    application_handler_ = nil;
++//    dock_menu_ = nil;
+   }
+   return self;
+ }
+@@ -69,12 +66,6 @@
+ - (id) initWithHandler: (Tomahawk::PlatformInterface*)handler {
+   application_handler_ = handler;
+ 
+-  // Register defaults for the whitelist of apps that want to use media keys
+-  [[NSUserDefaults standardUserDefaults] registerDefaults:[NSDictionary dictionaryWithObjectsAndKeys:
+-     [SPMediaKeyTap defaultMediaKeyUserBundleIdentifiers], @"SPApplicationsNeedingMediaKeys",
+-      nil]];
+-
+-
+   return self;
+ }
+ 
+@@ -85,51 +76,6 @@
+   return YES;
+ }
+ 
+-- (void) setDockMenu: (NSMenu*)menu {
+-  dock_menu_ = menu;
+-}
+-
+-- (NSMenu*) applicationDockMenu: (NSApplication*)sender {
+-  return dock_menu_;
+-}
+-
+-
+-- (Tomahawk::MacShortcutHandler*) shortcutHandler {
+-    return shortcut_handler_;
+-}
+-
+-- (void) setShortcutHandler: (Tomahawk::MacShortcutHandler*)handler {
+-    // should be the same as MacApplication's
+-  shortcut_handler_ = handler;
+-}
+-
+-- (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
+-  key_tap_ = [[SPMediaKeyTap alloc] initWithDelegate:self];
+-  if([SPMediaKeyTap usesGlobalMediaKeyTap])
+-    [key_tap_ startWatchingMediaKeys];
+-  else
+-    qWarning()<<"Media key monitoring disabled";
+-
+-}
+-
+-- (void) mediaKeyTap: (SPMediaKeyTap*)keyTap receivedMediaKeyEvent:(NSEvent*)event {
+-  NSAssert([event type] == NSSystemDefined && [event subtype] == SPSystemDefinedEventMediaKeys, @"Unexpected NSEvent in mediaKeyTap:receivedMediaKeyEvent:");
+-
+-  int key_code = (([event data1] & 0xFFFF0000) >> 16);
+-  int key_flags = ([event data1] & 0x0000FFFF);
+-  BOOL key_is_pressed = (((key_flags & 0xFF00) >> 8)) == 0xA;
+-  // not used. keep just in case
+-  //  int key_repeat = (key_flags & 0x1);
+-
+-  if (!shortcut_handler_) {
+-    qWarning() << "No shortcut handler when we get a media key event...";
+-    return;
+-  }
+-  if (key_is_pressed) {
+-    shortcut_handler_->macMediaKeyPressed(key_code);
+-  }
+-}
+-
+ - (BOOL) application: (NSApplication*)app openFile:(NSString*)filename {
+ 
+   if (application_handler_->loadUrl(QString::fromUtf8([filename UTF8String]))) {
+@@ -139,10 +85,6 @@
+   return NO;
+ }
+ 
+-- (NSApplicationTerminateReply) applicationShouldTerminate:(NSApplication*) sender {
+-  return NSTerminateNow;
+-}
+-
+ @end
+ 
+ @implementation MacApplication
+@@ -186,22 +128,29 @@
+ }
+ 
+ - (void) setApplicationHandler: (Tomahawk::PlatformInterface*)handler {
+-  delegate_ = [[AppDelegate alloc] initWithHandler:handler];
+-  // App-shortcut-handler set before delegate is set.
+-  // this makes sure the delegate's shortcut_handler is set
+-  [delegate_ setShortcutHandler:shortcut_handler_];
+-  [self setDelegate:delegate_];
++  AppDelegate* delegate = [[AppDelegate alloc] initWithHandler:handler];
++  [self setDelegate:delegate];
+ }
+ 
+ -(void) sendEvent: (NSEvent*)event {
+-    // If event tap is not installed, handle events that reach the app instead
+-    BOOL shouldHandleMediaKeyEventLocally = ![SPMediaKeyTap usesGlobalMediaKeyTap];
++  if ([event type] == NSSystemDefined && [event subtype] == 8) {
++    int keycode = (([event data1] & 0xFFFF0000) >> 16);
++    int keyflags = ([event data1] & 0x0000FFFF);
++    int keystate = (((keyflags & 0xFF00) >> 8)) == 0xA;
++    int keyrepeat = (keyflags & 0x1);
+ 
+-    if(shouldHandleMediaKeyEventLocally && [event type] == NSSystemDefined && [event subtype] == SPSystemDefinedEventMediaKeys) {
+-      [(id)[self delegate] mediaKeyTap: nil receivedMediaKeyEvent: event];
+-    }
++    [self mediaKeyEvent: keycode state: keystate repeat: keyrepeat];
++  }
++  [super sendEvent: event];
++}
+ 
+-    [super sendEvent: event];
++-(void) mediaKeyEvent: (int)key state: (BOOL)state repeat: (BOOL)repeat {
++  if (!shortcut_handler_) {
++    return;
++  }
++  if (state == 0) {
++    shortcut_handler_->macMediaKeyPressed(key);
++  }
+ }
+ 
+ #ifdef HAVE_SPARKLE
+@@ -225,7 +174,6 @@ void Tomahawk::macMain() {
+ #endif
+ }
+ 
+-
+ void Tomahawk::setShortcutHandler(Tomahawk::MacShortcutHandler* handler) {
+   [NSApp setShortcutHandler: handler];
+ }
+@@ -239,74 +187,3 @@ void Tomahawk::checkForUpdates() {
+   [[SUUpdater sharedUpdater] checkForUpdates: NSApp];
+ #endif
+ }
+-
+-#if defined(LION) || defined(MOUNTAIN_LION)
+-#define SET_LION_FULLSCREEN NSWindowCollectionBehaviorFullScreenPrimary
+-#define LION_FULLSCREEN_ENTER_NOTIFICATION_VALUE NSWindowWillEnterFullScreenNotification
+-#define LION_FULLSCREEN_EXIT_NOTIFICATION_VALUE NSWindowDidExitFullScreenNotification
+-#else
+-#define SET_LION_FULLSCREEN (NSUInteger)(1 << 7) // Defined as NSWindowCollectionBehaviorFullScreenPrimary in lion's NSWindow.h
+-#define LION_FULLSCREEN_ENTER_NOTIFICATION_VALUE @"NSWindowWillEnterFullScreenNotification"
+-#define LION_FULLSCREEN_EXIT_NOTIFICATION_VALUE @"NSWindowDidExitFullScreenNotification"
+-#endif
+-
+-void Tomahawk::toggleFullscreen()
+-{
+-    if ( QSysInfo::MacintoshVersion != QSysInfo::MV_SNOWLEOPARD &&
+-         QSysInfo::MacintoshVersion != QSysInfo::MV_LEOPARD   )
+-    {
+-        qDebug() << "Toggling Lion Full-screeen";
+-        // Can't include TomahawkApp.h in a .mm file, pulls in InfoSystem.h which uses
+-        // the objc keyword 'id'
+-        foreach( QWidget* w, QApplication::topLevelWidgets() )
+-        {
+-            if ( qobject_cast< TomahawkWindow* >( w ) )
+-            {
+-                NSView *nsview = (NSView *)w->winId();
+-                NSWindow *nswindow = [nsview window];
+-                [nswindow toggleFullScreen: nil];
+-            }
+-        }
+-    }
+-}
+-
+-void Tomahawk::enableFullscreen( QObject* receiver )
+-{
+-    // We don't support anything below leopard, so if it's not [snow] leopard it must be lion
+-    // Can't check for lion as Qt 4.7 doesn't have the enum val, not checking for Unknown as it will be lion
+-    // on 4.8
+-    if ( QSysInfo::MacintoshVersion != QSysInfo::MV_SNOWLEOPARD &&
+-         QSysInfo::MacintoshVersion != QSysInfo::MV_LEOPARD   )
+-    {
+-        qDebug() << "Enabling Lion Full-screeen";
+-        // Can't include TomahawkApp.h in a .mm file, pulls in InfoSystem.h which uses
+-        // the objc keyword 'id'
+-        foreach( QWidget* w, QApplication::topLevelWidgets() )
+-        {
+-            if ( qobject_cast< TomahawkWindow* >( w ) )
+-            {
+-                NSView *nsview = (NSView *)w->winId();
+-                NSWindow *nswindow = [nsview window];
+-                [nswindow setCollectionBehavior:SET_LION_FULLSCREEN];
+-
+-                if ( !receiver )
+-                    continue;
+-
+-                [[NSNotificationCenter defaultCenter] addObserverForName:LION_FULLSCREEN_ENTER_NOTIFICATION_VALUE
+-                                                                  object:nswindow
+-                                                                   queue:nil
+-                                                              usingBlock:^(NSNotification * note) {
+-                    NSLog(@"Became Full Screen!");
+-                    QMetaObject::invokeMethod( receiver, "fullScreenEntered", Qt::DirectConnection );
+-                }];
+-                [[NSNotificationCenter defaultCenter] addObserverForName:LION_FULLSCREEN_EXIT_NOTIFICATION_VALUE
+-                                                                  object:nswindow
+-                                                                   queue:nil
+-                                                              usingBlock:^(NSNotification * note) {
+-                    NSLog(@"Left Full Screen!");
+-                    QMetaObject::invokeMethod( receiver, "fullScreenExited", Qt::DirectConnection );
+-                }];
+-            }
+-        }
+-    }
+-}
+diff --git thirdparty/CMakeLists.txt thirdparty/CMakeLists.txt
+index 032f3b9b3..4764060a0 100644
+--- thirdparty/CMakeLists.txt
++++ thirdparty/CMakeLists.txt
+@@ -4,6 +4,3 @@ ADD_SUBDIRECTORY( qt-certificate-addon )
+ IF( WITH_CRASHREPORTER )
+     ADD_SUBDIRECTORY( libcrashreporter-qt )
+ ENDIF()
+-IF( APPLE )
+-    ADD_SUBDIRECTORY( SPMediaKeyTap )
+-ENDIF()
