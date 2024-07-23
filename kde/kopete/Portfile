@@ -18,7 +18,8 @@ master_sites        kde:stable/${version}/src/
 use_xz              yes
 
 checksums           rmd160  acbba218e24ba051aedab0296a0b2bad25815f8f \
-                    sha256  ba23c6dea57233e0861865a1d76c356b0d3f7037f95e2166d0daef14e6c13845
+                    sha256  ba23c6dea57233e0861865a1d76c356b0d3f7037f95e2166d0daef14e6c13845 \
+                    size    6317288
 
 depends_lib-append  port:kdelibs4 \
                     port:kdepimlibs4 \
@@ -49,9 +50,17 @@ patchfiles-append       patch-no-xmms.diff
 
 patchfiles-append       patch-kopete-pointer-not-null.diff
 
+patchfiles-append       patch-fix-history2logger.h.diff
+
 if {![variant_isset docs]} {
     patchfiles-append   patch-CMakeLists.diff
 }
+
+# Undefined symbols: "__ZN3MSN28NotificationServerConnection26enableContactOnAddressBookENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEES6_"
+compiler.cxx_standard   2011
+# Notice, we should not set C++ standard above 2014, or otherwise patches will be needed
+configure.cxxflags-append \
+                        -std=c++11
 
 livecheck.url       ${kde4.mirror}
 livecheck.regex     (\\d+(\\.\\d+)+)
