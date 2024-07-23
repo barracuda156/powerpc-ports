@@ -1,11 +1,10 @@
 --- kwalletd/CMakeLists.txt.orig	2016-10-03 22:09:25.000000000 +0900
-+++ kwalletd/CMakeLists.txt	2016-10-03 22:13:23.000000000 +0900
-@@ -7,6 +7,8 @@
++++ kwalletd/CMakeLists.txt	2024-05-25 13:05:04.000000000 +0800
+@@ -11,6 +11,7 @@
  
- if (GPGME_FOUND AND QGPGME_FOUND)
+ if ((GPGME_FOUND AND QGPGME_FOUND) OR Gpgmepp_FOUND)
      add_definitions(-DHAVE_QGPGME)
-+    #Force include directory
 +    set(GPGME_INCLUDES "%PREFIX%/include/KDE4")
-     include_directories(${GPGME_INCLUDES} ${QGPGME_INCLUDE_DIR})
+     include_directories(${GPGME_INCLUDES})
      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${KDE4_ENABLE_EXCEPTIONS}")
- endif(GPGME_FOUND AND QGPGME_FOUND)
+ endif((GPGME_FOUND AND QGPGME_FOUND) OR Gpgmepp_FOUND)
