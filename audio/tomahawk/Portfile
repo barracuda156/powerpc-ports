@@ -1,0 +1,80 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           boost 1.0
+PortGroup           cmake 1.1
+PortGroup           github 1.0
+PortGroup           qt4 1.0
+
+PortGroup           fixme 1.0
+
+github.setup        tomahawk-player tomahawk 0.8.4
+revision            0
+
+categories          audio
+license             GPL-3
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+
+description         Tomahawk, the multi-source music player
+long_description    {*}${description}
+checksums           rmd160  2d107669c71d57d326ef492534e8610eec9eee8a \
+                    sha256  c61089cda8af780015cf3c7c9d0d2a704fb7ee756c228ab3fd7808f264756236 \
+                    size    9699629
+github.tarball_from archive
+
+patchfiles          patch-CMake.diff
+
+depends_build-append \
+                    port:sparsehash
+
+depends_lib-append  port:attica \
+                    port:desktop-file-utils \
+                    path:lib/pkgconfig/gnutls.pc:gnutls \
+                    port:jreen \
+                    port:libechonest \
+                    port:liblastfm \
+                    port:LucenePlusPlus \
+                    port:phonon \
+                    port:qca-ossl \
+                    port:qjson \
+                    port:qtkeychain-qt4 \
+                    port:quazip1 \
+                    port:taglib \
+                    port:websocketpp
+
+compiler.cxx_standard 2011
+
+configure.args-append \
+                    -DBUILD_GUI=ON \
+                    -DBUILD_HATCHET=OFF \
+                    -DBUILD_TESTS=OFF \
+                    -DBUILD_TOOLS=OFF \
+                    -DBUILD_WITH_QT4=ON \
+                    -DWITH_BINARY_ATTICA=ON \
+                    -DWITH_CRASHREPORTER=OFF \
+                    -DWITH_KDE4=OFF
+
+# Catalog.h: error: ISO C++17 does not allow dynamic exception specifications
+configure.cxxflags-append \
+                    -std=c++11
+
+# Configure is handicapped and cannot find Phonon.
+# But we just need to pass linking flags.
+configure.ldflags-append \
+                    -lphonon
+
+if {[string match *gcc* ${configure.compiler}]} {
+    # GCC fails with ICE on this code:
+    patchfiles-append \
+                    patch-no-objc-qtdebug.diff \
+                    patch-try-fix-macOS-build.diff
+
+    # SPMediaKeyTap.m: error: '-fobjc-exceptions' is required to enable Objective-C exception syntax
+    # Passing it to objcflags has no effect.
+    configure.cflags-append \
+                    -fobjc-exceptions
+}
+
+post-destroot {
+    move ${destroot}${prefix}/Tomahawk.app ${destroot}${applications_dir}/Tomahawk.app
+}
