@@ -1,0 +1,35 @@
+--- CMakeLists.txt.orig	2015-04-15 12:41:40.000000000 +0800
++++ CMakeLists.txt	2024-07-21 13:49:43.000000000 +0800
+@@ -277,7 +277,7 @@
+     macro_log_feature(QJSON_FOUND "QJson" "Qt library that maps JSON data to QVariant objects" "http://qjson.sf.net" TRUE "" "libqjson is used for encoding communication between Tomahawk instances")
+ ENDIF()
+ 
+-macro_optional_find_package(Taglib 1.8.0)
++macro_optional_find_package(Taglib 1.10.0)
+ macro_log_feature(TAGLIB_FOUND "TagLib" "Audio Meta-Data Library" "http://developer.kde.org/~wheeler/taglib.html" TRUE "" "taglib is needed for reading meta data from audio files")
+ include( CheckTagLibFileName )
+ check_taglib_filename( COMPLEX_TAGLIB_FILENAME )
+@@ -387,9 +387,9 @@
+ macro_log_feature(KDE4_FOUND "KDE4" "Provides support for configuring Telepathy Accounts from inside Tomahawk" "https://www.kde.org" FALSE "" "")
+ 
+ if(NOT Phonon_FOUND)
+-  macro_optional_find_package(Phonon 4.5.0)
++  macro_optional_find_package(Phonon 4.10.0)
+ endif()
+-macro_log_feature(Phonon_FOUND "Phonon" "The Phonon multimedia library" "http://phonon.kde.org" TRUE "" "")
++macro_log_feature(Phonon_FOUND "Phonon" "The Phonon multimedia library" "http://phonon.kde.org" FALSE "" "")
+ 
+ if(Phonon_FOUND)
+     message(STATUS "Phonon found; ensure that phonon-vlc is at least 0.4")
+
+--- CMakeModules/FindTaglib.cmake.orig	2015-04-15 12:41:40.000000000 +0800
++++ CMakeModules/FindTaglib.cmake	2024-07-21 13:30:08.000000000 +0800
+@@ -15,7 +15,7 @@
+ ELSE()
+ 
+ 	if(NOT TAGLIB_MIN_VERSION)
+-	  set(TAGLIB_MIN_VERSION "1.6")
++	  set(TAGLIB_MIN_VERSION "1.10.0")
+ 	endif(NOT TAGLIB_MIN_VERSION)
+ 
+ 	if(NOT WIN32)
