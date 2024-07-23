@@ -1,29 +1,28 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
-PortGroup           kde4    1.1
 PortGroup           boost   1.0
+PortGroup           github  1.0
+PortGroup           kde4    1.1
 
 name                kdepimlibs4
-version             4.14.3
-revision            17
+github.setup        KDE kdepimlibs 4.14.10 v
+revision            0
 categories          kde kde4
 maintainers         nomaintainer
 license             GPL-2+ LGPL-2+ BSD
 description         KDE4 core PIM libraries
 long_description    Core libraries necessary for Personal Information Management (PIM) in KDE4
 homepage            https://www.kde.org
-master_sites        kde:stable/${version}/src/
-use_xz              yes
-distname            kdepimlibs-${version}
 
-checksums           rmd160  95af39ad4848fe48efbd4e3be8b4b0767530ec60 \
-                    sha256  65edb1bec191be1b6f8450dc71eadae734f4ab0585aab0a885207390399868d7 \
-                    size    2790888
+checksums           rmd160  3b10e719f8f9b7e475547171cf0b3a652555d00c \
+                    sha256  8b56064d33b5662761f8bf58fb6d9bbe875fa6413975e729b612f77f977e7d39 \
+                    size    4307388
+github.tarball_from archive
 
-#The only binaries linking to openssl (through QtNetwork) are libkimap.dylib
-#and libmailtransport.dylib, which are purely LPGL, thus not conflicting with
-#openssl license, apart from plugins in kioslaves
+# The only binaries linking to openssl (through QtNetwork) are libkimap.dylib
+# and libmailtransport.dylib, which are purely LPGL, thus not conflicting with
+# openssl license, apart from plugins in kioslaves
 license_noconflict  openssl
 
 depends_lib-append  port:akonadi \
@@ -40,7 +39,7 @@ depends_lib-append  port:akonadi \
                     port:qjson \
                     port:shared-mime-info
 
-#Suppress build of kioslaves which conflict with openssl
+# Suppress build of kioslaves which conflict with openssl
 patchfiles-append   patch-CMakeLists.diff \
                     patch-do_not_include_cpp.diff \
                     patch-ical.diff \
@@ -53,17 +52,23 @@ configure.args-append   -DMAILTRANSPORT_INPROCESS_SMTP=Off \
 
 subport kdepimlibs4-kioslaves {
 
-    #kioslaves components conflict with openssl license
+    # kioslaves components conflict with openssl license
     license_noconflict-delete   openssl
 
-    #The main kdepimlibs4 is required for linking with other libraries
+    # The main kdepimlibs4 is required for linking with other libraries
     depends_lib-append  port:kdepimlibs4
 
-    #Builds only kioslaves components
+    # Builds only kioslaves components
     patchfiles-delete   patch-CMakeLists.diff
     patchfiles-append   patch-CMakeLists-kioslaves.diff
 
-    #Suppresses files already installed by kdepimlibs4 main port
+    # messageflags.h:24:10: fatal error: akonadi-kmime_export.h: No such file or directory
+    configure.args-delete \
+                        -DCMAKE_CXX_FLAGS=\"-std=c++11\"
+    configure.args-append \
+                        -DCMAKE_CXX_FLAGS=\"-std=c++11 -I${prefix}/include/KDE4/akonadi -I${prefix}/include/KDE4/akonadi/kmime\"
+
+    # Suppresses files already installed by kdepimlibs4 main port
     post-destroot {
         delete ${destroot}${prefix}/share/mime/packages/kdepimlibs-mime.xml
     }
