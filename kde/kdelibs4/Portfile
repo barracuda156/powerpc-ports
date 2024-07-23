@@ -1,50 +1,67 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
+PortGroup           github 1.0
 PortGroup           kde4   1.1
 
 name                kdelibs4
-version             4.14.3
-revision            111
+github.setup        KDE kdelibs 1c5b25966136b6099665477616fb4d38a98fd7ef
+version             4.14.38
+revision            0
 categories          kde kde4
 maintainers         nomaintainer
 license             LGPL-2+ GPL-2+ BSD
 description         KDE4 core libraries
 long_description    Core libraries for KDE4 applications to function
 homepage            https://www.kde.org
-master_sites        kde:stable/${version}/src/
-use_xz              yes
-distname            kdelibs-${version}
 
-checksums           rmd160  f0dd628eec72c52f4dd8426a2de47d75e629ff31 \
-                    sha256  f8206da1106184ef0bd031b82701c4910b8dade331c4cdaf1cd9c6c5208cfd9e \
-                    size    11600500
+checksums           rmd160  638bd9454ec4b1f61cab494d5fb68564caa84830 \
+                    sha256  7ede1891f658e2b1969e59f12e37d7ce70e211e93e0fc9593f629f0b8d50c409 \
+                    size    15343423
+github.tarball_from archive
 
 #No binary links to openssl libraries, apart from libkio.dylib at
 #runtime if required. As libkio.dylib code is purely LGPL, there is no
 #conflict with openssl license
 license_noconflict  openssl
 
-depends_build-append port:flex port:gmake port:docbook-xsl-ns
+depends_build-append \
+                    port:docbook-xsl-ns \
+                    port:flex \
+                    port:gettext \
+                    port:gmake
 
-depends_lib-append  port:bzip2 port:zlib \
-                    port:soprano \
-                    port:strigi port:gettext \
-                    port:pcre port:shared-mime-info \
+depends_lib-append  port:aspell \
+                    port:aspell-dict-en \
+                    port:attica \
+                    port:avahi \
+                    port:bison \
+                    port:bzip2 \
+                    port:dbusmenu-qt \
+                    port:docbook-xml \
+                    port:docbook-xsl-nons \
+                    port:enchant \
+                    port:gettext-runtime \
                     port:giflib \
-                    path:include/turbojpeg.h:libjpeg-turbo port:libpng \
-                    port:jasper2 port:openexr \
                     path:lib/pkgconfig/glib-2.0.pc:glib2 \
-                    path:lib/libssl.dylib:openssl port:enchant \
-                    port:aspell port:aspell-dict-en \
-                    port:attica port:xz \
-                    port:avahi port:qca \
-                    port:libxml2 port:libxslt \
-                    port:dbusmenu-qt port:docbook-xml \
-                    port:docbook-xsl-nons port:grantlee \
-                    port:kerberos5 port:bison \
+                    port:grantlee \
+                    port:jasper2 \
+                    port:kerberos5 \
+                    path:include/turbojpeg.h:libjpeg-turbo \
+                    port:libpng \
+                    port:libxml2 \
+                    port:libxslt \
+                    port:openexr \
+                    path:lib/libssl.dylib:openssl \
+                    port:qca \
+                    port:pcre \
+                    port:perl5 \
                     port:shared-desktop-ontologies \
-                    port:perl5
+                    port:shared-mime-info \
+                    port:soprano \
+                    port:strigi \
+                    port:xz \
+                    port:zlib
 
 # the aspell dictionaries are just files
 depends_skip_archcheck aspell-dict-en
@@ -67,10 +84,8 @@ patchfiles           workaround-kdeinit4-crash.patch \
                      patch-removeFindFlex.diff \
                      patch-cmake-modules-FindKDE4-Internal.cmake.diff \
                      patch-KdePreferences.diff \
-                     patch-ui-CMakeLists.diff \
                      patch-FindExiv2.diff \
                      patch-locale.diff \
-                     kdelibs-openssl-1.1.patch \
                      patch-pointers.diff \
                      patch-kimgio.diff
 
