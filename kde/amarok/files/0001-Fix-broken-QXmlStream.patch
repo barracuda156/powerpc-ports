@@ -1,0 +1,133 @@
+From ed319694300d3f091d2507aeed8c7303cbbfacfc Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sat, 20 Jul 2024 23:30:33 +0800
+Subject: [PATCH] Fix broken QXmlStream*
+
+See: https://www.daniweb.com/programming/software-development/threads/137430/qt-xml-compiling-error-on-mac
+---
+ src/context/applets/upcomingevents/UpcomingEventsApplet.h | 3 ++-
+ src/dynamic/Bias.h                                        | 4 ++--
+ src/dynamic/BiasFactory.h                                 | 5 ++---
+ src/dynamic/BiasedPlaylist.h                              | 5 ++---
+ src/dynamic/DynamicPlaylist.h                             | 5 +++--
+ src/importers/itunes/ITunesProvider.h                     | 5 ++---
+ src/importers/rhythmbox/RhythmboxProvider.h               | 5 ++---
+ 7 files changed, 15 insertions(+), 17 deletions(-)
+
+diff --git a/src/context/applets/upcomingevents/UpcomingEventsApplet.h b/src/context/applets/upcomingevents/UpcomingEventsApplet.h
+index 8f9bb941a8..06071984cc 100644
+--- a/src/context/applets/upcomingevents/UpcomingEventsApplet.h
++++ b/src/context/applets/upcomingevents/UpcomingEventsApplet.h
+@@ -27,10 +27,11 @@
+ #include "ui_upcomingEventsGeneralSettings.h"
+ #include "ui_upcomingEventsVenueSettings.h"
+ 
++#include <QXmlStreamReader>
++
+ class KConfigDialog;
+ class QGraphicsLinearLayout;
+ class QListWidgetItem;
+-class QXmlStreamReader;
+ class UpcomingEventsMapWidget;
+ class UpcomingEventsStackItem;
+ class UpcomingEventsStack;
+diff --git a/src/dynamic/Bias.h b/src/dynamic/Bias.h
+index c9a47137c1..5e95acdbef 100644
+--- a/src/dynamic/Bias.h
++++ b/src/dynamic/Bias.h
+@@ -30,10 +30,10 @@
+ #include <QWidget>
+ #include <QSharedData>
+ #include <QExplicitlySharedDataPointer>
++#include <QXmlStreamReader>
++#include <QXmlStreamWriter>
+ 
+ class QPainter;
+-class QXmlStreamReader;
+-class QXmlStreamWriter;
+ 
+ namespace Collections {
+     class Collection;
+diff --git a/src/dynamic/BiasFactory.h b/src/dynamic/BiasFactory.h
+index 2e0abd3eab..4637732622 100644
+--- a/src/dynamic/BiasFactory.h
++++ b/src/dynamic/BiasFactory.h
+@@ -23,9 +23,8 @@
+ #include "dynamic/Bias.h"
+ 
+ #include <QObject>
+-
+-class QXmlStreamReader;
+-class QXmlStreamWriter;
++#include <QXmlStreamReader>
++#include <QXmlStreamWriter>
+ 
+ namespace Dynamic
+ {
+diff --git a/src/dynamic/BiasedPlaylist.h b/src/dynamic/BiasedPlaylist.h
+index 8dc0cad0c1..f77b11e933 100644
+--- a/src/dynamic/BiasedPlaylist.h
++++ b/src/dynamic/BiasedPlaylist.h
+@@ -27,9 +27,8 @@
+ 
+ #include <QObject>
+ #include <QPointer>
+-
+-class QXmlStreamWriter;
+-class QXmlStreamReader;
++#include <QXmlStreamReader>
++#include <QXmlStreamWriter>
+ 
+ namespace Dynamic
+ {
+diff --git a/src/dynamic/DynamicPlaylist.h b/src/dynamic/DynamicPlaylist.h
+index a1f3b53826..00aab2ba5c 100644
+--- a/src/dynamic/DynamicPlaylist.h
++++ b/src/dynamic/DynamicPlaylist.h
+@@ -24,11 +24,12 @@
+ 
+ #include "amarok_export.h" // we are exporting it for the tests
+ 
++#include <QXmlStreamReader>
++#include <QXmlStreamWriter>
++
+ namespace Collections {
+     class Collection;
+ }
+-class QXmlStreamReader;
+-class QXmlStreamWriter;
+ 
+ namespace Dynamic {
+ 
+diff --git a/src/importers/itunes/ITunesProvider.h b/src/importers/itunes/ITunesProvider.h
+index 7a34704ce2..b68cdc5137 100644
+--- a/src/importers/itunes/ITunesProvider.h
++++ b/src/importers/itunes/ITunesProvider.h
+@@ -22,9 +22,8 @@
+ #include "MetaValues.h"
+ 
+ #include <QMutex>
+-
+-class QXmlStreamReader;
+-class QXmlStreamWriter;
++#include <QXmlStreamReader>
++#include <QXmlStreamWriter>
+ 
+ namespace StatSyncing
+ {
+diff --git a/src/importers/rhythmbox/RhythmboxProvider.h b/src/importers/rhythmbox/RhythmboxProvider.h
+index 7ab54f9ad0..aff2256715 100644
+--- a/src/importers/rhythmbox/RhythmboxProvider.h
++++ b/src/importers/rhythmbox/RhythmboxProvider.h
+@@ -22,9 +22,8 @@
+ #include "MetaValues.h"
+ 
+ #include <QMutex>
+-
+-class QXmlStreamReader;
+-class QXmlStreamWriter;
++#include <QXmlStreamReader>
++#include <QXmlStreamWriter>
+ 
+ namespace StatSyncing
+ {
