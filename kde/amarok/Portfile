@@ -1,11 +1,15 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
-PortGroup           kde4    1.1
+PortGroup           fixme 1.0
+PortGroup           github 1.0
+PortGroup           kde4 1.1
+PortGroup           openssl 1.0
 
-name                amarok
-version             2.6.0
-revision            4
+PortGroup           fixme 1.0
+
+github.setup        KDE amarok 2.9.0 v
+revision            0
 categories          kde kde4
 maintainers         nomaintainer
 # Future GPL versions must be approved by KDE
@@ -14,29 +18,83 @@ description         Amarok, the world-renowned media player.
 long_description    Amarok is a music player and manager with an intuitive \
                     interface. It provides a variety of feature which helps \
                     to discover and manage your music.
-platforms           darwin
-homepage            https://amarok.kde.org/
-master_sites        kde:stable/${name}/${version}/src/
-use_bzip2           yes
+homepage            https://amarok.kde.org
 
-checksums           rmd160  89b8e3a56390dc240efc7dddd8e97ac9e4a03127 \
-                    sha256  a91280e588181cf9363d7146f339ef527220fe0c8057f26f010f592b01fdd2c0
+checksums           rmd160  e4bb4ecadfaec914e3c44302df2e8841be52c514 \
+                    sha256  842e06de840771ff17470b50440a25448edfa15765cfc0d2c0cbc807a6374851 \
+                    size    21255330
+github.tarball_from archive
 
-configure.args-append   -DKDE4_BUILD_TESTS=OFF
+# Configure uses python 2.x
+set py_ver          2.7
+set py_ver_nodot    [string map {. {}} ${py_ver}]
 
-depends_lib-append  port:kde4-runtime port:kdelibs4 \
-                    port:qtscriptgenerator port:liblastfm \
-                    port:taglib port:taglib-extras \
-                    port:loudmouth port:qca port:libmtp port:libgpod
+depends_build-append \
+                    path:bin/perl:perl5 \
+                    path:bin/pkg-config:pkgconfig \
+                    port:python${py_ver_nodot} \
+                    port:qtscriptgenerator
+
+depends_lib-append  port:curl \
+                    path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    port:kde4-runtime \
+                    port:kdelibs4 \
+                    port:libgcrypt \
+                    port:liblastfm \
+                    port:libmtp \
+                    port:libxml2 \
+                    port:loudmouth \
+                    port:nepomuk-core \
+                    port:qca \
+                    port:qjson \
+                    port:soprano \
+                    port:taglib \
+                    port:taglib-extras \
+                    port:zlib
+
+patch.pre_args-replace -p0 -p1
 
 patchfiles          patch-src-app_mac.cpp.diff \
-                    patch-TrayIcon.diff \
-                    patch-FindMySQLAmarok.diff
+                    patch-FindMySQLAmarok.diff \
+                    patch-TrayIcon.diff
 
-# prototype for 'Dynamic::BiasPtr Dynamic::AbstractBiasFactory::createFromXml(QCoreXmlStreamReader*)' does not match any in class 'Dynamic::AbstractBiasFactory'
+# Fix broken configure. Fix broken QXmlStream*.
+# error: cannot convert 'QCoreXmlStreamReader*' to 'QXmlStreamReader*'
+patchfiles-append   0001-Fix-broken-QXmlStream.patch \
+                    0002-Set-correct-cmake_policy-to-fix-configure.patch \
+                    0003-Prevent-negative-sizes.patch
+
+# FreeBSD patches:
+patchfiles-append   patch-src_core-impl_storage_sql_mysqlestorage_CMakeLists.txt \
+                    patch-src_core-impl_storage_sql_mysqlserverstorage_CMakeLists.txt \
+                    patch-src_playlist_proxymodels_SortScheme.cpp
+
+configure.args-append \
+                    -DBUILD_po=OFF \
+                    -DKDE4_BUILD_TESTS=OFF \
+                    -DPYTHON_EXECUTABLE=${prefix}/bin/python${py_ver} \
+                    -DWITH_FFmpeg=OFF \
+                    -DWITH_IPOD=OFF \
+                    -DWITH_MP3Tunes=ON \
+                    -DWITH_MYSQL_EMBEDDED=ON \
+                    -DWITH_PLAYER=ON \
+                    -DWITH_PLAYGROUND=OFF \
+                    -DWITH_QTWEBKIT=ON \
+                    -DWITH_UTILITIES=OFF
+
+# Undefined symbols: "__ZNK6TagLib6String6to8BitB5cxx11Eb"
+compiler.cxx_standard \
+                    2011
+
+# App.cpp: error: invalid conversion from 'App*' to 'SRefCon' {aka 'long int'} [-fpermissive]
+if {[string match *gcc* ${configure.compiler}]} {
+    configure.cxxflags-append \
+                    -fpermissive
+}
+
 universal_variant   no
 
-pre-configure {
+post-patch {
     reinplace "s|@PREFIX@|${prefix}|g" \
         ${worksrcpath}/cmake/modules/FindMySQLAmarok.cmake
 }
@@ -47,7 +105,7 @@ variant mysql51 \
 
     depends_lib-append      port:mysql51
 
-    pre-configure {
+    post-patch {
         reinplace "s|@MYSQL@|mysql51|g" \
             ${worksrcpath}/cmake/modules/FindMySQLAmarok.cmake
     }
@@ -59,7 +117,7 @@ variant mysql55 \
 
     depends_lib-append      port:mysql55
 
-    pre-configure {
+    post-patch {
         reinplace "s|@MYSQL@|mysql55|g" \
             ${worksrcpath}/cmake/modules/FindMySQLAmarok.cmake
     }
@@ -71,7 +129,7 @@ variant mysql56 \
 
     depends_lib-append      port:mysql56
 
-    pre-configure {
+    post-patch {
         reinplace "s|@MYSQL@|mysql56|g" \
             ${worksrcpath}/cmake/modules/FindMySQLAmarok.cmake
     }
@@ -83,7 +141,7 @@ variant mariadb55 \
 
     depends_lib-append      port:mariadb
 
-    pre-configure {
+    post-patch {
         reinplace "s|@MYSQL@|mariadb|g" \
             ${worksrcpath}/cmake/modules/FindMySQLAmarok.cmake
     }
@@ -95,7 +153,7 @@ variant percona55 \
 
     depends_lib-append      port:percona
 
-    pre-configure {
+    post-patch {
         reinplace "s|@MYSQL@|percona|g" \
             ${worksrcpath}/cmake/modules/FindMySQLAmarok.cmake
     }
