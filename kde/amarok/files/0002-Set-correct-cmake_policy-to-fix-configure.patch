@@ -1,0 +1,22 @@
+From 7d398d6d7282d8fd57dba77743d863e737c28ab3 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sat, 20 Jul 2024 23:32:22 +0800
+Subject: [PATCH] Set correct cmake_policy to fix configure
+
+---
+ CMakeLists.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 45553fa133..0146b93dff 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -2,6 +2,8 @@ project(Amarok)
+ 
+ cmake_minimum_required(VERSION 2.6.2)
+ 
++cmake_policy(SET CMP0004 OLD)
++
+ set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules )
+ 
+ message(STATUS "${CMAKE_MODULE_PATH}")

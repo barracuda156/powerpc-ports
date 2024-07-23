@@ -1,13 +1,20 @@
---- src/TrayIcon.cpp.orig	2014-05-05 12:06:25.000000000 +0900
-+++ src/TrayIcon.cpp	2014-05-05 12:06:35.000000000 +0900
-@@ -54,8 +54,8 @@
+--- a/src/TrayIcon.cpp.orig	2014-05-05 12:06:25.000000000 +0900
++++ b/src/TrayIcon.cpp	2014-05-05 12:06:35.000000000 +0900
+@@ -45,7 +45,7 @@
+ #include <QToolTip>
+ 
+ #ifdef Q_WS_MAC
+-    extern void qt_mac_set_dock_menu(QMenu *);
++    // extern void qt_mac_set_dock_menu(QMenu *);
+ #endif
+ 
+ Amarok::TrayIcon::TrayIcon( QObject *parent )
+@@ -65,7 +65,7 @@ Amarok::TrayIcon::TrayIcon( QObject *parent )
  
  #ifdef Q_WS_MAC
      // Add these functions to the dock icon menu in OS X
--    extern void qt_mac_set_dock_menu(QMenu *);
 -    qt_mac_set_dock_menu( contextMenu() );
-+//    extern void qt_mac_set_dock_menu(QMenu *);
-+//    qt_mac_set_dock_menu( contextMenu() );
++    // qt_mac_set_dock_menu( contextMenu() );
      contextMenu()->addAction( ac->action( "playlist_playmedia" ) );
      contextMenu()->addSeparator();
  #endif
