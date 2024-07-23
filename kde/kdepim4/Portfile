@@ -3,11 +3,12 @@
 PortSystem          1.0
 PortGroup           boost 1.0
 PortGroup           compiler_blacklist_versions 1.0
+PortGroup           github 1.0
 PortGroup           kde4 1.1
 
 name                kdepim4
-version             4.14.3
-revision            6
+github.setup        KDE kdepim 4.14.10 v
+revision            0
 categories          kde kde4
 maintainers         nomaintainer
 license             GPL-2+ LGPL-2+
@@ -15,13 +16,11 @@ description         KDE4 groupware suite
 long_description    KDE4 groupware suite including a Mail client, \
                     addressbook, organizer and groupware integration.
 homepage            https://www.kde.org
-master_sites        kde:stable/${version}/src/
-use_xz              yes
-distname            kdepim-${version}
 
-checksums           rmd160  7dabf2be18cc9d3a0e42c9be855ebbe45dc54181 \
-                    sha256  a3fd17fa2f3b1debc32bd28537402aaf7337582ff2fe39dbadd47d5b3232f944 \
-                    size    14483432
+checksums           rmd160  3dbe5aaeac6d49b5e94bcac3d22d15b36945f74d \
+                    sha256  30e82ff19331b75da1ec78c1e4b56d5d4085dba973b45b45848eafb0e5bac854 \
+                    size    18552112
+github.tarball_from archive
 
 depends_lib-append  port:baloo \
                     port:dblatex \
