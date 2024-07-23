@@ -1,0 +1,44 @@
+--- src/libtomahawk/mac/FileHelpers.mm	2015-04-15 12:41:40.000000000 +0800
++++ src/libtomahawk/mac/FileHelpers.mm	2024-07-21 14:18:12.000000000 +0800
+@@ -26,8 +26,6 @@
+ #import <unistd.h>
+ #import <sys/param.h>
+ 
+-#include <QDebug>
+-
+ static NSString * const TKCopySourceKey = @"TKInstallerSourcePath";
+ static NSString * const TKCopyDestinationKey = @"TKInstallerDestinationPath";
+ static NSString * const TKInstallerDelegateKey = @"TKInstallerDelegate";
+@@ -116,7 +114,6 @@
+                 if (!res)
+                     NSLog(@"Could not delete: %@", toPath);
+             } else {
+-                qDebug() << "Failed to authenticate to delete file under target to move, aborting";
+                 return;
+             }
+         } else {
+@@ -136,7 +133,6 @@
+     OSStatus err = FSPathMakeRefWithOptions((UInt8 *)[toPath fileSystemRepresentation], kFSPathMakeRefDoNotFollowLeafSymlink, &dstRef, NULL);
+ 
+     if (err != noErr && err != fnfErr) { // If the file is not found that's fine, we're moving to there after all
+-        qDebug() << "GOT AN ERROR DOING FSPathMakeRefWithOptions!!!!! aborting move";
+         return;
+     }
+ 
+@@ -165,8 +161,6 @@
+ 
+             const char* coParams[] = { "-R", uidgid, [fromPath fileSystemRepresentation], NULL };
+             BOOL res = AuthorizationExecuteWithPrivilegesAndWait( auth, "/usr/sbin/chown", kAuthorizationFlagDefaults, coParams );
+-            if( !res )
+-                qDebug() << "Failed to set permissions before moving";
+ 
+             // Do the move
+             const char* mvParams[] = { "-f", [fromPath fileSystemRepresentation], [toPath fileSystemRepresentation], NULL };
+@@ -189,7 +183,6 @@
+     err = FSPathMakeRef((UInt8 *)[[toPath stringByDeletingLastPathComponent] fileSystemRepresentation], &dstDirRef, NULL);
+ 
+     if (err != noErr) {
+-        qDebug() << "GOT AN ERROR DOING FSPathMakeRef to get dir to copy into!!!!! aborting move";
+         return;
+     }
+ 
