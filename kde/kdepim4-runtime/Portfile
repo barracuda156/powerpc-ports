@@ -3,11 +3,12 @@
 PortSystem          1.0
 PortGroup           boost 1.0
 PortGroup           compiler_blacklist_versions 1.0
+PortGroup           github 1.0
 PortGroup           kde4 1.1
 
 name                kdepim4-runtime
-version             4.14.3
-revision            6
+github.setup        KDE kdepim-runtime 4.14.10 v
+revision            0
 categories          kde kde4
 maintainers         nomaintainer
 license             GPL-2+ LGPL-2+
@@ -15,13 +16,11 @@ description         KDE4 groupware suite runtime libraries
 long_description    KDE4 groupware suite including a Mail client, \
                     addressbook, organizer and groupware integration.
 homepage            https://www.kde.org
-master_sites        kde:stable/${version}/src/
-use_xz              yes
-distname            kdepim-runtime-${version}
 
-checksums           rmd160  242cef1f55bc2621c86009b515a12904d73fdb90 \
-                    sha256  2d8fe881c86b74015e3aa44df042110f8fc21156b5e596f93229435e58aab50f \
-                    size    1168856
+checksums           rmd160  c975df558a5d72737dc756d503f9336abe7529d6 \
+                    sha256  cb2df752ea6027199b4cdeabcf2c2fb87f803b55e5093656f20248226e38840b \
+                    size    1660570
+github.tarball_from archive
 
 patchfiles          patch-CMake-InfoPlist.diff \
                     patch-pluginsTests.diff
