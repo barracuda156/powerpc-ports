@@ -57,8 +57,9 @@ checksums-append \
                     size    87694121
 
 platform macosx {
-    if {${os.major} <= 10} {
+    if {(${configure.build_arch} ni [list ppc ppc64]) && ${os.major} <= 10} {
         # Build requires at least 10.7.3 SDK, even when targeting 10.6
+        # Obviously do not use it with powerpc though
         set lion_sdkpath ${developer_dir}/SDKs/MacOSX10.7.sdk
         if {[file exists $lion_sdkpath]} {
             configure.sdkroot $lion_sdkpath
@@ -129,6 +130,12 @@ patchfiles-append   patch-dylib_suffix.diff
 # do not find protobuf3-cpp header files if installed
 configure.cppflags-replace -I${prefix}/include -isystem${prefix}/include
 patchfiles-append   patch-local_protobuf.diff
+
+# make gtk choosable variant
+patchfiles-append   patch-expose-gtk-choice.diff
+
+# fix arch detection
+patchfiles-append   patch-powerpc.diff
 
 post-patch {
     reinplace "s|@PREFIX@|${prefix}/libexec/openexr2|g" \
@@ -211,6 +218,7 @@ configure.args-append \
                     -DWITH_FFMPEG=ON \
                     -DWITH_GSTREAMER=OFF \
                     -DWITH_GTK=OFF \
+                    -DWITH_GTK_2_X=OFF \
                     -DWITH_IPP=OFF \
                     -DWITH_JASPER=OFF \
                     -DWITH_JPEG=ON \
@@ -342,6 +350,23 @@ if {[string match "*clang*" ${configure.compiler}]} {
         reinplace "/-Werror=sequence-point/d" \
             ${worksrcpath}/cmake/OpenCVCompilerOptions.cmake
     }
+}
+
+platform darwin powerpc {
+    # persistence.cpp:7627:31: error: comparing the result of pointer addition '(src + ((sizetype)off))' and NULL [-Werror=address]
+    patchfiles-append       patch-gnucxx-opts.diff \
+                            patch-compat.diff
+
+    post-patch {
+        reinplace "s|-mcpu=G3 -mtune=G5|-mtune=native|" ${worksrcpath}/cmake/OpenCVCompilerOptimizations.cmake
+    }
+
+    # Switch to GTK3 instead.
+    configure.args-append   -DCV_DISABLE_OPTIMIZATION=ON \
+                            -DENABLE_POWERPC=ON
+
+    configure.args-replace  -DENABLE_PRECOMPILED_HEADERS=ON \
+                            -DENABLE_PRECOMPILED_HEADERS=OFF
 }
 
 # PCH broken when universal
@@ -734,6 +759,15 @@ platform darwin {
             reinplace "s:HAVE_GCD 1:HAVE_GCD 0:" \
                 ${worksrcpath}/cmake/OpenCVFindLibsPerf.cmake
         }
+    }
+
+    variant legacy_dispatch description "Enable dispatch via libdispatch-legacy port" {
+        depends_lib-append \
+            port:libdispatch-legacy
+        configure.cppflags-prepend \
+            -I${prefix}/libexec/dispatch/usr/include
+        configure.ldflags-append \
+            ${prefix}/libexec/dispatch/usr/lib/libdispatch.a
     }
 }
 
