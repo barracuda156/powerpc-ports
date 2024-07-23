@@ -5,10 +5,14 @@
 # These ports should not be installed by end-users. They will not work.
 # However, if someone is interested to help fixing these, this is greatly appreciated.
 
+options fixme.broken
+default fixme.broken yes
+
 proc fixme.broken_port {} {
     global os.platform \
-           os.arch
-    if {${os.platform} eq "darwin" && ${os.arch} eq "powerpc"} {
+           os.arch \
+           fixme.broken
+    if {${os.platform} eq "darwin" && ${os.arch} eq "powerpc" && ${fixme.broken}} {
         depends_lib
         depends_run
         archive_sites
