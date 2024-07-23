@@ -7,11 +7,10 @@ name                tellico
 version             2.3.12
 revision            7
 categories          kde kde4
-platforms           darwin
 maintainers         nomaintainer
 license             GPL-2+
 
-description         application for organizing your collections
+description         Application for organizing your collections
 
 long_description    Tellico is an ${description}. It provides default \
                     templates for books, bibliographies, videos, music, \
@@ -26,24 +25,31 @@ checksums           rmd160  a58818f01d41a8952dd258dcb69131595af2149e \
                     sha256  7a119460705dc4f0062eab9b0bd519e43df8bf15a4a447b947921fb7c26eb8cc \
                     size    5249459
 
-depends_lib-append  port:gettext \
+depends_build-append \
+                    port:gettext
+
+depends_lib-append  port:exempi \
+                    port:gettext-runtime \
                     path:lib/pkgconfig/icu-uc.pc:icu \
-                    port:qimageblitz \
                     port:kdelibs4 \
                     port:kdepimlibs4 \
                     port:libksane \
                     port:libxml2 \
                     port:libxslt \
-                    port:taglib \
-                    port:yaz \
-                    port:exempi \
+                    port:poppler-qt4-mac \
+                    port:qimageblitz \
                     port:qjson \
-                    port:poppler-qt4-mac
+                    port:taglib \
+                    port:yaz
 
 configure.env-append PKG_CONFIG_PATH=${prefix}/libexec/poppler-qt4-mac/lib/pkgconfig:${prefix}/lib/pkgconfig
 build.env-append PKG_CONFIG_PATH=${prefix}/libexec/poppler-qt4-mac/lib/pkgconfig:${prefix}/lib/pkgconfig
 
 patchfiles-append   patch-CMakeLists-ksane.diff
+
+# poppler-annotation.h: error: expected ‘;’ before ‘override’
+compiler.blacklist-append \
+                    *gcc-4.0 *gcc-4.2
 
 pre-configure {
     reinplace "s|@KDEINCLUDEDIR@|${kde4.include_dirs}|g" ${worksrcpath}/CMakeLists.txt
