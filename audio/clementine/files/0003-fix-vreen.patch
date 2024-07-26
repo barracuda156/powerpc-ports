@@ -1,0 +1,42 @@
+From 041be391ce43bdee0f58888a85020f4a4c2be184 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Mon, 22 Jul 2024 22:31:49 +0800
+Subject: [PATCH] vreen: fix -std flag
+
+---
+ 3rdparty/vreen/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git 3rdparty/vreen/CMakeLists.txt 3rdparty/vreen/CMakeLists.txt
+index cb5efef8e..91965bb57 100644
+--- 3rdparty/vreen/CMakeLists.txt
++++ 3rdparty/vreen/CMakeLists.txt
+@@ -14,7 +14,7 @@ if(NOT VREEN_FOUND)
+   if(NOT CMAKE_INSTALL_PREFIX STREQUAL "/usr")
+     set(VREEN_IMPORTS_DIR bin)
+   endif()
+-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++0x")
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+   set(VREEN_WITH_QMLAPI OFF CACHE INTERNAL "")
+   set(VREEN_WITH_OAUTH ON CACHE INTERNAL "")
+   set(VREEN_INSTALL_HEADERS OFF CACHE INTERNAL "")
+
+From 6a0faa2bbedecae94dcdfb0f12f0b891dc5315b1 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Mon, 22 Jul 2024 22:46:16 +0800
+Subject: [PATCH] vreen: unbreak linking
+
+---
+ 3rdparty/vreen/vreen/src/api/CMakeLists.txt | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git 3rdparty/vreen/vreen/src/api/CMakeLists.txt 3rdparty/vreen/vreen/src/api/CMakeLists.txt
+index d9a7b1de2..9d951bccb 100644
+--- 3rdparty/vreen/vreen/src/api/CMakeLists.txt
++++ 3rdparty/vreen/vreen/src/api/CMakeLists.txt
+@@ -1,5 +1,4 @@
+ add_simple_library(vreen
+-    STATIC CXX11
+     ${INTERNAL_FLAG}
+     ${DEVELOPER_FLAG}
+     DEFINE_SYMBOL VK_LIBRARY

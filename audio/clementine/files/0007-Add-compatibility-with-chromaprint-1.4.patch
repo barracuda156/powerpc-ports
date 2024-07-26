@@ -1,0 +1,78 @@
+From bba9b3f09c9f68262760e9eadf7b4e3975da8249 Mon Sep 17 00:00:00 2001
+From: Chocobozzz <florian.bigard@gmail.com>
+Date: Thu, 8 Dec 2016 23:12:17 +0100
+Subject: [PATCH] Add compatibility with chromaprint >= 1.4
+
+---
+ src/musicbrainz/chromaprinter.cpp | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
+
+diff --git src/musicbrainz/chromaprinter.cpp src/musicbrainz/chromaprinter.cpp
+index 9579b62ae..c7ad99e2e 100644
+--- src/musicbrainz/chromaprinter.cpp
++++ src/musicbrainz/chromaprinter.cpp
+@@ -143,16 +143,24 @@ QString Chromaprinter::CreateFingerprint() {
+   ChromaprintContext* chromaprint =
+       chromaprint_new(CHROMAPRINT_ALGORITHM_DEFAULT);
+   chromaprint_start(chromaprint, kDecodeRate, kDecodeChannels);
+-  chromaprint_feed(chromaprint, reinterpret_cast<void*>(data.data()),
++  chromaprint_feed(chromaprint, reinterpret_cast<int16_t *>(data.data()),
+                    data.size() / 2);
+   chromaprint_finish(chromaprint);
+ 
+-  void* fprint = nullptr;
+   int size = 0;
++
++#if CHROMAPRINT_VERSION_MAJOR >= 1 && CHROMAPRINT_VERSION_MINOR >= 4
++  u_int32_t *fprint = nullptr;
++  char *encoded = nullptr;
++#else
++  void *fprint = nullptr;
++  void *encoded = nullptr;
++#endif
++
+   int ret = chromaprint_get_raw_fingerprint(chromaprint, &fprint, &size);
++
+   QByteArray fingerprint;
+   if (ret == 1) {
+-    void* encoded = nullptr;
+     int encoded_size = 0;
+     chromaprint_encode_fingerprint(fprint, size, CHROMAPRINT_ALGORITHM_DEFAULT,
+                                    &encoded, &encoded_size, 1);
+
+
+From f25db48d48f00fb91674cf847b9d3e5ca31d57f5 Mon Sep 17 00:00:00 2001
+From: Jonas Kvinge <jonas@jkvinge.net>
+Date: Fri, 26 Apr 2019 20:40:42 +0200
+Subject: [PATCH] Fix gst_buffer_unref assertion in chromaprinter
+
+---
+ src/musicbrainz/chromaprinter.cpp | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
+
+diff --git src/musicbrainz/chromaprinter.cpp src/musicbrainz/chromaprinter.cpp
+index c7ad99e2e..2f474c50e 100644
+--- src/musicbrainz/chromaprinter.cpp
++++ src/musicbrainz/chromaprinter.cpp
+@@ -204,12 +204,16 @@ GstFlowReturn Chromaprinter::NewBufferCallback(GstAppSink* app_sink,
+   Chromaprinter* me = reinterpret_cast<Chromaprinter*>(self);
+ 
+   GstSample* sample = gst_app_sink_pull_sample(app_sink);
++  if (!sample) return GST_FLOW_ERROR;
+   GstBuffer* buffer = gst_sample_get_buffer(sample);
+-  GstMapInfo map;
+-  gst_buffer_map(buffer, &map, GST_MAP_READ);
+-  me->buffer_.write(reinterpret_cast<const char*>(map.data), map.size);
+-  gst_buffer_unmap(buffer, &map);
+-  gst_buffer_unref(buffer);
++  if (buffer) {
++    GstMapInfo map;
++    if (gst_buffer_map(buffer, &map, GST_MAP_READ)) {
++      me->buffer_.write(reinterpret_cast<const char*>(map.data), map.size);
++      gst_buffer_unmap(buffer, &map);
++    }
++  }
++  gst_sample_unref(sample);
+ 
+   return GST_FLOW_OK;
+ }

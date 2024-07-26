@@ -1,0 +1,30 @@
+From e638b218c0b56fd2a5e7fdf535c41fb84b9c8c85 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Mon, 22 Jul 2024 16:14:21 +0800
+Subject: [PATCH 2/3] CMakeLists: use --stdlib=libc++ on macOS only with clang
+
+---
+ CMakeLists.txt | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git CMakeLists.txt CMakeLists.txt
+index 8319f0492..727fe758e 100644
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -15,10 +15,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+ if (CMAKE_CXX_COMPILER MATCHES ".*clang")
+   set(CMAKE_COMPILER_IS_CLANGXX 1)
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-uninitialized")
+-endif ()
+-
+-if (APPLE)
+-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --stdlib=libc++")
++  # if (APPLE)
++  #   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --stdlib=libc++")
++  # endif ()
+ endif ()
+ 
+ find_program(CCACHE_EXECUTABLE NAMES ccache)
+-- 
+2.45.2
+

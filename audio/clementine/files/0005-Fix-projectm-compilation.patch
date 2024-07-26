@@ -1,0 +1,376 @@
+Cherry-picked from https://github.com/clementine-player/Clementine/commits/master/3rdparty/libprojectm
+
+---
+ 3rdparty/libprojectm/CMakeLists.txt           |  2 ++
+ .../MilkdropPresetFactory/IdlePreset.cpp      |  6 ++---
+ .../MilkdropPresetFactory/IdlePreset.hpp      |  2 +-
+ .../MilkdropPresetFactory.cpp                 |  4 ++--
+ .../MilkdropPresetFactory.hpp                 |  2 +-
+ .../MilkdropPresetFactory/Parser.cpp          | 24 ++++++-------------
+ 3rdparty/libprojectm/PresetChooser.hpp        |  8 +++----
+ 3rdparty/libprojectm/PresetFactory.hpp        |  2 +-
+ 3rdparty/libprojectm/PresetLoader.cpp         |  4 ++--
+ 3rdparty/libprojectm/PresetLoader.hpp         |  4 ++--
+ 3rdparty/libprojectm/Renderer/VideoEcho.cpp   |  8 +++----
+ 3rdparty/libprojectm/projectM.cpp             |  6 +++--
+ 3rdparty/libprojectm/projectM.hpp             |  6 ++---
+ 13 files changed, 36 insertions(+), 42 deletions(-)
+
+diff --git 3rdparty/libprojectm/CMakeLists.txt 3rdparty/libprojectm/CMakeLists.txt
+index e6287f176..a1e488c57 100644
+--- 3rdparty/libprojectm/CMakeLists.txt
++++ 3rdparty/libprojectm/CMakeLists.txt
+@@ -24,6 +24,8 @@ set(BUILD_PROJECTM_STATIC ON)
+ set(DISABLE_NATIVE_PRESETS ON)
+ set(DISABLE_MILKDROP_PRESETS OFF)
+ 
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
++
+ if(DISABLE_NATIVE_PRESETS)
+   ADD_DEFINITIONS(-DDISABLE_NATIVE_PRESETS)
+ endif(DISABLE_NATIVE_PRESETS)
+diff --git 3rdparty/libprojectm/MilkdropPresetFactory/IdlePreset.cpp 3rdparty/libprojectm/MilkdropPresetFactory/IdlePreset.cpp
+index 5a48532ee..d451276aa 100644
+--- 3rdparty/libprojectm/MilkdropPresetFactory/IdlePreset.cpp
++++ 3rdparty/libprojectm/MilkdropPresetFactory/IdlePreset.cpp
+@@ -197,13 +197,13 @@ return out.str();
+ 
+ }
+ 
+-std::auto_ptr<Preset> IdlePresets::allocate(const std::string & name, PresetOutputs & presetOutputs)
++std::unique_ptr<Preset> IdlePresets::allocate(const std::string & name, PresetOutputs & presetOutputs)
+ {
+ 
+   if (name == IDLE_PRESET_NAME) {
+   	std::istringstream in(presetText());
+-  	return std::auto_ptr<Preset>(new MilkdropPreset(in, IDLE_PRESET_NAME, presetOutputs));
++  	return std::unique_ptr<Preset>(new MilkdropPreset(in, IDLE_PRESET_NAME, presetOutputs));
+   }
+   else
+-	return std::auto_ptr<Preset>(0);
++	return std::unique_ptr<Preset>(nullptr);
+ }
+diff --git 3rdparty/libprojectm/MilkdropPresetFactory/IdlePreset.hpp 3rdparty/libprojectm/MilkdropPresetFactory/IdlePreset.hpp
+index 3231d4340..a3fd004be 100644
+--- 3rdparty/libprojectm/MilkdropPresetFactory/IdlePreset.hpp
++++ 3rdparty/libprojectm/MilkdropPresetFactory/IdlePreset.hpp
+@@ -12,7 +12,7 @@ class IdlePresets {
+   public:
+ 	/// Allocate a new idle preset instance
+ 	/// \returns a newly allocated auto pointer of an idle preset instance
+-	static std::auto_ptr<Preset> allocate(const std::string & path, PresetOutputs & outputs);
++	static std::unique_ptr<Preset> allocate(const std::string & path, PresetOutputs & outputs);
+   private:
+ 	static std::string presetText();
+ 	static const std::string IDLE_PRESET_NAME;
+diff --git 3rdparty/libprojectm/MilkdropPresetFactory/MilkdropPresetFactory.cpp 3rdparty/libprojectm/MilkdropPresetFactory/MilkdropPresetFactory.cpp
+index 67af5349f..7cb71a32b 100644
+--- 3rdparty/libprojectm/MilkdropPresetFactory/MilkdropPresetFactory.cpp
++++ 3rdparty/libprojectm/MilkdropPresetFactory/MilkdropPresetFactory.cpp
+@@ -212,7 +212,7 @@ PresetOutputs* MilkdropPresetFactory::createPresetOutputs(int gx, int gy)
+ }
+ 
+ 
+-std::auto_ptr<Preset> MilkdropPresetFactory::allocate(const std::string & url, const std::string & name, const std::string & author) {
++std::unique_ptr<Preset> MilkdropPresetFactory::allocate(const std::string & url, const std::string & name, const std::string & author) {
+ 
+     PresetOutputs *presetOutputs = _usePresetOutputs ? _presetOutputs : _presetOutputs2;
+ 
+@@ -223,5 +223,5 @@ std::auto_ptr<Preset> MilkdropPresetFactory::allocate(const std::string & url, c
+ 	if (PresetFactory::protocol(url, path) == PresetFactory::IDLE_PRESET_PROTOCOL) {
+ 		return IdlePresets::allocate(path, *presetOutputs);
+ 	} else
+-		return std::auto_ptr<Preset>(new MilkdropPreset(url, name, *presetOutputs));
++		return std::unique_ptr<Preset>(new MilkdropPreset(url, name, *presetOutputs));
+ }
+diff --git 3rdparty/libprojectm/MilkdropPresetFactory/MilkdropPresetFactory.hpp 3rdparty/libprojectm/MilkdropPresetFactory/MilkdropPresetFactory.hpp
+index 2a5a46afb..da0a6aeff 100644
+--- 3rdparty/libprojectm/MilkdropPresetFactory/MilkdropPresetFactory.hpp
++++ 3rdparty/libprojectm/MilkdropPresetFactory/MilkdropPresetFactory.hpp
+@@ -26,7 +26,7 @@ public:
+ 
+  virtual ~MilkdropPresetFactory();
+ 
+- std::auto_ptr<Preset> allocate(const std::string & url, const std::string & name = std::string(),
++ std::unique_ptr<Preset> allocate(const std::string & url, const std::string & name = std::string(),
+ 	const std::string & author = std::string());
+ 
+  std::string supportedExtensions() const { return "milk prjm"; }
+diff --git 3rdparty/libprojectm/MilkdropPresetFactory/Parser.cpp 3rdparty/libprojectm/MilkdropPresetFactory/Parser.cpp
+index cdf8256c1..cdd06d1a1 100755
+--- 3rdparty/libprojectm/MilkdropPresetFactory/Parser.cpp
++++ 3rdparty/libprojectm/MilkdropPresetFactory/Parser.cpp
+@@ -1373,8 +1373,6 @@ PerFrameEqn * Parser::parse_implicit_per_frame_eqn(std::istream &  fs, char * pa
+   PerFrameEqn * per_frame_eqn;
+   GenExpr * gen_expr;
+ 
+-  if (fs == NULL)
+-    return NULL;
+   if (param_string == NULL)
+     return NULL;
+   if (preset == NULL)
+@@ -1451,7 +1449,7 @@ InitCond * Parser::parse_init_cond(std::istream &  fs, char * name, MilkdropPres
+   if (PARSE_DEBUG) printf("parsed_init_cond: parsing initial condition value... (LINE %d)\n", line_count);
+ 
+   /* integer value (boolean is an integer in C) */
+-  if ( (param->type == P_TYPE_BOOL))
++  if ( param->type == P_TYPE_BOOL)
+   {
+     int bool_test;
+     if ((parse_int(fs, &bool_test)) == PROJECTM_PARSE_ERROR)
+@@ -1462,7 +1460,7 @@ InitCond * Parser::parse_init_cond(std::istream &  fs, char * name, MilkdropPres
+     init_val.bool_val = bool_test;
+   }
+ 
+-  else if ((param->type == P_TYPE_INT))
++  else if (param->type == P_TYPE_INT)
+   {
+     if ((parse_int(fs, (int*)&init_val.int_val)) == PROJECTM_PARSE_ERROR)
+     {
+@@ -1528,8 +1526,6 @@ InitCond * Parser::parse_per_frame_init_eqn(std::istream &  fs, MilkdropPreset *
+ 
+   if (preset == NULL)
+     return NULL;
+-  if (fs == NULL)
+-    return NULL;
+ 
+   if ((token = parseToken(fs, name)) != tEq)
+     return NULL;
+@@ -1578,7 +1574,7 @@ InitCond * Parser::parse_per_frame_init_eqn(std::istream &  fs, MilkdropPreset *
+     init_val.bool_val = (bool)val;
+   }
+ 
+-  else if ((param->type == P_TYPE_INT))
++  else if (param->type == P_TYPE_INT)
+   {
+     init_val.int_val = (int)val;
+   }
+@@ -1771,7 +1767,7 @@ int Parser::parse_wavecode(char * token, std::istream &  fs, MilkdropPreset * pr
+ 
+   /* integer value (boolean is an integer in C) */
+ 
+-  if ((param->type == P_TYPE_BOOL))
++  if (param->type == P_TYPE_BOOL)
+   {
+     int bool_test;
+     if ((parse_int(fs, &bool_test)) == PROJECTM_PARSE_ERROR)
+@@ -1782,7 +1778,7 @@ int Parser::parse_wavecode(char * token, std::istream &  fs, MilkdropPreset * pr
+     }
+     init_val.bool_val = bool_test;
+   }
+-  else if ((param->type == P_TYPE_INT))
++  else if (param->type == P_TYPE_INT)
+   {
+     if ((parse_int(fs, (int*)&init_val.int_val)) == PROJECTM_PARSE_ERROR)
+     {
+@@ -1842,8 +1838,6 @@ int Parser::parse_shapecode(char * token, std::istream &  fs, MilkdropPreset * p
+   /* Null argument checks */
+   if (preset == NULL)
+     return PROJECTM_FAILURE;
+-  if (fs == NULL)
+-    return PROJECTM_FAILURE;
+   if (token == NULL)
+     return PROJECTM_FAILURE;
+ 
+@@ -1897,7 +1891,7 @@ int Parser::parse_shapecode(char * token, std::istream &  fs, MilkdropPreset * p
+   /* integer value (boolean is an integer in C) */
+ 
+ 
+-  if ((param->type == P_TYPE_BOOL))
++  if (param->type == P_TYPE_BOOL)
+   {
+     int bool_test;
+     if ((parse_int(fs, &bool_test)) == PROJECTM_PARSE_ERROR)
+@@ -1907,7 +1901,7 @@ int Parser::parse_shapecode(char * token, std::istream &  fs, MilkdropPreset * p
+     }
+     init_val.bool_val = bool_test;
+   }
+-  else if ((param->type == P_TYPE_INT))
++  else if (param->type == P_TYPE_INT)
+   {
+     if ((parse_int(fs, (int*)&init_val.int_val)) == PROJECTM_PARSE_ERROR)
+     {
+@@ -2133,8 +2127,6 @@ int Parser::parse_wave(char * token, std::istream &  fs, MilkdropPreset * preset
+ 
+   if (token == NULL)
+     return PROJECTM_FAILURE;
+-  if (fs == NULL)
+-    return PROJECTM_FAILURE;
+   if (preset == NULL)
+     return PROJECTM_FAILURE;
+ 
+@@ -2314,8 +2306,6 @@ int Parser::parse_shape(char * token, std::istream &  fs, MilkdropPreset * prese
+ 
+   if (token == NULL)
+ 
+-    return PROJECTM_FAILURE;
+-  if (fs == NULL)
+     return PROJECTM_FAILURE;
+   if (preset == NULL)
+     return PROJECTM_FAILURE;
+diff --git 3rdparty/libprojectm/PresetChooser.hpp 3rdparty/libprojectm/PresetChooser.hpp
+index ab88b2a6e..f09fc79d0 100644
+--- 3rdparty/libprojectm/PresetChooser.hpp
++++ 3rdparty/libprojectm/PresetChooser.hpp
+@@ -40,7 +40,7 @@ public:
+     /// \param presetInputs the preset inputs to associate with the preset upon construction
+     /// \param presetOutputs the preset outputs to associate with the preset upon construction
+     /// \returns an autopointer of the newly allocated preset
+-    std::auto_ptr<Preset> allocate();
++    std::unique_ptr<Preset> allocate();
+ 
+     ///  Set the chooser asocciated with this iterator
+     void setChooser(const PresetChooser & chooser);
+@@ -71,7 +71,7 @@ public:
+     /// \param presetInputs the preset inputs to associate with the preset upon construction
+     /// \param presetOutputs the preset outputs to associate with the preset upon construction
+     /// \returns an auto pointer of the newly allocated preset
+-    std::auto_ptr<Preset> directoryIndex(std::size_t index) const;
++    std::unique_ptr<Preset> directoryIndex(std::size_t index) const;
+ 
+     /// Gets the number of presets last believed to exist in the preset loader's filename collection
+     /// \returns the number of presets in the collection
+@@ -145,7 +145,7 @@ inline bool PresetIterator::operator ==(const PresetIterator & presetPos) const
+     return (*presetPos == **this);
+ }
+ 
+-inline std::auto_ptr<Preset> PresetIterator::allocate() {
++inline std::unique_ptr<Preset> PresetIterator::allocate() {
+     return _presetChooser->directoryIndex(_currentIndex);
+ }
+ 
+@@ -211,7 +211,7 @@ inline bool PresetChooser::empty() const {
+ 	return _presetLoader->size() == 0;
+ }
+ 
+-inline std::auto_ptr<Preset> PresetChooser::directoryIndex(std::size_t index) const {
++inline std::unique_ptr<Preset> PresetChooser::directoryIndex(std::size_t index) const {
+ 
+ 	return _presetLoader->loadPreset(index);
+ }
+diff --git 3rdparty/libprojectm/PresetFactory.hpp 3rdparty/libprojectm/PresetFactory.hpp
+index e9c8a4cd0..07bb30b52 100644
+--- 3rdparty/libprojectm/PresetFactory.hpp
++++ 3rdparty/libprojectm/PresetFactory.hpp
+@@ -31,7 +31,7 @@ public:
+  /// \param name the preset name
+  /// \param author the preset author
+  /// \returns a valid preset object
+- virtual std::auto_ptr<Preset> allocate(const std::string & url, const std::string & name=std::string(),
++ virtual std::unique_ptr<Preset> allocate(const std::string & url, const std::string & name=std::string(),
+ 	 const std::string & author=std::string()) = 0;
+ 
+  /// Returns a space separated list of supported extensions
+diff --git 3rdparty/libprojectm/PresetLoader.cpp 3rdparty/libprojectm/PresetLoader.cpp
+index e0afec582..ffe3ea5ee 100644
+--- 3rdparty/libprojectm/PresetLoader.cpp
++++ 3rdparty/libprojectm/PresetLoader.cpp
+@@ -130,7 +130,7 @@ void PresetLoader::rescan()
+ }
+ 
+ 
+-std::auto_ptr<Preset> PresetLoader::loadPreset ( unsigned int index )  const
++std::unique_ptr<Preset> PresetLoader::loadPreset ( unsigned int index )  const
+ {
+ 
+ 	// Check that index isn't insane
+@@ -146,7 +146,7 @@ std::auto_ptr<Preset> PresetLoader::loadPreset ( unsigned int index )  const
+ }
+ 
+ 
+-std::auto_ptr<Preset> PresetLoader::loadPreset ( const std::string & url )  const
++std::unique_ptr<Preset> PresetLoader::loadPreset ( const std::string & url )  const
+ {
+ 
+ 	// Return a new autopointer to a preset
+diff --git 3rdparty/libprojectm/PresetLoader.hpp 3rdparty/libprojectm/PresetLoader.hpp
+index 02d43c18f..365d7704a 100644
+--- 3rdparty/libprojectm/PresetLoader.hpp
++++ 3rdparty/libprojectm/PresetLoader.hpp
+@@ -36,8 +36,8 @@ class PresetLoader {
+ 	
+ 		/// Load a preset by specifying it's unique identifier given when the preset url
+ 		/// was added to this loader	
+-		std::auto_ptr<Preset> loadPreset(unsigned int index) const;
+-		std::auto_ptr<Preset> loadPreset ( const std::string & url )  const;
++		std::unique_ptr<Preset> loadPreset(unsigned int index) const;
++		std::unique_ptr<Preset> loadPreset ( const std::string & url )  const;
+ 		/// Add a preset to the loader's collection.
+ 		/// \param url an url referencing the preset
+ 		/// \param presetName a name for the preset
+diff --git 3rdparty/libprojectm/Renderer/VideoEcho.cpp 3rdparty/libprojectm/Renderer/VideoEcho.cpp
+index 1ddad57a1..22b9fb2f3 100644
+--- 3rdparty/libprojectm/Renderer/VideoEcho.cpp
++++ 3rdparty/libprojectm/Renderer/VideoEcho.cpp
+@@ -77,10 +77,10 @@ void VideoEcho::Draw(RenderContext &context)
+ 			default: flipx=1;flipy=1; break;
+ 		}
+ 
+-		float pointsFlip[4][2] = {{-0.5*flipx, -0.5*flipy},
+-					  {-0.5*flipx,  0.5*flipy},
+-					  { 0.5*flipx,  0.5*flipy},
+-					  { 0.5*flipx, -0.5*flipy}};
++		float pointsFlip[4][2] = {{static_cast<float>(-0.5*flipx), static_cast<float>(-0.5*flipy)},
++					  {static_cast<float>(-0.5*flipx),  static_cast<float>(0.5*flipy)},
++					  { static_cast<float>(0.5*flipx),  static_cast<float>(0.5*flipy)},
++					  { static_cast<float>(0.5*flipx), static_cast<float>(-0.5*flipy)}};
+ 
+ 		glVertexPointer(2,GL_FLOAT,0,pointsFlip);
+ 		glDrawArrays(GL_TRIANGLE_FAN,0,4);
+diff --git 3rdparty/libprojectm/projectM.cpp 3rdparty/libprojectm/projectM.cpp
+index 336bc5a6f..7e4a4c289 100755
+--- 3rdparty/libprojectm/projectM.cpp
++++ 3rdparty/libprojectm/projectM.cpp
+@@ -46,6 +46,8 @@
+ #include "PCM.hpp"                    //Sound data handler (buffering, FFT, etc.)
+ 
+ #include <map>
++#include <utility>
++
+ 
+ #include "Renderer.hpp"
+ #include "PresetChooser.hpp"
+@@ -415,7 +417,7 @@ static void *thread_callback(void *prjm) {
+             if ( timeKeeper->IsSmoothing() && timeKeeper->SmoothRatio() > 1.0 )
+             {
+                 //printf("End Smooth\n");
+-                m_activePreset = m_activePreset2;
++                m_activePreset = std::move(m_activePreset2);
+                 timeKeeper->EndSmoothing();
+             }
+             //printf("Normal\n");
+@@ -789,7 +791,7 @@ void projectM::selectNext(const bool hardCut) {
+  * 
+  * @param targetPreset 
+  */
+-void projectM::switchPreset(std::auto_ptr<Preset> & targetPreset) {
++void projectM::switchPreset(std::unique_ptr<Preset> & targetPreset) {
+ 
+ 	#ifdef SYNC_PRESET_SWITCHES	
+ 	pthread_mutex_lock(&preset_mutex);	
+diff --git 3rdparty/libprojectm/projectM.hpp 3rdparty/libprojectm/projectM.hpp
+index 5b3bc064b..e88966556 100755
+--- 3rdparty/libprojectm/projectM.hpp
++++ 3rdparty/libprojectm/projectM.hpp
+@@ -302,10 +302,10 @@ private:
+   PresetChooser * m_presetChooser;
+ 
+   /// Currently loaded preset
+-  std::auto_ptr<Preset> m_activePreset;
++  std::unique_ptr<Preset> m_activePreset;
+ 
+   /// Destination preset when smooth preset switching
+-  std::auto_ptr<Preset> m_activePreset2;
++  std::unique_ptr<Preset> m_activePreset2;
+ 
+   TimeKeeper *timeKeeper;
+ 
+@@ -318,7 +318,7 @@ private:
+ 
+   Pipeline* currentPipe;
+ 
+-void switchPreset(std::auto_ptr<Preset> & targetPreset);
++void switchPreset(std::unique_ptr<Preset> & targetPreset);
+ 
+ 
+ };

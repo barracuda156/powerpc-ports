@@ -1,0 +1,41 @@
+From a007554c78bc2fc113aeab8fe3ebfcceb6e3e747 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Tue, 23 Jul 2024 00:17:19 +0800
+Subject: [PATCH] podcastparser: fix for QXmlStream*
+
+---
+ src/internet/podcasts/podcastparser.cpp | 1 -
+ src/internet/podcasts/podcastparser.h   | 3 +--
+ 2 files changed, 1 insertion(+), 3 deletions(-)
+
+diff --git src/internet/podcasts/podcastparser.cpp src/internet/podcasts/podcastparser.cpp
+index 0476d5e9b..01c2877f1 100644
+--- src/internet/podcasts/podcastparser.cpp
++++ src/internet/podcasts/podcastparser.cpp
+@@ -20,7 +20,6 @@
+ #include "podcastparser.h"
+ 
+ #include <QDateTime>
+-#include <QXmlStreamReader>
+ 
+ #include "core/logging.h"
+ #include "core/utilities.h"
+diff --git src/internet/podcasts/podcastparser.h src/internet/podcasts/podcastparser.h
+index 50e02d4fe..ef6e18538 100644
+--- src/internet/podcasts/podcastparser.h
++++ src/internet/podcasts/podcastparser.h
+@@ -21,13 +21,12 @@
+ #define INTERNET_PODCASTS_PODCASTPARSER_H_
+ 
+ #include <QStringList>
++#include <QXmlStreamReader>
+ 
+ #include "podcast.h"
+ 
+ class OpmlContainer;
+ 
+-class QXmlStreamReader;
+-
+ // Reads XML data from a QIODevice.
+ // Returns either a Podcast or an OpmlContainer depending on what was inside
+ // the XML document.

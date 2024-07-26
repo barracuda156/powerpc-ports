@@ -1,0 +1,751 @@
+From bfd7d30e80e8ae700a4d64ad43390b21d967ef52 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Tue, 23 Jul 2024 02:04:44 +0800
+Subject: [PATCH] Fix compatibility for legacy macOS
+
+This reverts breakages introduced by:
+2d7be1502f13faef4f2355d7a503073e59fb5759
+6dbd0baafc6c2006fd60c408959e4f336f234566
+fb2b91c874036037252ee5c8450a8a83e78ab532
+5ddf9bcf41f5da2168aba9a1c74815a9f6f3284e
+4ed6f942113da5ee4d76b59a7157a64e7179bd31
+And adds some extra fixes.
+
+This patch should not be used for 10.7+.
+
+---
+ CMakeLists.txt                         |  10 +++
+ src/CMakeLists.txt                     |   1 -
+ src/config.h.in                        |   2 +
+ src/core/mac_startup.mm                |   5 +-
+ src/core/macfslistener.h               |   7 +-
+ src/core/macfslistener.mm              |  11 +--
+ src/core/macglobalshortcutbackend.mm   |  53 ++++++++----
+ src/core/utilities.cpp                 |   6 ++
+ src/core/utilities.h                   |   3 +
+ src/engines/devicefinder.cpp           |  13 ---
+ src/engines/devicefinder.h             |   8 +-
+ src/engines/gstengine.cpp              |  11 +--
+ src/engines/gstengine.h                |   4 +-
+ src/engines/gstenginepipeline.cpp      |  29 ++-----
+ src/engines/gstenginepipeline.h        |   4 +-
+ src/engines/osxdevicefinder.cpp        | 115 -------------------------
+ src/engines/osxdevicefinder.h          |  31 -------
+ src/engines/pulsedevicefinder.cpp      |   2 +-
+ src/ui/globalshortcutssettingspage.cpp |  15 +++-
+ src/ui/macscreensaver.cpp              |  11 ++-
+ src/ui/playbacksettingspage.cpp        |   4 +-
+ 21 files changed, 104 insertions(+), 241 deletions(-)
+ delete mode 100644 src/engines/osxdevicefinder.cpp
+ delete mode 100644 src/engines/osxdevicefinder.h
+
+diff --git CMakeLists.txt CMakeLists.txt
+index 3ed75b323..e9caa9404 100644
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -114,6 +114,16 @@ if (APPLE)
+     set (SPOTIFY_LIBRARIES ${SPOTIFY})
+   endif (SPOTIFY)
+ 
++  # Uses Darwin kernel version.
++  # 9.8.0  -> 10.5/Leopard
++  # 10.4.0 -> 10.6/Snow Leopard
++  string(REGEX MATCH "[0-9]+" DARWIN_VERSION ${CMAKE_HOST_SYSTEM_VERSION})
++  if (DARWIN_VERSION GREATER 9)
++    SET(SNOW_LEOPARD 1)
++  elseif (DARWIN_VERSION GREATER 8)
++    SET(LEOPARD 1)
++  endif()
++
+   add_subdirectory(3rdparty/SPMediaKeyTap)
+   set(SPMEDIAKEYTAP_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/SPMediaKeyTap)
+   set(SPMEDIAKEYTAP_LIBRARIES SPMediaKeyTap)
+diff --git src/CMakeLists.txt src/CMakeLists.txt
+index afe58b909..fb2e6a6d4 100644
+--- src/CMakeLists.txt
++++ src/CMakeLists.txt
+@@ -857,7 +857,6 @@ optional_source(APPLE
+     core/macglobalshortcutbackend.mm
+     core/mac_startup.mm
+     devices/macdevicelister.mm
+-    engines/osxdevicefinder.cpp
+     networkremote/bonjour.mm
+     ui/globalshortcutgrabber.mm
+     ui/macscreensaver.cpp
+diff --git src/config.h.in src/config.h.in
+index f22fe9bc8..2ab34944f 100644
+--- src/config.h.in
++++ src/config.h.in
+@@ -44,6 +44,8 @@
+ #cmakedefine HAVE_VK
+ #cmakedefine HAVE_WIIMOTEDEV
+ #cmakedefine TAGLIB_HAS_OPUS
++#cmakedefine LEOPARD
++#cmakedefine SNOW_LEOPARD
+ #cmakedefine USE_INSTALL_PREFIX
+ #cmakedefine USE_SYSTEM_PROJECTM
+ #cmakedefine USE_SYSTEM_SHA2
+diff --git src/core/mac_startup.mm src/core/mac_startup.mm
+index 3d7e3b350..5ab5fae1b 100644
+--- src/core/mac_startup.mm
++++ src/core/mac_startup.mm
+@@ -517,7 +517,10 @@ void EnableFullScreen(const QWidget& main_window) {
+ 
+ float GetDevicePixelRatio(QWidget* widget) {
+   NSView* view = reinterpret_cast<NSView*>(widget->winId());
+-  return [[view window] backingScaleFactor];
++  if ([[view window] respondsToSelector:@selector(backingScaleFactor)]) {
++    return [[view window] backingScaleFactor];
++  }
++  return 1.0f;
+ }
+ 
+ }  // namespace mac
+diff --git src/core/macfslistener.h src/core/macfslistener.h
+index a0ba2d85d..44ae9bfb6 100644
+--- src/core/macfslistener.h
++++ src/core/macfslistener.h
+@@ -24,7 +24,6 @@
+ 
+ #include <QObject>
+ #include <QSet>
+-#include <QTimer>
+ 
+ #include "filesystemwatcherinterface.h"
+ 
+@@ -41,11 +40,8 @@ class MacFSListener : public FileSystemWatcherInterface {
+  signals:
+   void PathChanged(const QString& path);
+ 
+- private slots:
+-  void UpdateStream();
+-
+  private:
+-  void UpdateStreamAsync();
++  void UpdateStream();
+ 
+   static void EventStreamCallback(ConstFSEventStreamRef stream, void* user_data,
+                                   size_t num_events, void* event_paths,
+@@ -56,7 +52,6 @@ class MacFSListener : public FileSystemWatcherInterface {
+   FSEventStreamRef stream_;
+ 
+   QSet<QString> paths_;
+-  QTimer update_timer_;
+ };
+ 
+ #endif  // CORE_MACFSLISTENER_H_
+diff --git src/core/macfslistener.mm src/core/macfslistener.mm
+index da2ab00e3..19ad005e3 100644
+--- src/core/macfslistener.mm
++++ src/core/macfslistener.mm
+@@ -27,9 +27,6 @@
+ 
+ MacFSListener::MacFSListener(QObject* parent)
+     : FileSystemWatcherInterface(parent), run_loop_(nullptr), stream_(nullptr) {
+-  update_timer_.setSingleShot(true);
+-  update_timer_.setInterval(2000);
+-  connect(&update_timer_, SIGNAL(timeout()), SLOT(UpdateStream()));
+ }
+ 
+ void MacFSListener::Init() { run_loop_ = CFRunLoopGetCurrent(); }
+@@ -53,22 +50,20 @@ void MacFSListener::EventStreamCallback(
+ void MacFSListener::AddPath(const QString& path) {
+   Q_ASSERT(run_loop_);
+   paths_.insert(path);
+-  UpdateStreamAsync();
++  UpdateStream();
+ }
+ 
+ void MacFSListener::RemovePath(const QString& path) {
+   Q_ASSERT(run_loop_);
+   paths_.remove(path);
+-  UpdateStreamAsync();
++  UpdateStream();
+ }
+ 
+ void MacFSListener::Clear() {
+   paths_.clear();
+-  UpdateStreamAsync();
++  UpdateStream();
+ }
+ 
+-void MacFSListener::UpdateStreamAsync() { update_timer_.start(); }
+-
+ void MacFSListener::UpdateStream() {
+   if (stream_) {
+     FSEventStreamStop(stream_);
+diff --git src/core/macglobalshortcutbackend.mm src/core/macglobalshortcutbackend.mm
+index 631b0319a..8ef70b28c 100644
+--- src/core/macglobalshortcutbackend.mm
++++ src/core/macglobalshortcutbackend.mm
+@@ -46,6 +46,7 @@ class MacGlobalShortcutBackendPrivate : boost::noncopyable {
+       : global_monitor_(nil), local_monitor_(nil), backend_(backend) {}
+ 
+   bool Register() {
++  #ifdef __clang__
+     global_monitor_ =
+         [NSEvent addGlobalMonitorForEventsMatchingMask:NSKeyDownMask
+                                                handler:^(NSEvent* event) {
+@@ -61,11 +62,16 @@ class MacGlobalShortcutBackendPrivate : boost::noncopyable {
+                                                              : event;
+                                               }];
+     return true;
++  #else
++    return false;
++  #endif
+   }
+ 
+   void Unregister() {
++  #ifdef __clang__
+     [NSEvent removeMonitor:global_monitor_];
+     [NSEvent removeMonitor:local_monitor_];
++  #endif
+   }
+ 
+  private:
+@@ -128,32 +134,47 @@ bool MacGlobalShortcutBackend::KeyPressed(const QKeySequence& sequence) {
+ }
+ 
+ bool MacGlobalShortcutBackend::IsAccessibilityEnabled() const {
++#ifdef __clang__
+   return AXAPIEnabled();
++#else
++  return true;  // It's not really enabled but it doesn't matter.
++#endif
+ }
+ 
+ void MacGlobalShortcutBackend::ShowAccessibilityDialog() {
++#ifdef __clang__
+   NSArray* paths = NSSearchPathForDirectoriesInDomains(
+       NSPreferencePanesDirectory, NSSystemDomainMask, YES);
+   if ([paths count] == 1) {
+-    SBSystemPreferencesApplication* system_prefs = [SBApplication
+-        applicationWithBundleIdentifier:@"com.apple.systempreferences"];
+-    [system_prefs activate];
+-
+-    SBElementArray* panes = [system_prefs panes];
+-    SBSystemPreferencesPane* security_pane = nil;
+-    for (SBSystemPreferencesPane* pane : panes) {
+-      if ([[pane id] isEqualToString:@"com.apple.preference.security"]) {
+-        security_pane = pane;
+-        break;
++    NSURL* prefpane_url = nil;
++    if (Utilities::GetMacVersion() < 9) {
++      prefpane_url =
++          [NSURL fileURLWithPath:[[paths objectAtIndex:0]
++                                     stringByAppendingPathComponent:
++                                         @"UniversalAccessPref.prefPane"]];
++      [[NSWorkspace sharedWorkspace] openURL:prefpane_url];
++    } else {
++      SBSystemPreferencesApplication* system_prefs = [SBApplication
++          applicationWithBundleIdentifier:@"com.apple.systempreferences"];
++      [system_prefs activate];
++
++      SBElementArray* panes = [system_prefs panes];
++      SBSystemPreferencesPane* security_pane = nil;
++      for (SBSystemPreferencesPane* pane : panes) {
++        if ([[pane id] isEqualToString:@"com.apple.preference.security"]) {
++          security_pane = pane;
++          break;
++        }
+       }
+-    }
+-    [system_prefs setCurrentPane:security_pane];
++      [system_prefs setCurrentPane:security_pane];
+ 
+-    SBElementArray* anchors = [security_pane anchors];
+-    for (SBSystemPreferencesAnchor* anchor : anchors) {
+-      if ([[anchor name] isEqualToString:@"Privacy_Accessibility"]) {
+-        [anchor reveal];
++      SBElementArray* anchors = [security_pane anchors];
++      for (SBSystemPreferencesAnchor* anchor : anchors) {
++        if ([[anchor name] isEqualToString:@"Privacy_Accessibility"]) {
++          [anchor reveal];
++        }
+       }
+     }
+   }
++#endif
+ }
+diff --git src/core/utilities.cpp src/core/utilities.cpp
+index 739cadb93..1d8b11a20 100644
+--- src/core/utilities.cpp
++++ src/core/utilities.cpp
+@@ -378,6 +378,12 @@ QString GetConfigPath(ConfigPath config) {
+ }
+ 
+ #ifdef Q_OS_DARWIN
++qint32 GetMacVersion() {
++  SInt32 minor_version;
++  Gestalt(gestaltSystemVersionMinor, &minor_version);
++  return minor_version;
++}
++
+ // Better than openUrl(dirname(path)) - also highlights file at path
+ void RevealFileInFinder(QString const& path) {
+   QProcess::execute("/usr/bin/open", QStringList() << "-R" << path);
+diff --git src/core/utilities.h src/core/utilities.h
+index 5fd8fc102..520e4191e 100644
+--- src/core/utilities.h
++++ src/core/utilities.h
+@@ -135,6 +135,9 @@ enum ConfigPath {
+ };
+ QString GetConfigPath(ConfigPath config);
+ 
++// Returns the minor version of OS X (ie. 6 for Snow Leopard, 7 for Lion).
++qint32 GetMacVersion();
++
+ // Borrowed from schedutils
+ enum IoPriority {
+   IOPRIO_CLASS_NONE = 0,
+diff --git src/engines/devicefinder.cpp src/engines/devicefinder.cpp
+index 4dda6abea..6d4cc0f9a 100644
+--- src/engines/devicefinder.cpp
++++ src/engines/devicefinder.cpp
+@@ -20,16 +20,3 @@
+ DeviceFinder::DeviceFinder(const QString& gstreamer_sink)
+     : gstreamer_sink_(gstreamer_sink) {
+ }
+-
+-QString DeviceFinder::GuessIconName(const QString& description) {
+-  QString description_lower = description.toLower();
+-  if (description_lower.contains("headset")) {
+-    return "audio-headset";
+-  }
+-
+-  if (description_lower.contains("headphone")) {
+-    return "audio-headphones";
+-  }
+-
+-  return "audio-card";
+-}
+diff --git src/engines/devicefinder.h src/engines/devicefinder.h
+index fe2ff671f..3a6e0e70e 100644
+--- src/engines/devicefinder.h
++++ src/engines/devicefinder.h
+@@ -18,15 +18,15 @@
+ #ifndef DEVICEFINDER_H
+ #define DEVICEFINDER_H
+ 
++#include <QIcon>
+ #include <QStringList>
+-#include <QVariant>
+ 
+ // Finds audio output devices that can be used with a given gstreamer sink.
+ class DeviceFinder {
+  public:
+   struct Device {
+     // The value to set as the "device" gstreamer property.
+-    QVariant device_property_value;
++    QString name;
+ 
+     // A human readable description of the device.
+     QString description;
+@@ -35,8 +35,6 @@ class DeviceFinder {
+     QString icon_name;
+   };
+ 
+-  virtual ~DeviceFinder() {}
+-
+   // The name of the gstreamer sink element that devices found by this class
+   // can be used with.
+   QString gstreamer_sink() const { return gstreamer_sink_; }
+@@ -51,8 +49,6 @@ class DeviceFinder {
+  protected:
+   explicit DeviceFinder(const QString& gstreamer_sink);
+ 
+-  static QString GuessIconName(const QString& description);
+-
+  private:
+   QString gstreamer_sink_;
+ };
+diff --git src/engines/gstengine.cpp src/engines/gstengine.cpp
+index 51d2c5e50..2df755196 100644
+--- src/engines/gstengine.cpp
++++ src/engines/gstengine.cpp
+@@ -57,10 +57,6 @@
+ #include "engines/pulsedevicefinder.h"
+ #endif
+ 
+-#ifdef Q_OS_DARWIN
+-#include "engines/osxdevicefinder.h"
+-#endif
+-
+ #ifdef Q_OS_WIN32
+ #include "engines/directsounddevicefinder.h"
+ #endif
+@@ -159,9 +155,6 @@ void GstEngine::InitialiseGstreamer() {
+ #ifdef HAVE_LIBPULSE
+   device_finders.append(new PulseDeviceFinder);
+ #endif
+-#ifdef Q_OS_DARWIN
+-  device_finders.append(new OsxDeviceFinder);
+-#endif
+ #ifdef Q_OS_WIN32
+   device_finders.append(new DirectSoundDeviceFinder);
+ #endif
+@@ -191,7 +184,7 @@ void GstEngine::ReloadSettings() {
+   s.beginGroup(kSettingsGroup);
+ 
+   sink_ = s.value("sink", kAutoSink).toString();
+-  device_ = s.value("device");
++  device_ = s.value("device").toString();
+ 
+   if (sink_.isEmpty()) sink_ = kAutoSink;
+ 
+@@ -926,7 +919,7 @@ GstEngine::OutputDetailsList GstEngine::GetOutputsList() const {
+       output.description = device.description;
+       output.icon_name = device.icon_name;
+       output.gstreamer_plugin_name = finder->gstreamer_sink();
+-      output.device_property_value = device.device_property_value;
++      output.device_name = device.name;
+       ret.append(output);
+     }
+   }
+diff --git src/engines/gstengine.h src/engines/gstengine.h
+index 57ab8dfce..b00bcfa06 100644
+--- src/engines/gstengine.h
++++ src/engines/gstengine.h
+@@ -66,7 +66,7 @@ class GstEngine : public Engine::Base, public BufferConsumer {
+     QString icon_name;
+ 
+     QString gstreamer_plugin_name;
+-    QVariant device_property_value;
++    QString device_name;
+   };
+   typedef QList<OutputDetails> OutputDetailsList;
+ 
+@@ -185,7 +185,7 @@ class GstEngine : public Engine::Base, public BufferConsumer {
+   QFuture<void> initialising_;
+ 
+   QString sink_;
+-  QVariant device_;
++  QString device_;
+ 
+   std::shared_ptr<GstEnginePipeline> current_pipeline_;
+   std::shared_ptr<GstEnginePipeline> fadeout_pipeline_;
+diff --git src/engines/gstenginepipeline.cpp src/engines/gstenginepipeline.cpp
+index c3fde67c5..c448f6058 100644
+--- src/engines/gstenginepipeline.cpp
++++ src/engines/gstenginepipeline.cpp
+@@ -102,7 +102,7 @@ GstEnginePipeline::GstEnginePipeline(GstEngine* engine)
+ }
+ 
+ void GstEnginePipeline::set_output_device(const QString& sink,
+-                                          const QVariant& device) {
++                                          const QString& device) {
+   sink_ = sink;
+   device_ = device;
+ }
+@@ -241,29 +241,10 @@ bool GstEnginePipeline::Init() {
+   // Create the sink
+   if (!(audiosink_ = engine_->CreateElement(sink_, audiobin_))) return false;
+ 
+-  if (g_object_class_find_property(G_OBJECT_GET_CLASS(audiosink_), "device") &&
+-      !device_.toString().isEmpty()) {
+-    switch (device_.type()) {
+-      case QVariant::Int:
+-        g_object_set(G_OBJECT(audiosink_), "device", device_.toInt(), nullptr);
+-        break;
+-      case QVariant::String:
+-        g_object_set(G_OBJECT(audiosink_), "device",
+-                     device_.toString().toUtf8().constData(), nullptr);
+-        break;
+-
+-#ifdef Q_OS_WIN32
+-      case QVariant::ByteArray: {
+-        GUID guid = QUuid(device_.toByteArray());
+-        g_object_set(G_OBJECT(audiosink_), "device", &guid, nullptr);
+-        break;
+-      }
+-#endif  // Q_OS_WIN32
+-
+-      default:
+-        qLog(Warning) << "Unknown device type" << device_;
+-        break;
+-    }
++  if (g_object_class_find_property(G_OBJECT_CLASS(audiosink_), "device") &&
++      !device_.isEmpty()) {
++    g_object_set(G_OBJECT(audiosink_), "device", device_.toUtf8().constData(),
++                 nullptr);
+   }
+ 
+   // Create all the other elements
+diff --git src/engines/gstenginepipeline.h src/engines/gstenginepipeline.h
+index 8a33f7a30..2cfaf9fa9 100644
+--- src/engines/gstenginepipeline.h
++++ src/engines/gstenginepipeline.h
+@@ -50,7 +50,7 @@ class GstEnginePipeline : public QObject {
+   int id() const { return id_; }
+ 
+   // Call these setters before Init
+-  void set_output_device(const QString& sink, const QVariant& device);
++  void set_output_device(const QString& sink, const QString& device);
+   void set_replaygain(bool enabled, int mode, float preamp, bool compression);
+   void set_buffer_duration_nanosec(qint64 duration_nanosec);
+   void set_buffer_min_fill(int percent);
+@@ -188,7 +188,7 @@ signals:
+   // General settings for the pipeline
+   bool valid_;
+   QString sink_;
+-  QVariant device_;
++  QString device_;
+ 
+   // These get called when there is a new audio buffer available
+   QList<BufferConsumer*> buffer_consumers_;
+diff --git src/engines/osxdevicefinder.cpp src/engines/osxdevicefinder.cpp
+deleted file mode 100644
+index 035000013..000000000
+--- src/engines/osxdevicefinder.cpp
++++ /dev/null
+@@ -1,115 +0,0 @@
+-/* This file is part of Clementine.
+-   Copyright 2014, David Sansome <me@davidsansome.com>
+-   
+-   Clementine is free software: you can redistribute it and/or modify
+-   it under the terms of the GNU General Public License as published by
+-   the Free Software Foundation, either version 3 of the License, or
+-   (at your option) any later version.
+-   
+-   Clementine is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-   GNU General Public License for more details.
+-   
+-   You should have received a copy of the GNU General Public License
+-   along with Clementine.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-
+-#include <memory>
+-
+-#include <CoreAudio/AudioHardware.h>
+-
+-#include "osxdevicefinder.h"
+-#include "core/logging.h"
+-#include "core/scoped_cftyperef.h"
+-
+-namespace {
+-
+-template <typename T>
+-std::unique_ptr<T> GetProperty(const AudioDeviceID& device_id,
+-                               const AudioObjectPropertyAddress& address,
+-                               UInt32* size_bytes_out = nullptr) {
+-  UInt32 size_bytes = 0;
+-  OSStatus status = AudioObjectGetPropertyDataSize(
+-      device_id, &address, 0, NULL, &size_bytes);
+-  if (status != kAudioHardwareNoError) {
+-    qLog(Warning) << "AudioObjectGetPropertyDataSize failed:" << status;
+-    return std::unique_ptr<T>();
+-  }
+-
+-  std::unique_ptr<T> ret(reinterpret_cast<T*>(malloc(size_bytes)));
+-
+-  status = AudioObjectGetPropertyData(device_id,
+-                                      &address,
+-                                      0,
+-                                      NULL,
+-                                      &size_bytes,
+-                                      ret.get());
+-  if (status != kAudioHardwareNoError) {
+-    qLog(Warning) << "AudioObjectGetPropertyData failed:" << status;
+-    return std::unique_ptr<T>();
+-  }
+-
+-  if (size_bytes_out) {
+-    *size_bytes_out = size_bytes;
+-  }
+-
+-  return ret;
+-}
+-
+-}  // namespace
+-
+-
+-OsxDeviceFinder::OsxDeviceFinder()
+-    : DeviceFinder("osxaudiosink") {
+-}
+-
+-QList<DeviceFinder::Device> OsxDeviceFinder::ListDevices() {
+-  QList<Device> ret;
+-
+-  AudioObjectPropertyAddress address = {
+-    kAudioHardwarePropertyDevices,
+-    kAudioObjectPropertyScopeGlobal,
+-    kAudioObjectPropertyElementMaster
+-  };
+-
+-  UInt32 device_size_bytes = 0;
+-  std::unique_ptr<AudioDeviceID> devices =
+-      GetProperty<AudioDeviceID>(
+-          kAudioObjectSystemObject, address, &device_size_bytes);
+-  if (!devices.get()) {
+-    return ret;
+-  }
+-  const int device_count = device_size_bytes / sizeof(AudioDeviceID);
+-
+-  address.mScope = kAudioDevicePropertyScopeOutput;
+-  for (UInt32 i = 0; i < device_count; ++i) {
+-    const AudioDeviceID id = devices.get()[i];
+-
+-    // Query device name
+-    address.mSelector = kAudioDevicePropertyDeviceNameCFString;
+-    std::unique_ptr<CFStringRef> device_name =
+-        GetProperty<CFStringRef>(id, address);
+-    ScopedCFTypeRef<CFStringRef> scoped_device_name(*device_name.get());
+-    if (!device_name.get()) {
+-      continue;
+-    }
+-
+-    // Determine if the device is an output device (it is an output device if
+-    // it has output channels)
+-    address.mSelector = kAudioDevicePropertyStreamConfiguration;
+-    std::unique_ptr<AudioBufferList> buffer_list =
+-        GetProperty<AudioBufferList>(id, address);
+-    if (!buffer_list.get() || buffer_list->mNumberBuffers == 0) {
+-      continue;
+-    }
+-
+-    Device dev;
+-    dev.description = QString::fromUtf8(
+-        CFStringGetCStringPtr(*device_name, CFStringGetSystemEncoding()));
+-    dev.device_property_value = id;
+-    dev.icon_name = GuessIconName(dev.description);
+-    ret.append(dev);
+-  }
+-  return ret;
+-}
+diff --git src/engines/osxdevicefinder.h src/engines/osxdevicefinder.h
+deleted file mode 100644
+index 92a8a0eb7..000000000
+--- src/engines/osxdevicefinder.h
++++ /dev/null
+@@ -1,31 +0,0 @@
+-/* This file is part of Clementine.
+-   Copyright 2014, David Sansome <me@davidsansome.com>
+-   
+-   Clementine is free software: you can redistribute it and/or modify
+-   it under the terms of the GNU General Public License as published by
+-   the Free Software Foundation, either version 3 of the License, or
+-   (at your option) any later version.
+-   
+-   Clementine is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-   GNU General Public License for more details.
+-   
+-   You should have received a copy of the GNU General Public License
+-   along with Clementine.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-
+-#ifndef OSXDEVICEFINDER_H
+-#define OSXDEVICEFINDER_H
+-
+-#include "engines/devicefinder.h"
+-
+-class OsxDeviceFinder : public DeviceFinder {
+- public:
+-  OsxDeviceFinder();
+-
+-  virtual bool Initialise() { return true; }
+-  virtual QList<Device> ListDevices();
+-};
+-
+-#endif // OSXDEVICEFINDER_H
+diff --git src/engines/pulsedevicefinder.cpp src/engines/pulsedevicefinder.cpp
+index 4874150a7..759b7703b 100644
+--- src/engines/pulsedevicefinder.cpp
++++ src/engines/pulsedevicefinder.cpp
+@@ -109,7 +109,7 @@ void PulseDeviceFinder::GetSinkInfoCallback(pa_context* c,
+ 
+   if (info) {
+     Device dev;
+-    dev.device_property_value = QString::fromUtf8(info->name);
++    dev.name = QString::fromUtf8(info->name);
+     dev.description = QString::fromUtf8(info->description);
+     dev.icon_name = QString::fromUtf8(
+         pa_proplist_gets(info->proplist, "device.icon_name"));
+diff --git src/ui/globalshortcutssettingspage.cpp src/ui/globalshortcutssettingspage.cpp
+index d4e4c1d26..490e88e7e 100644
+--- src/ui/globalshortcutssettingspage.cpp
++++ src/ui/globalshortcutssettingspage.cpp
+@@ -57,7 +57,15 @@ GlobalShortcutsSettingsPage::GlobalShortcutsSettingsPage(SettingsDialog* dialog)
+ 
+ GlobalShortcutsSettingsPage::~GlobalShortcutsSettingsPage() { delete ui_; }
+ 
+-bool GlobalShortcutsSettingsPage::IsEnabled() const { return true; }
++bool GlobalShortcutsSettingsPage::IsEnabled() const {
++#ifdef Q_OS_MAC
++  qLog(Debug) << Utilities::GetMacVersion();
++  if (Utilities::GetMacVersion() < 7) {  // Snow Leopard and earlier.
++    return false;
++  }
++#endif
++  return true;
++}
+ 
+ void GlobalShortcutsSettingsPage::Load() {
+   GlobalShortcuts* manager = dialog()->global_shortcuts_manager();
+@@ -98,6 +106,11 @@ void GlobalShortcutsSettingsPage::Load() {
+   }
+ 
+   ui_->mac_container->setVisible(!manager->IsMacAccessibilityEnabled());
++#ifdef Q_OS_DARWIN
++  qint32 mac_version = Utilities::GetMacVersion();
++  ui_->mac_label->setVisible(mac_version < 9);
++  ui_->mac_label_mavericks->setVisible(mac_version >= 9);
++#endif  // Q_OS_DARWIN
+ }
+ 
+ void GlobalShortcutsSettingsPage::SetShortcut(const QString& id,
+diff --git src/ui/macscreensaver.cpp src/ui/macscreensaver.cpp
+index 9bf3d076d..67b8fd7f6 100644
+--- src/ui/macscreensaver.cpp
++++ src/ui/macscreensaver.cpp
+@@ -17,17 +17,22 @@
+ 
+ #include "macscreensaver.h"
+ 
+-#include <IOKit/pwr_mgt/IOPMLib.h>
+-
+ #include <QtDebug>
+ 
+ #include "core/utilities.h"
+ 
++// kIOPMAssertionTypePreventUserIdleDisplaySleep from Lion.
++#define kLionDisplayAssertion CFSTR("PreventUserIdleDisplaySleep")
++
+ MacScreensaver::MacScreensaver() : assertion_id_(0) {}
+ 
+ void MacScreensaver::Inhibit() {
++  CFStringRef assertion_type = (Utilities::GetMacVersion() >= 7)
++                                   ? kLionDisplayAssertion
++                                   : kIOPMAssertionTypeNoDisplaySleep;
++
+   IOPMAssertionCreateWithName(
+-      kIOPMAssertPreventUserIdleDisplaySleep, kIOPMAssertionLevelOn,
++      assertion_type, kIOPMAssertionLevelOn,
+       CFSTR("Showing full-screen Clementine visualisations"), &assertion_id_);
+ }
+ 
+diff --git src/ui/playbacksettingspage.cpp src/ui/playbacksettingspage.cpp
+index 957317377..5261ffdde 100644
+--- src/ui/playbacksettingspage.cpp
++++ src/ui/playbacksettingspage.cpp
+@@ -99,7 +99,7 @@ void PlaybackSettingsPage::Load() {
+         ui_->gst_output->itemData(i).value<GstEngine::OutputDetails>();
+ 
+     if (details.gstreamer_plugin_name == sink &&
+-        details.device_property_value == device) {
++        details.device_name == device) {
+       ui_->gst_output->setCurrentIndex(i);
+       break;
+     }
+@@ -142,7 +142,7 @@ void PlaybackSettingsPage::Save() {
+ 
+   s.beginGroup(GstEngine::kSettingsGroup);
+   s.setValue("sink", details.gstreamer_plugin_name);
+-  s.setValue("device", details.device_property_value);
++  s.setValue("device", details.device_name);
+   s.setValue("rgenabled", ui_->replaygain->isChecked());
+   s.setValue("rgmode", ui_->replaygain_mode->currentIndex());
+   s.setValue("rgpreamp", float(ui_->replaygain_preamp->value()) / 10 - 15);

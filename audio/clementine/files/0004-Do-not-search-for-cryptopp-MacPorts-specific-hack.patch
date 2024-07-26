@@ -1,0 +1,37 @@
+From fafa9fd175deb4f0ce35aad3220a74721e20edd5 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Mon, 22 Jul 2024 22:04:46 +0800
+Subject: [PATCH] Do not search for cryptopp (MacPorts-specific hack)
+
+---
+ CMakeLists.txt | 10 ++--------
+ 1 file changed, 2 insertions(+), 8 deletions(-)
+
+diff --git CMakeLists.txt CMakeLists.txt
+index 737e32ce6..3ed75b323 100644
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -52,7 +52,6 @@ find_library(PROTOBUF_STATIC_LIBRARY libprotobuf.a libprotobuf)
+ 
+ pkg_check_modules(CDIO libcdio)
+ pkg_check_modules(CHROMAPRINT REQUIRED libchromaprint)
+-pkg_search_module(CRYPTOPP cryptopp libcrypto++)
+ pkg_check_modules(GIO gio-2.0)
+ pkg_check_modules(GLIB REQUIRED glib-2.0)
+ pkg_check_modules(GOBJECT REQUIRED gobject-2.0)
+@@ -265,13 +264,8 @@ optional_component(LIBPULSE ON "Pulse audio integration"
+ 
+ optional_component(VISUALISATIONS ON "Visualisations")
+ 
+-if(NOT HAVE_SPOTIFY_BLOB AND NOT CRYPTOPP_FOUND)
+-  message(FATAL_ERROR "Either crypto++ must be available or the non-GPL Spotify "
+-          "code must be compiled in")
+-elseif(CRYPTOPP_FOUND)
+-  set(HAVE_CRYPTOPP ON)
+-  set(HAVE_SPOTIFY_DOWNLOADER ON)
+-endif()
++set(HAVE_CRYPTOPP ON)
++set(HAVE_SPOTIFY_DOWNLOADER ON)
+ 
+ # Find DBus if it's enabled
+ if (HAVE_DBUS)

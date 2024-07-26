@@ -1,0 +1,27 @@
+From 17202c0cfef1c8338cac52049ecba85cf9ee70e5 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Mon, 22 Jul 2024 16:19:24 +0800
+Subject: [PATCH] Revert "Enforce Cocoa requirement."
+
+This reverts commit ca84b473611c150a75076f9e1000caed62d727b8.
+---
+ CMakeLists.txt | 6 ------
+ 1 file changed, 6 deletions(-)
+
+diff --git CMakeLists.txt CMakeLists.txt
+index 23070d9f4..8319f0492 100644
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -42,12 +42,6 @@ endif(NOT APPLE)
+ find_program(QT_LCONVERT_EXECUTABLE NAMES lconvert lconvert-qt4 PATHS ${QT_BINARY_DIR} NO_DEFAULT_PATH)
+ find_program(QT_LCONVERT_EXECUTABLE NAMES lconvert lconvert-qt4)
+ 
+-if(APPLE)
+-  if(NOT QT_MAC_USE_COCOA)
+-    message(FATAL_ERROR "Cocoa support is required")
+-  endif(NOT QT_MAC_USE_COCOA)
+-endif(APPLE)
+-
+ find_package(OpenGL REQUIRED)
+ find_package(Boost REQUIRED)
+ find_package(Gettext REQUIRED)

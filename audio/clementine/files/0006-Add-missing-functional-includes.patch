@@ -1,0 +1,48 @@
+From cec150a441260f3bb43b496909ae263b59d12e5e Mon Sep 17 00:00:00 2001
+From: Morris Hafner <mmha@users.noreply.github.com>
+Date: Mon, 13 Feb 2017 17:46:46 +0100
+Subject: [PATCH] Add missing <functional> includes (#5630)
+
+---
+ src/core/mergedproxymodel.cpp | 1 +
+ src/devices/giolister.cpp     | 1 +
+ src/library/groupbydialog.cpp | 2 ++
+ 3 files changed, 4 insertions(+)
+
+diff --git src/core/mergedproxymodel.cpp src/core/mergedproxymodel.cpp
+index 56217f6fd..8c210d391 100644
+--- src/core/mergedproxymodel.cpp
++++ src/core/mergedproxymodel.cpp
+@@ -23,6 +23,7 @@
+ 
+ #include <QStringList>
+ 
++#include <functional>
+ #include <limits>
+ 
+ // boost::multi_index still relies on these being in the global namespace.
+diff --git src/devices/giolister.cpp src/devices/giolister.cpp
+index 1979f189c..fc1a61406 100644
+--- src/devices/giolister.cpp
++++ src/devices/giolister.cpp
+@@ -17,6 +17,7 @@
+ 
+ #include "config.h"
+ 
++#include <functional>
+ #include <memory>
+ 
+ #include <QFile>
+diff --git src/library/groupbydialog.cpp src/library/groupbydialog.cpp
+index 5efdc9f36..e5f711b34 100644
+--- src/library/groupbydialog.cpp
++++ src/library/groupbydialog.cpp
+@@ -20,6 +20,8 @@
+ 
+ #include <QPushButton>
+ 
++#include <functional>
++
+ // boost::multi_index still relies on these being in the global namespace.
+ using std::placeholders::_1;
+ using std::placeholders::_2;

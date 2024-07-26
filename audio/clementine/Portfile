@@ -1,0 +1,85 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           boost 1.0
+PortGroup           cmake 1.1
+PortGroup           github 1.0
+PortGroup           legacysupport 1.1
+PortGroup           qt4 1.0
+
+# USB.h: error: too many '#pragma options align=reset'
+legacysupport.newest_darwin_requires_legacy 10
+
+name                clementine
+github.setup        clementine-player Clementine 1.3.1
+revision            0
+
+categories          audio
+license             GPL-3
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+
+description         Clementine Music Player
+long_description    Clementine is a modern cross-platform music player \
+                    and library organizer.
+checksums           rmd160  fb5780599a9af524b54c0e7b04f4721eb56ddae1 \
+                    sha256  f885931a9ab7c88607d07b50c64fcce46fc05f13dd2c0a04188c94eff938f37c \
+                    size    8501827
+github.tarball_from archive
+
+patchfiles-append   0001-Revert-Enforce-Cocoa-requirement.patch \
+                    0002-podcastparser-fix-for-QXmlStream.patch \
+                    0003-fix-vreen.patch
+
+# https://trac.macports.org/ticket/70419
+patchfiles-append   0004-Do-not-search-for-cryptopp-MacPorts-specific-hack.patch
+
+# Backports from upstream:
+patchfiles-append   0005-Fix-projectm-compilation.patch \
+                    0006-Add-missing-functional-includes.patch \
+                    0007-Add-compatibility-with-chromaprint-1.4.patch \
+                    0008-CMakeLists-use-stdlib-libc-on-macOS-only-with-clang.patch
+
+depends_build-append \
+                    port:gettext \
+                    path:bin/pkg-config:pkgconfig \
+                    port:sparsehash
+
+depends_lib-append  port:chromaprint \
+                    port:fftw-3 \
+                    port:gettext-runtime \
+                    path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    port:gstreamer1 \
+                    port:gstreamer1-gst-plugins-base \
+                    port:libcdio \
+                    port:libcryptopp \
+                    port:liblastfm \
+                    port:libmtp \
+                    port:libxml2 \
+                    port:mesa \
+                    port:protobuf3-cpp \
+                    port:qjson \
+                    port:taglib
+
+configure.args-append \
+                    -DBUS=OFF \
+                    -DLIBPULSE=OFF \
+                    -DSPARKLE=OFF
+
+compiler.cxx_standard   2011
+
+if {[string match *gcc* ${configure.compiler}]} {
+    # SPMediaKeyTap.m: error: '-fobjc-exceptions' is required to enable Objective-C exception syntax
+    # Should be passed as cflag, since objflag has no effect.
+    configure.cflags-append \
+                    -fobjc-exceptions
+
+    # spotifyblobdownloader.cpp: error: ISO C++ forbids declaration of 'type name' with no type [-fpermissive]
+    configure.cxxflags-append \
+                    -fpermissive
+}
+
+# This patch adds fixes needed for legacy systems.
+if {(${os.platform} eq "darwin" && ${os.major} < 11) && ${configure.cxx_stdlib} ne "libc++"} {
+        patchfiles-append \
+                    0009-Fix-compatibility-for-legacy-macOS.patch
+}
