@@ -44,8 +44,8 @@ checksums       rmd160 829cf057ed7e11abb42a79b2e6c631522539021c \
                 sha256 d1b180b5e15eeb3d7236abdaab665f3a3ac8fc27d192ab4ad4ad250cc0520aa3 \
                 size 22830
 
-# /usr/bin/ppdc exists on 10.6 and later
-if { ${os.platform} ne "darwin" || ${os.major} < 10 } {
+# /usr/bin/ppdc exists on 10.6 and later, but not for ppc on 10.6
+if { ${os.platform} ne "darwin" || ${os.major} < 11 } {
     depends_build-append \
                 port:cups-ppdc
 }
@@ -63,6 +63,12 @@ compiler.cxx_standard   2011
 
 configure.args-append -DCUPS_SERVER_BIN:FILEPATH=${prefix}/libexec/cups
 configure.args-append -DCUPS_DATA_DIR:FILEPATH=${prefix}/share/cups
+
+# An ugly fix for https://trac.macports.org/ticket/70480
+if { ${os.platform} eq "darwin" && ${os.major} < 11 } {
+    configure.args-append \
+                -DCUPS_LIBS="-lcupsimage -lcups -Wl,-weak_framework Kerberos -framework CoreFoundation -framework Security -lz -lpthread -lresolv -framework SystemConfiguration -framework CoreFoundation"
+}
 
 post-build {
     system -W ${workpath} "ppdc build/brlaser.drv -d build/ppd"
