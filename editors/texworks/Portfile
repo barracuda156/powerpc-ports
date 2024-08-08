@@ -39,6 +39,8 @@ configure.args-append       -DWITH_LUA=ON \
                             -DQTPDF_VIEWER=OFF \
                             -DPREFER_BUNDLED_SYNCTEX=ON
 
+compiler.cxx_standard       2011
+
 variant qt4 description {Build against Qt 4} {
     PortGroup               qt4 1.0
     depends_lib-append      port:poppler-qt4-mac
