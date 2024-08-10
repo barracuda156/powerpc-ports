@@ -183,6 +183,10 @@ if {(${subport} eq ${name}) || (${subport} eq "lib${name}")} {
     } elseif {[string match *gcc* ${configure.compiler}]} {
         patchfiles-append \
                         0001-Fixes-for-modern-GCC.patch
+        # codec/avcodec/encoder.c:883:41: error: passing argument 2 of 'vlc_av_get_options_ng'
+        # from incompatible pointer type [-Wincompatible-pointer-types]
+        configure.cflags-append \
+                        -Wno-incompatible-pointer-types
     }
 
     # FFMpeg 3 compatibility (see attributions in the patchfile)
