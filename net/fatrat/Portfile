@@ -1,0 +1,67 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
+
+PortSystem      1.0
+PortGroup       boost 1.0
+PortGroup       cmake 1.1
+PortGroup       github 1.0
+PortGroup       openssl 1.0
+PortGroup       qt4 1.0
+
+boost.version   1.81
+
+github.setup    LubosD fatrat f009cf18ae6ae85ff0f02e109de04d8b40c2d0f3
+version         2018.06.28
+categories      net p2p
+maintainers     {@barracuda156 gmail.com:vital.had} openmaintainer
+license         GPL-3
+
+description     FatRat Download/Upload Manager
+long_description \
+                FatRat is an open-source download manager \
+                written in C++ and built on top of the Qt library.
+
+homepage        http://fatrat.dolezel.info
+
+checksums       rmd160  03cba0421504d669b2e75e6d4a545da3a527aa6c \
+                sha256  06d5216be80c4e50a634f289e75807c7fb6db57fca589c049cbecb8e1e303c19 \
+                size    4989922
+github.tarball_from archive
+
+patchfiles-append \
+                0001-Restore-Qt4-revert-c76986b46b011512c0b70f9932148e417.patch \
+                0002-Revert-move-to-QtWebEngine-cd646de21a9327eff75bad0df.patch
+
+# https://github.com/LubosD/fatrat/pull/55
+patchfiles-append \
+                0003-KqueuePoller.cpp-add-missing-include.patch
+
+depends_build-append \
+                port:gettext \
+                path:bin/pkg-config:pkgconfig
+depends_lib-append \
+                port:curl \
+                port:desktop-file-utils \
+                port:gettext-runtime \
+                port:p11-kit
+
+compiler.cxx_standard \
+                2011
+
+configure.args-append \
+                -DWITH_CURL=ON \
+                -DWITH_DOCUMENTATION=OFF \
+                -DWITH_JPLUGINS=OFF \
+                -DWITH_NLS=ON \
+                -DWITH_WEBINTERFACE=OFF
+
+# FIXME: fix compatibility with libtorrent-rasterbar 2.x API.
+# When done, enforce C++14, since C++11 is unsupported.
+# Maybe fix a build with gloox support enabled.
+# https://github.com/LubosD/fatrat/issues/54
+configure.args-append \
+                -DWITH_BITTORRENT=OFF \
+                -DWITH_JABBER=OFF
+
+post-activate {
+    system "${prefix}/bin/update-desktop-database ${prefix}/share/applications"
+}

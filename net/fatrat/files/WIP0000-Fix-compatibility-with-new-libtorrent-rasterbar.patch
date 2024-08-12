@@ -1,0 +1,159 @@
+From 62b743c9ee75b23f0cfce19f28cd805ebdee56cd Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Mon, 12 Aug 2024 09:52:39 +0800
+Subject: [PATCH 4/5] Fix compatibility with new libtorrent-rasterbar
+
+---
+ CMakeLists.txt                  |  4 +++-
+ src/engines/TorrentDownload.cpp | 26 +++++++++-----------------
+ src/engines/TorrentDownload.h   |  2 +-
+ src/tools/CreateTorrentDlg.cpp  |  1 -
+ 4 files changed, 13 insertions(+), 20 deletions(-)
+
+diff --git CMakeLists.txt CMakeLists.txt
+index c5422b3..db690ad 100644
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -5,6 +5,8 @@ if(COMMAND cmake_policy)
+ 	cmake_policy(SET CMP0003 NEW)
+ endif(COMMAND cmake_policy)
+ 
++set(CMAKE_CXX_STANDARD 14)
++
+ INCLUDE(CheckFunctionExists)
+ INCLUDE(CheckIncludeFiles)
+ INCLUDE(FindPkgConfig)
+@@ -38,7 +40,7 @@ if(WITH_EVERYTHING)
+ 	set(WITH_JPLUGINS ON)
+ endif(WITH_EVERYTHING)
+ 
+-ADD_DEFINITIONS(-std=c++11)
++ADD_DEFINITIONS(-std=c++14)
+ 
+ if(WITH_JPLUGINS)
+ 	set(WITH_CURL ON)
+diff --git src/engines/TorrentDownload.cpp src/engines/TorrentDownload.cpp
+index f61b524..dacdc49 100644
+--- src/engines/TorrentDownload.cpp
++++ src/engines/TorrentDownload.cpp
+@@ -37,15 +37,14 @@ respects for all of the code used other than "OpenSSL".
+ #include "rss/RssFetcher.h"
+ #include "TorrentProgressWidget.h"
+ 
++#include <libtorrent/bdecode.hpp>
+ #include <libtorrent/bencode.hpp>
+ #include <libtorrent/alert_types.hpp>
+ #include <libtorrent/extensions/ut_pex.hpp>
+-#include <libtorrent/extensions/metadata_transfer.hpp>
+ #include <libtorrent/extensions/ut_metadata.hpp>
+ #include <libtorrent/extensions/smart_ban.hpp>
+ #include <libtorrent/magnet_uri.hpp>
+ #include <libtorrent/torrent_info.hpp>
+-#include <libtorrent/lazy_entry.hpp>
+ #include <libtorrent/session_status.hpp>
+ #include <libtorrent/announce_entry.hpp>
+ 
+@@ -244,7 +243,7 @@ void TorrentDownload::applySettings()
+ 	static bool bUPnPActive = false, bNATPMPActive = false, bLSDActive = false;
+ 	bool bUPnP, bNATPMP, bLSD;
+ 	int lstart,lend;
+-	libtorrent::session_settings settings;
++	libtorrent::settings_pack settings;
+ 	
+ 	lstart = getSettingsValue("torrent/listen_start").toInt();
+ 	lend = getSettingsValue("torrent/listen_end").toInt();
+@@ -300,14 +299,7 @@ void TorrentDownload::applySettings()
+ 		{
+ 			try
+ 			{
+-#ifdef LIBTORRENT_0_15
+-				libtorrent::lazy_entry e;
+-				lazy_bdecode_simple(e, state);
+-				m_session->load_state(e);
+-				m_session->start_dht();
+-#else
+ 				m_session->start_dht(bdecode_simple(state));
+-#endif
+ 				m_session->add_dht_router(std::pair<std::string, int>("router.bittorrent.com", 6881));
+ 				m_bDHT = true;
+ 				
+@@ -455,7 +447,7 @@ void TorrentDownload::globalExit()
+ 	}
+ 
+ 	// Without this the process could freeze for up to 60 seconds
+-	libtorrent::session_settings s;
++	libtorrent::settings_pack s;
+ 	s.tracker_completion_timeout = s.tracker_receive_timeout = 5;
+ 	m_session->set_settings(s);
+ 
+@@ -875,11 +867,11 @@ libtorrent::entry TorrentDownload::bdecode_simple(QByteArray array)
+ 		return libtorrent::bdecode(array.constData(), array.constData() + array.size());
+ }
+ 
+-void TorrentDownload::lazy_bdecode_simple(libtorrent::lazy_entry& e, QByteArray array)
++void TorrentDownload::lazy_bdecode_simple(libtorrent::bdecode_node& e, QByteArray array)
+ {
+ 	libtorrent::error_code ec;
+ 	if(!array.isEmpty())
+-		libtorrent::lazy_bdecode(array.constData(), array.constData() + array.size(), e, ec);
++		libtorrent::bdecode(array.constData(), array.constData() + array.size(), e, ec);
+ }
+ 
+ libtorrent::entry TorrentDownload::bdecode(QString d)
+@@ -946,8 +938,8 @@ void TorrentDownload::load(const QDomNode& map)
+ 		params.save_path = path.constData();
+ 		if(!torrent_resume2.empty())
+ 			params.resume_data = torrent_resume2;
+-		params.paused = true;
+-		params.auto_managed = false;
++		//params.paused = true;
++		//params.auto_managed = false;
+ 		
+ 		m_handle = m_session->add_torrent(params);
+ 		
+@@ -1057,7 +1049,7 @@ void TorrentDownload::save(QDomDocument& doc, QDomNode& map) const
+ 			for(i = 0; i < 3;)
+ 			{
+ 				libtorrent::alert* aaa;
+-				std::unique_ptr<libtorrent::alert> a = TorrentDownload::m_session->pop_alert();
++				std::unique_ptr<libtorrent::alert> a = TorrentDownload::m_session->pop_alerts();
+ 	
+ 				if((aaa = a.get()) == 0)
+ 				{
+@@ -1494,7 +1486,7 @@ void TorrentWorker::doWork()
+ 	while(true)
+ 	{
+ 		libtorrent::alert* aaa;
+-		std::unique_ptr<libtorrent::alert> a = TorrentDownload::m_session->pop_alert();
++		std::unique_ptr<libtorrent::alert> a = TorrentDownload::m_session->pop_alerts();
+ 		
+ 		if((aaa = a.get()) == 0)
+ 			break;
+diff --git src/engines/TorrentDownload.h src/engines/TorrentDownload.h
+index ca18c5c..b56beff 100644
+--- src/engines/TorrentDownload.h
++++ src/engines/TorrentDownload.h
+@@ -78,7 +78,7 @@ public:
+ 	static QByteArray bencode_simple(libtorrent::entry& e);
+ 	static QString bencode(libtorrent::entry& e);
+ 	static libtorrent::entry bdecode_simple(QByteArray d);
+-	static void lazy_bdecode_simple(libtorrent::lazy_entry& e, QByteArray array);
++	static void lazy_bdecode_simple(libtorrent::bdecode_node& e, QByteArray array);
+ 	static libtorrent::entry bdecode(QString d);
+ 	
+ 	static libtorrent::proxy_settings proxyToLibtorrent(Proxy p);
+diff --git src/tools/CreateTorrentDlg.cpp src/tools/CreateTorrentDlg.cpp
+index 14dbcb1..1666c20 100644
+--- src/tools/CreateTorrentDlg.cpp
++++ src/tools/CreateTorrentDlg.cpp
+@@ -37,7 +37,6 @@ respects for all of the code used other than "OpenSSL".
+ #include <libtorrent/bencode.hpp>
+ #include <libtorrent/storage.hpp>
+ #include <libtorrent/hasher.hpp>
+-#include <libtorrent/file_pool.hpp>
+ #include <stdexcept>
+ 
+ CreateTorrentDlg::CreateTorrentDlg(QWidget* parent)
+-- 
+2.46.0
+

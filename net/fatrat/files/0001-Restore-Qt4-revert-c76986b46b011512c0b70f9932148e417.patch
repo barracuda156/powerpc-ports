@@ -1,0 +1,845 @@
+From 6d403cc19f8acd567690815fec5c578063677a52 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Mon, 12 Aug 2024 09:25:31 +0800
+Subject: [PATCH 1/5] Restore Qt4: revert
+ c76986b46b011512c0b70f9932148e417a702b61
+
+---
+ CMakeLists.txt               |  57 +++++++---------
+ src/MainWindow.cpp           |   4 +-
+ src/Proxy.cpp                |   1 +
+ src/Proxy.h                  |   1 +
+ src/Queue.cpp                |   2 +-
+ src/ReportBugDlg.cpp         | 111 ++++++++++++++++++++++++++++++
+ src/ReportBugDlg.h           |  45 ++++++++++++
+ src/ReportBugDlg.ui          | 128 +++++++++++++++++++++++++++++++++++
+ src/ScheduledActionDlg.cpp   |   2 +-
+ src/Scheduler.cpp            |   2 +-
+ src/XmlRpc.cpp               |   2 +-
+ src/captcha/CaptchaHttp.h    |   1 -
+ src/fancylineedit.cpp        |  24 +++----
+ src/fancylineedit.h          |   4 +-
+ src/fatrat-conf.cpp          |   1 +
+ src/fatrat.cpp               |  14 ++--
+ src/java/JDownloadPlugin.cpp |   1 -
+ src/rss/RssFetcher.cpp       |  43 +++++++-----
+ src/rss/RssFetcher.h         |  10 ++-
+ 19 files changed, 370 insertions(+), 83 deletions(-)
+ create mode 100644 src/ReportBugDlg.cpp
+ create mode 100644 src/ReportBugDlg.h
+ create mode 100644 src/ReportBugDlg.ui
+
+diff --git CMakeLists.txt CMakeLists.txt
+index 1770b31..8c7541a 100644
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -11,20 +11,9 @@ INCLUDE(FindPkgConfig)
+ INCLUDE(FindBoost)
+ #INCLUDE(FindJNI)
+ 
+-set(CMAKE_INCLUDE_CURRENT_DIR ON)
++find_package(Qt4 REQUIRED)
+ 
+-find_package(Qt5Core REQUIRED)
+-find_package(Qt5Widgets REQUIRED)
+-find_package(Qt5Svg REQUIRED)
+-find_package(Qt5DBus REQUIRED)
+-find_package(Qt5Network REQUIRED)
+-find_package(Qt5Xml REQUIRED)
+-find_package(Qt5LinguistTools REQUIRED)
+-
+-message(STATUS "XML: ${Qt5Xml_INCLUDE_DIRS}")
+-include_directories(${Qt5Widgets_INCLUDE_DIRS} ${Qt5Xml_INCLUDE_DIRS}
+-	${Qt5Network_INCLUDE_DIRS} ${Qt5Svg_INCLUDE_DIRS})
+-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
++include_directories(src)
+ 
+ ADD_DEFINITIONS(-DBOOST_FILESYSTEM_NARROW_ONLY)
+ 
+@@ -96,17 +85,7 @@ if(WITH_BITTORRENT)
+ 	#	message(FATAL_ERROR "No Boost asio")
+ 	#endif(ASIO_FOUND)
+ 	
+-	find_package(Qt5WebEngine)
+-	find_package(Qt5WebEngineWidgets)
+-
+-	if (Qt5WebEngine_FOUND)
+-		set(HAVE_WEBENGINE TRUE)
+-		set(QT_LIBRARIES ${QT_LIBRAIRES} Qt5::WebEngine Qt5::WebEngineWidgets)
+-	else(Qt5WebEngine_FOUND)
+-		message(WARNING "Qt WebEngine not found, BitTorrent search not available")
+-	endif (Qt5WebEngine_FOUND)
+-
+-	include_directories(${Qt5WebEngine_INCLUDE_DIRS})
++	set(QT_USE_QTWEBKIT TRUE)
+ 	ADD_DEFINITIONS(-DTORRENT_USE_OPENSSL)
+ endif(WITH_BITTORRENT)
+ 
+@@ -152,9 +131,15 @@ CHECK_INCLUDE_FILES(sys/epoll.h HAVE_SYS_EPOLL_H)
+ CHECK_FUNCTION_EXISTS(kqueue HAVE_KQUEUE)
+ CONFIGURE_FILE(config.h.in config.h)
+ 
++#QT4_ADD_DBUS_INTERFACE (fatrat_SRCS dbus/interface.xml dbusinterface)
++
++set(QT_USE_QTDBUS TRUE)
++set(QT_USE_QTNETWORK TRUE)
++set(QT_USE_QTXML TRUE)
++set(QT_USE_QTSVG TRUE)
++
+ if(WITH_DOCUMENTATION)
+-	find_package(Qt5Help REQUIRED)
+-	set(QT_LIBRARIES ${QT_LIBRARIES} Qt5::Help)
++	set(QT_USE_QTHELP TRUE)
+ endif(WITH_DOCUMENTATION)
+ if(WITH_WEBINTERFACE)
+ 	pkg_check_modules(pion REQUIRED "pion >= 5.0.0")
+@@ -179,7 +164,9 @@ if (HAVE_XATTR_H)
+ 	SET(XATTR_LIBRARIES "-lattr")
+ endif (HAVE_XATTR_H)
+ 
+-include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
++include( ${QT_USE_FILE} )
++add_definitions(${QT_DEFINITIONS})
++include_directories(./ ../ ${CMAKE_CURRENT_BINARY_DIR} ${QT_INCLUDE_DIR})
+ 
+ set(fatrat_SRCS
+ 	src/MyApplication.cpp
+@@ -214,6 +201,7 @@ set(fatrat_SRCS
+ 	src/XmlRpc.cpp
+ 	src/Scheduler.cpp
+ 	src/MyFileDialog.cpp
++	src/ReportBugDlg.cpp
+ 	src/Settings.cpp
+ 	src/QueueDlg.cpp
+ 	src/ClipboardMonitor.cpp
+@@ -291,6 +279,7 @@ set(fatrat_MOC_HDRS
+ 	src/NewTransferDlg.h
+ 	src/Logger.h
+ 	src/MyApplication.h
++	src/ReportBugDlg.h
+ 	src/ClipboardMonitor.h
+ 	src/SettingsClipboardMonitorForm.h
+ 	src/TransferFactory.h
+@@ -339,6 +328,7 @@ set(fatrat_UIS
+ 	src/SpeedLimitWidget.ui
+ 	src/UserAuthDlg.ui
+ 	src/WidgetHostDlg.ui
++	src/ReportBugDlg.ui
+ 	src/captcha/CaptchaQtDlg.ui
+ 
+ 	src/tools/HashDlg.ui
+@@ -569,15 +559,15 @@ if(WITH_DOCUMENTATION)
+ 	)
+ endif(WITH_DOCUMENTATION)
+ 
+-qt5_wrap_cpp(fatrat_MOC_SRCS ${fatrat_MOC_HDRS})
++qt4_wrap_cpp(fatrat_MOC_SRCS ${fatrat_MOC_HDRS})
+ 
+ set(fatrat_RCS
+ 	gfx/resources.qrc
+ )
+ 
+-qt5_wrap_ui(fatrat_UIS_H ${fatrat_UIS})
+-qt5_add_resources(fatrat_QRC_H gfx/resources.qrc)
+-qt5_add_translation(lrelease_outputs locale/fatrat_cs_CZ.ts
++qt4_wrap_ui(fatrat_UIS_H ${fatrat_UIS})
++qt4_add_resources(fatrat_QRC_H gfx/resources.qrc)
++qt4_add_translation(lrelease_outputs locale/fatrat_cs_CZ.ts
+ locale/fatrat_pl_PL.ts locale/fatrat_tr_TR.ts locale/fatrat_sk_SK.ts locale/fatrat_ru_RU.ts locale/fatrat_fr_FR.ts
+ locale/fatrat_uk_UA.ts locale/fatrat_es_AR.ts locale/fatrat_es_ES.ts locale/fatrat_ca_ES.ts locale/fatrat_zh_CN.ts
+ locale/fatrat_zh_TW.ts locale/fatrat_sr_RS.ts locale/fatrat_sr_BA.ts locale/fatrat_de_DE.ts)
+@@ -597,10 +587,9 @@ endif (POSIX_LINUX)
+ message(STATUS "Pion: ${pion_LIBRARIES}")
+ 
+ target_link_libraries(fatrat ${DL_LDFLAGS} -lpthread ${QT_LIBRARIES}
+-	Qt5::Widgets Qt5::Svg Qt5::Network Qt5::DBus Qt5::Xml
+ 	${libtorrent_LDFLAGS} ${gloox_LDFLAGS} ${curl_LDFLAGS} ${Boost_LIBRARIES}
+-	${pion_LIBRARIES} ${XATTR_LIBRARIES} crypto -export-dynamic)
+-target_link_libraries(fatrat-conf Qt5::Core)
++	${pion_LIBRARIES} ${QT_ADDITIONAL_LIBS} ${XATTR_LIBRARIES} crypto)
++target_link_libraries(fatrat-conf ${QT_LIBRARIES})
+ 
+ set(fatrat_DEV_HEADERS
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/fatrat.h
+diff --git src/MainWindow.cpp src/MainWindow.cpp
+index 036496a..fe80f3e 100644
+--- src/MainWindow.cpp
++++ src/MainWindow.cpp
+@@ -60,7 +60,7 @@ respects for all of the code used other than "OpenSSL".
+ #include "SpeedLimitWidget.h"
+ #include "AppTools.h"
+ #include "AboutDlg.h"
+-#include <QProcess>
++#include "ReportBugDlg.h"
+ #include "filterlineedit.h"
+ #include "ClipboardMonitor.h"
+ #include "ClickableLabel.h"
+@@ -1814,7 +1814,7 @@ void MainWindow::menuActionTriggered()
+ 
+ void MainWindow::reportBug()
+ {
+-	QProcess::startDetached("xdg-open", QStringList() << QLatin1String("https://github.com/LubosD/fatrat/issues"));
++	ReportBugDlg(this).exec();
+ }
+ 
+ void MainWindow::copyRemoteURI()
+diff --git src/Proxy.cpp src/Proxy.cpp
+index b74ccc9..df08349 100644
+--- src/Proxy.cpp
++++ src/Proxy.cpp
+@@ -26,6 +26,7 @@ respects for all of the code used other than "OpenSSL".
+ 
+ #include "Proxy.h"
+ #include <QSettings>
++#include <QHttp>
+ #include <QtDebug>
+ 
+ extern QSettings* g_settings;
+diff --git src/Proxy.h src/Proxy.h
+index f49805a..60b9325 100644
+--- src/Proxy.h
++++ src/Proxy.h
+@@ -29,6 +29,7 @@ respects for all of the code used other than "OpenSSL".
+ #include <QString>
+ #include <QUuid>
+ #include <QNetworkProxy>
++#include <QHttp>
+ 
+ struct Proxy
+ {
+diff --git src/Queue.cpp src/Queue.cpp
+index 3b1672f..24784c5 100644
+--- src/Queue.cpp
++++ src/Queue.cpp
+@@ -245,7 +245,7 @@ void Queue::loadQueue(const QDomNode& node)
+ 		}
+ 		else
+ 		{
+-			qDebug() << "***ERROR*** Unable to createInstance " << n.attribute("class");
++			qDebug() << "***ERROR*** Unable to createInstance " << n.attribute("class").toAscii();
+ 
+ 			d = new PlaceholderTransfer(n.attribute("class"));
+ 			d->load(n);
+diff --git src/ReportBugDlg.cpp src/ReportBugDlg.cpp
+new file mode 100644
+index 0000000..4ef6745
+--- /dev/null
++++ src/ReportBugDlg.cpp
+@@ -0,0 +1,111 @@
++/*
++FatRat download manager
++http://fatrat.dolezel.info
++
++Copyright (C) 2006-2009 Lubos Dolezel <lubos a dolezel.info>
++
++This program is free software; you can redistribute it and/or
++modify it under the terms of the GNU General Public License
++version 2 as published by the Free Software Foundation.
++
++This program is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with this program; if not, write to the Free Software
++Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
++
++In addition, as a special exemption, Luboš Doležel gives permission
++to link the code of FatRat with the OpenSSL project's
++"OpenSSL" library (or with modified versions of it that use the; same
++license as the "OpenSSL" library), and distribute the linked
++executables. You must obey the GNU General Public License in all
++respects for all of the code used other than "OpenSSL".
++*/
++
++#include "ReportBugDlg.h"
++#include <QMessageBox>
++#include <QUrl>
++#include <QHttp>
++#include <QByteArray>
++#include <QRegExp>
++#include <QtDebug>
++
++ReportBugDlg::ReportBugDlg(QWidget* parent)
++		: QDialog(parent)
++{
++	setupUi(this);
++}
++
++void ReportBugDlg::accept()
++{
++	QString from = lineFrom->text();
++	QString sender = lineSender->text();
++	QString subject = lineSubject->text();
++	QString desc = textDescription->toPlainText();
++	QString strData;
++
++	if(subject.isEmpty())
++	{
++		QMessageBox::warning(this, "FatRat", tr("The summary is mandatory!"));
++		return;
++	}
++	if(!QRegExp("[^@]+@[^\\.]+\\..{2,6}").exactMatch(sender))
++	{
++		QMessageBox::warning(this, "FatRat", tr("Your e-mail address is mandatory!"));
++		return;
++	}
++	if(desc.isEmpty())
++	{
++		QMessageBox::warning(this, "FatRat", tr("The problem description is mandatory!"));
++		return;
++	}
++
++	QHttpRequestHeader hdr("POST", "/report-bugs-submit");
++
++	QHttp* http = new QHttp("fatrat.dolezel.info", 80, this);
++	connect(http, SIGNAL(done(bool)), this, SLOT(done(bool)));
++
++	hdr.addValue("Content-Type", "application/x-www-form-urlencoded; charset=utf-8");
++	hdr.addValue("Host", "fatrat.dolezel.info");
++
++	strData = "name="+mimeEncode(from)+"&sender="+QUrl::toPercentEncoding(sender)+"&subject="+mimeEncode(subject)
++		  +"&text="+QUrl::toPercentEncoding(desc);
++
++	http->request(hdr, strData.toUtf8());
++}
++
++QString ReportBugDlg::escapeUtf8(QString str)
++{
++	QString out;
++	for(int i=0;i<str.size();i++)
++	{
++		if(str[i].unicode() < 128)
++			out += str[i];
++		else
++			out += QString("&#")+QString::number(str[i].unicode())+';';
++	}
++	return out;
++}
++
++QByteArray ReportBugDlg::mimeEncode(QString str)
++{
++	QString out = "=?UTF-8?B?";
++	out += str.toUtf8().toBase64() + "?=";
++	return QUrl::toPercentEncoding(out);
++}
++
++void ReportBugDlg::done(bool error)
++{
++	if(!error)
++	{
++		QMessageBox::information(this, "FatRat", tr("Your bug report has been sent. Thank you for your time!"));
++		QDialog::accept();
++	}
++	else
++	{
++		QMessageBox::critical(this, "FatRat", tr("Failed to send your bug report. There is either problem with your connectivity or the remote server is experiencing some issues."));
++	}
++}
+diff --git src/ReportBugDlg.h src/ReportBugDlg.h
+new file mode 100644
+index 0000000..4aaa2bd
+--- /dev/null
++++ src/ReportBugDlg.h
+@@ -0,0 +1,45 @@
++/*
++FatRat download manager
++http://fatrat.dolezel.info
++
++Copyright (C) 2006-2009 Lubos Dolezel <lubos a dolezel.info>
++
++This program is free software; you can redistribute it and/or
++modify it under the terms of the GNU General Public License
++version 2 as published by the Free Software Foundation.
++
++This program is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with this program; if not, write to the Free Software
++Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
++
++In addition, as a special exemption, Luboš Doležel gives permission
++to link the code of FatRat with the OpenSSL project's
++"OpenSSL" library (or with modified versions of it that use the; same
++license as the "OpenSSL" library), and distribute the linked
++executables. You must obey the GNU General Public License in all
++respects for all of the code used other than "OpenSSL".
++*/
++
++#ifndef REPORTBUGDLG_H
++#define REPORTBUGDLG_H
++#include <QDialog>
++#include "ui_ReportBugDlg.h"
++
++class ReportBugDlg : public QDialog, Ui_ReportBugDlg
++{
++Q_OBJECT
++public:
++	ReportBugDlg(QWidget* parent);
++	virtual void accept();
++	static QString escapeUtf8(QString str);
++	static QByteArray mimeEncode(QString str);
++public slots:
++	void done(bool error);
++};
++
++#endif // REPORTBUGDLG_H
+diff --git src/ReportBugDlg.ui src/ReportBugDlg.ui
+new file mode 100644
+index 0000000..27c0eb7
+--- /dev/null
++++ src/ReportBugDlg.ui
+@@ -0,0 +1,128 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<ui version="4.0">
++ <class>ReportBugDlg</class>
++ <widget class="QDialog" name="ReportBugDlg">
++  <property name="geometry">
++   <rect>
++    <x>0</x>
++    <y>0</y>
++    <width>413</width>
++    <height>372</height>
++   </rect>
++  </property>
++  <property name="windowTitle">
++   <string>Report a bug</string>
++  </property>
++  <layout class="QGridLayout" name="gridLayout">
++   <item row="0" column="0" colspan="2">
++    <widget class="QLabel" name="label_5">
++     <property name="text">
++      <string>Thank you for your interest in reporting bugs in FatRat. Note that the bug report must be written in &lt;b&gt;English, Czech or Slovak&lt;/b&gt;!</string>
++     </property>
++     <property name="wordWrap">
++      <bool>true</bool>
++     </property>
++    </widget>
++   </item>
++   <item row="1" column="0" colspan="2">
++    <widget class="Line" name="line_2">
++     <property name="orientation">
++      <enum>Qt::Horizontal</enum>
++     </property>
++    </widget>
++   </item>
++   <item row="2" column="0">
++    <widget class="QLabel" name="label">
++     <property name="text">
++      <string>Your name</string>
++     </property>
++    </widget>
++   </item>
++   <item row="2" column="1">
++    <widget class="QLineEdit" name="lineFrom"/>
++   </item>
++   <item row="3" column="0">
++    <widget class="QLabel" name="label_2">
++     <property name="text">
++      <string>Your e-mail</string>
++     </property>
++    </widget>
++   </item>
++   <item row="3" column="1">
++    <widget class="QLineEdit" name="lineSender"/>
++   </item>
++   <item row="4" column="0" colspan="2">
++    <widget class="Line" name="line">
++     <property name="orientation">
++      <enum>Qt::Horizontal</enum>
++     </property>
++    </widget>
++   </item>
++   <item row="5" column="0">
++    <widget class="QLabel" name="label_3">
++     <property name="text">
++      <string>Summary</string>
++     </property>
++    </widget>
++   </item>
++   <item row="5" column="1">
++    <widget class="QLineEdit" name="lineSubject"/>
++   </item>
++   <item row="6" column="0">
++    <widget class="QLabel" name="label_4">
++     <property name="text">
++      <string>Description</string>
++     </property>
++    </widget>
++   </item>
++   <item row="6" column="1">
++    <widget class="QTextEdit" name="textDescription"/>
++   </item>
++   <item row="7" column="0" colspan="2">
++    <widget class="QDialogButtonBox" name="buttonBox">
++     <property name="orientation">
++      <enum>Qt::Horizontal</enum>
++     </property>
++     <property name="standardButtons">
++      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
++     </property>
++    </widget>
++   </item>
++  </layout>
++ </widget>
++ <resources/>
++ <connections>
++  <connection>
++   <sender>buttonBox</sender>
++   <signal>accepted()</signal>
++   <receiver>ReportBugDlg</receiver>
++   <slot>accept()</slot>
++   <hints>
++    <hint type="sourcelabel">
++     <x>248</x>
++     <y>254</y>
++    </hint>
++    <hint type="destinationlabel">
++     <x>157</x>
++     <y>274</y>
++    </hint>
++   </hints>
++  </connection>
++  <connection>
++   <sender>buttonBox</sender>
++   <signal>rejected()</signal>
++   <receiver>ReportBugDlg</receiver>
++   <slot>reject()</slot>
++   <hints>
++    <hint type="sourcelabel">
++     <x>316</x>
++     <y>260</y>
++    </hint>
++    <hint type="destinationlabel">
++     <x>286</x>
++     <y>274</y>
++    </hint>
++   </hints>
++  </connection>
++ </connections>
++</ui>
+diff --git src/ScheduledActionDlg.cpp src/ScheduledActionDlg.cpp
+index 06c8f92..5514abf 100644
+--- src/ScheduledActionDlg.cpp
++++ src/ScheduledActionDlg.cpp
+@@ -48,7 +48,7 @@ void ScheduledActionDlg::load()
+ 		comboQueue->addItem(g_queues[i]->name());
+ 		comboQueue->setItemData(i, g_queues[i]->uuid());
+ 		
+-		if(g_queues[i]->uuid() == m_action.queue.toString())
++		if(g_queues[i]->uuid() == m_action.queue)
+ 			comboQueue->setCurrentIndex(i);
+ 	}
+ 	g_queuesLock.unlock();
+diff --git src/Scheduler.cpp src/Scheduler.cpp
+index 9b34daf..154b83f 100644
+--- src/Scheduler.cpp
++++ src/Scheduler.cpp
+@@ -135,7 +135,7 @@ void Scheduler::executeAction(const ScheduledAction& action)
+ 	for(int i=0;i<g_queues.size();i++)
+ 	{
+ 		Queue* q = g_queues[i];
+-		if(q->uuid() == action.queue.toString())
++		if(q->uuid() == action.queue)
+ 		{
+ 			Logger::global()->enterLogMessage(tr("Scheduler"), tr("Executing a scheduled action: %1").arg(action.name));
+ 
+diff --git src/XmlRpc.cpp src/XmlRpc.cpp
+index 33e28b1..d2b130d 100644
+--- src/XmlRpc.cpp
++++ src/XmlRpc.cpp
+@@ -355,7 +355,7 @@ void XmlRpc::parseCall(const QByteArray& call, QByteArray& function, QList<QVari
+ 	QDomElement methodName = root.firstChildElement("methodName");
+ 	if(methodName.isNull())
+ 		throw RuntimeException(QObject::tr("Not a valid XML-RPC call"));
+-	function = methodName.firstChild().toText().data().toUtf8();
++	function = methodName.firstChild().toText().data().toAscii();
+ 
+ 	QDomElement e = root.firstChildElement("params");
+ 	if(!e.isNull())
+diff --git src/captcha/CaptchaHttp.h src/captcha/CaptchaHttp.h
+index 96233bd..cf6ee3f 100644
+--- src/captcha/CaptchaHttp.h
++++ src/captcha/CaptchaHttp.h
+@@ -27,7 +27,6 @@ respects for all of the code used other than "OpenSSL".
+ #ifndef CAPTCHAHTTP_H
+ #define CAPTCHAHTTP_H
+ #include "Captcha.h"
+-#include <QObject>
+ #include <QTime>
+ #include <QHash>
+ #include <QMutex>
+diff --git src/fancylineedit.cpp src/fancylineedit.cpp
+index 5d8c429..9073573 100644
+--- src/fancylineedit.cpp
++++ src/fancylineedit.cpp
+@@ -29,18 +29,18 @@
+ 
+ #include "fancylineedit.h"
+ 
+-#include <QEvent>
+-#include <QDebug>
+-#include <QString>
+-#include <QPropertyAnimation>
+-#include <QApplication>
+-#include <QMenu>
+-#include <QMouseEvent>
+-#include <QLabel>
+-#include <QAbstractButton>
+-#include <QPainter>
+-#include <QStyle>
+-#include <QPaintEvent>
++#include <QtCore/QEvent>
++#include <QtCore/QDebug>
++#include <QtCore/QString>
++#include <QtCore/QPropertyAnimation>
++#include <QtGui/QApplication>
++#include <QtGui/QMenu>
++#include <QtGui/QMouseEvent>
++#include <QtGui/QLabel>
++#include <QtGui/QAbstractButton>
++#include <QtGui/QPainter>
++#include <QtGui/QStyle>
++#include <QtGui/QPaintEvent>
+ 
+ enum { margin = 6 };
+ 
+diff --git src/fancylineedit.h src/fancylineedit.h
+index 985f7c8..21b083d 100644
+--- src/fancylineedit.h
++++ src/fancylineedit.h
+@@ -32,8 +32,8 @@
+ 
+ //#include "utils_global.h"
+ 
+-#include <QLineEdit>
+-#include <QAbstractButton>
++#include <QtGui/QLineEdit>
++#include <QtGui/QAbstractButton>
+ 
+ namespace Utils {
+ 
+diff --git src/fatrat-conf.cpp src/fatrat-conf.cpp
+index 1b70f15..9d1f3f5 100644
+--- src/fatrat-conf.cpp
++++ src/fatrat-conf.cpp
+@@ -14,6 +14,7 @@ int main(int argc, char** argv)
+ 	QCoreApplication::setOrganizationName("Dolezel");
+ 	QCoreApplication::setOrganizationDomain("dolezel.info");
+ 	QCoreApplication::setApplicationName("fatrat");
++	QTextCodec::setCodecForCStrings( QTextCodec::codecForName("UTF-8") );
+ 	QCoreApplication app(argc, argv);
+ 	QSettings settings;
+ 
+diff --git src/fatrat.cpp src/fatrat.cpp
+index 8305053..f0c548a 100644
+--- src/fatrat.cpp
++++ src/fatrat.cpp
+@@ -114,7 +114,7 @@ static void dropPrivileges();
+ static bool m_bForceNewInstance = false;
+ static bool m_bStartHidden = false;
+ static bool m_bStartGUI = true;
+-static bool m_bDisableJava = false, m_bJavaForceSearch = false;
++static bool m_bManualGraphicsSystem = false, m_bDisableJava = false, m_bJavaForceSearch = false;
+ static QString m_strUnitTest;
+ static QString m_strSettingsPath;
+ static QString m_strPidFile, m_strSetUser;
+@@ -130,15 +130,19 @@ int main(int argc,char** argv)
+ 	QCoreApplication* app = 0;
+ 	int rval;
+ 	QString arg;
+-	
++
++	QTextCodec::setCodecForCStrings( QTextCodec::codecForName("UTF-8") );
+ 	qsrand(time(0));
+-	
++
+ 	QCoreApplication::setOrganizationName("Dolezel");
+ 	QCoreApplication::setOrganizationDomain("dolezel.info");
+ 	QCoreApplication::setApplicationName("fatrat");
+-	
++
+ 	arg = argsToArg(argc, argv);
+ 
++	if (!m_bManualGraphicsSystem)
++		QApplication::setGraphicsSystem("raster"); // native is too slow on Linux
++
+ 	if (!m_strPidFile.isEmpty())
+ 		writePidFile();
+ 	if (!m_strSetUser.isEmpty())
+@@ -309,6 +313,8 @@ QString argsToArg(int argc,char** argv)
+ 			Logger::global()->toggleSysLog(true);
+ 		else if(argv[i][0] == '-')
+ 		{
++			if (!strcasecmp(argv[i], "-graphicssystem"))
++				m_bManualGraphicsSystem = true;
+ 			i++;
+ 		}
+ 		else
+diff --git src/java/JDownloadPlugin.cpp src/java/JDownloadPlugin.cpp
+index a210ffe..789ba52 100644
+--- src/java/JDownloadPlugin.cpp
++++ src/java/JDownloadPlugin.cpp
+@@ -34,7 +34,6 @@ respects for all of the code used other than "OpenSSL".
+ #include "engines/JavaDownload.h"
+ #include "captcha/Captcha.h"
+ #include <QBuffer>
+-#include <QNetworkCookieJar>
+ #include <cassert>
+ 
+ QMap<QString,JDownloadPlugin::RequesterReceiver> JDownloadPlugin::m_captchaCallbacks;
+diff --git src/rss/RssFetcher.cpp src/rss/RssFetcher.cpp
+index 53456fd..2505425 100644
+--- src/rss/RssFetcher.cpp
++++ src/rss/RssFetcher.cpp
+@@ -29,14 +29,13 @@ respects for all of the code used other than "OpenSSL".
+ #include "Logger.h"
+ #include "Queue.h"
+ #include "Transfer.h"
++#include <QHttp>
+ #include <QSettings>
+ #include <QList>
+ #include <QBuffer>
+ #include <QUrl>
+ #include <QDir>
+ #include <QXmlSimpleReader>
+-#include <QNetworkRequest>
+-#include <QNetworkReply>
+ #include <QtDebug>
+ 
+ extern QSettings* g_settings;
+@@ -50,7 +49,6 @@ RssFetcher::RssFetcher()
+ {
+ 	m_instance = this;
+ 	connect(&m_timer, SIGNAL(timeout()), this, SLOT(refresh()));
+-	connect(&m_network, SIGNAL(finished(QNetworkReply*)), this, SLOT(requestFinished(QNetworkReply*)));
+ 	applySettings();
+ }
+ 
+@@ -92,7 +90,7 @@ void RssFetcher::loadFeeds(QList<RssFeed>& items)
+ 	for(int i=0;i<amount;i++)
+ 	{
+ 		g_settings->setArrayIndex(i);
+-		RssFeed f = { g_settings->value("name").toString(), g_settings->value("url").toString(), 0 };
++		RssFeed f = { g_settings->value("name").toString(), g_settings->value("url").toString(), -1 };
+ 		items << f;
+ 	}
+ 	
+@@ -109,32 +107,44 @@ void RssFetcher::refresh()
+ 	
+ 	for(int i=0;i<m_feeds.size();i++)
+ 	{
+-		QNetworkRequest request;
++		QHttp* http = new QHttp(this);
++		QBuffer* buffer = new QBuffer(http);
++		QUrl url = m_feeds[i].url;
+ 
+-		request.setUrl(m_feeds[i].url);
+-		m_feeds[i].reply = m_network.get(request);
++		connect(http, SIGNAL(requestFinished(int,bool)), this, SLOT(requestFinished(int,bool)));
++
++		buffer->open(QIODevice::ReadWrite);
++
++		http->setHost(url.host(), url.port(80));
++
++		QString path = url.path();
++
++		if(url.hasQuery())
++			path += "?" + QString(url.encodedQuery());
++
++		m_feeds[i].request = http->get(path, buffer);
+ 	}
+ }
+ 
+-void RssFetcher::requestFinished(QNetworkReply* reply)
++void RssFetcher::requestFinished(int id, bool error)
+ {
+ 	RssFeed* feed = 0;
+ 	bool bLast = true;
+ 	
+ 	for(int i=0;i<m_feeds.size();i++)
+ 	{
+-		if(m_feeds[i].reply == reply)
++		if(m_feeds[i].request == id)
+ 			feed = &m_feeds[i];
+-		if(m_feeds[i].reply != reply && m_feeds[i].reply != 0)
++		if(m_feeds[i].request != id && m_feeds[i].request != -1)
+ 			bLast = false;
+ 	}
+ 	
+ 	if(!feed)
+ 		return;
+ 	
+-	if(reply->error() == QNetworkReply::NoError)
++	if(!error)
+ 	{
+-		QIODevice* device = reply;
++		QIODevice* device = static_cast<QHttp*>(sender())->currentDestinationDevice();
+ 		
+ 		device->seek(0);
+ 		
+@@ -161,13 +171,12 @@ void RssFetcher::requestFinished(QNetworkReply* reply)
+ 		Logger::global()->enterLogMessage("RSS", tr("Failed to fetch the feed \"%1\"").arg(feed->name));
+ 		m_bAllOK = false;
+ 	}
+-		
+-	
+-	feed->reply = 0;
+-	
++
++	feed->request = -1;
++
+ 	if(bLast)
+ 		processItems();
+-	
++
+ 	sender()->deleteLater();
+ }
+ 
+diff --git src/rss/RssFetcher.h src/rss/RssFetcher.h
+index 5d077a8..e882b21 100644
+--- src/rss/RssFetcher.h
++++ src/rss/RssFetcher.h
+@@ -30,12 +30,11 @@ respects for all of the code used other than "OpenSSL".
+ #include <QTimer>
+ #include <QXmlDefaultHandler>
+ #include <QRegExp>
+-#include <QNetworkAccessManager>
+ 
+ struct RssFeed
+ {
+ 	QString name, url;
+-	QNetworkReply* reply;
++	int request;
+ };
+ 
+ struct RssItem
+@@ -90,21 +89,20 @@ public:
+ 	static void dayMonthHeuristics(int& day, int& month);
+ public slots:
+ 	void refresh();
+-	void requestFinished(QNetworkReply*);
++	void requestFinished(int id, bool error);
+ private:
+ 	static RssFetcher* m_instance;
+-	
++
+ 	QTimer m_timer;
+ 	QList<RssFeed> m_feeds;
+ 	QList<RssItem> m_items;
+ 	bool m_bAllOK;
+-	
++
+ 	// XML parsing
+ 	bool m_bInItem;
+ 	RssItem m_itemNext;
+ 	RssItem::Next m_itemNextType;
+ 	QString m_strCurrentSource;
+-	QNetworkAccessManager m_network;
+ };
+ 
+ #endif

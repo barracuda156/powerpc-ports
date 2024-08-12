@@ -1,0 +1,26 @@
+From d3ce8e98d579afd038d9da8c70495f058eb34933 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Mon, 12 Aug 2024 11:05:46 +0800
+Subject: [PATCH 5/5] KqueuePoller.cpp: add missing include
+
+---
+ src/poller/KqueuePoller.cpp | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git src/poller/KqueuePoller.cpp src/poller/KqueuePoller.cpp
+index a6656d3..ee74ccb 100644
+--- src/poller/KqueuePoller.cpp
++++ src/poller/KqueuePoller.cpp
+@@ -30,6 +30,9 @@ respects for all of the code used other than "OpenSSL".
+ #include <sys/event.h>
+ #include <sys/time.h>
+ #include <cstdlib>
++#ifdef __APPLE__
++#include <unistd.h> // close
++#endif
+ 
+ KqueuePoller::KqueuePoller(QObject* parent)
+ 	: Poller(parent)
+-- 
+2.46.0
+

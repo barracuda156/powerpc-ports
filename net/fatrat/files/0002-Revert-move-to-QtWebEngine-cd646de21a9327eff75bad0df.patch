@@ -1,0 +1,241 @@
+From e6643838904cc8a4f824a42db133879224b6bfbd Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Mon, 12 Aug 2024 09:32:41 +0800
+Subject: [PATCH] Revert move to QtWebEngine:
+ cd646de21a9327eff75bad0df14f59f83f04c33a
+
+diff --git src/tools/TorrentWebView.cpp src/tools/TorrentWebView.cpp
+index 0fd454b..43b8883 100644
+--- src/tools/TorrentWebView.cpp
++++ src/tools/TorrentWebView.cpp
+@@ -28,61 +28,30 @@ respects for all of the code used other than "OpenSSL".
+ #include "engines/TorrentDownload.h"
+ #include "MainWindow.h"
+ #include "fatrat.h"
+-#include <QWebEnginePage>
+-#include <QNetworkReply>
+ #include <QtDebug>
+ 
+-class MyWebPage : public QWebEnginePage
+-{
+-public:
+-	MyWebPage(QObject* parent = nullptr)
+-		: QWebEnginePage(parent)
+-	{
+-	}
+-
+-	bool acceptNavigationRequest(const QUrl& url, QWebEnginePage::NavigationType type, bool) override
+-	{
+-		if (type == QWebEnginePage::NavigationTypeLinkClicked)
+-		{
+-			QString s = url.toString();
+-
+-			qDebug() << "Clicked" << s;
+-
+-			if (TorrentDownload::acceptable(s, false) >= 3)
+-			{
+-				MainWindow* wnd = (MainWindow*) getMainWindow();
+-				wnd->addTransfer(s, Transfer::Download, "TorrentDownload");
+-				return false;
+-			}
+-
+-		}
+-		return true;
+-	}
+-
+-};
+-
+ TorrentWebView::TorrentWebView(QTabWidget* w)
+ 	: m_tab(w)
+ {
+ 	setupUi(this);
+-	browser->setPage(new MyWebPage(browser));
+ 	connect(browser, SIGNAL(titleChanged(const QString&)), this, SLOT(titleChanged(QString)));
+ 	connect(browser, SIGNAL(loadProgress(int)), this, SLOT(progressChanged(int)));
+-	connect(browser, SIGNAL(iconUrlChanged(const QUrl&)), this, SLOT(iconUrlChanged(const QUrl&)));
++	connect(browser, SIGNAL(iconChanged()), this, SLOT(iconChanged()));
++	connect(browser, SIGNAL(linkClicked(const QUrl&)), this, SLOT(linkClicked(const QUrl&)));
+ }
+ 
+ void TorrentWebView::titleChanged(QString title)
+ {
+ 	QString newtitle = tr("Torrent details");
+ 	newtitle += ": ";
+-	
++
+ 	if(title.size() > 25)
+ 	{
+ 		title.resize(22);
+ 		title += "...";
+ 	}
+ 	newtitle += title;
+-	
++
+ 	emit changeTabTitle(newtitle);
+ }
+ 
+@@ -96,40 +65,29 @@ void TorrentWebView::progressChanged(int p)
+ 	}
+ 	else
+ 	{
++		browser->page()->setLinkDelegationPolicy(QWebPage::DelegateAllLinks);
+ 		statusbar->hide();
+ 	}
+ }
+ 
+-void TorrentWebView::iconChanged(const QUrl& iconUrl)
++void TorrentWebView::iconChanged()
+ {
+ 	int i = m_tab->indexOf(this);
+-	if (i != -1)
+-	{
+-		if (!iconUrl.isValid())
+-			m_tab->setTabIcon(i, QIcon());
+-		else
+-		{
+-			QNetworkRequest request(iconUrl);
+-			QNetworkReply* reply = m_net.get(request);
+-
+-			connect(reply, SIGNAL(finished()), this, SLOT(iconDownloaded()));
+-		}
+-	}
++	if(i != -1)
++		m_tab->setTabIcon(i, browser->icon());
+ 	else
+ 		qDebug() << "Warning: cannot find my own index";
+ }
+ 
+-void TorrentWebView::iconDownloaded()
++void TorrentWebView::linkClicked(const QUrl& u)
+ {
+-	QNetworkReply* reply = static_cast<QNetworkReply*>(sender());
+-	QByteArray ba = reply->readAll();
+-	QPixmap pm;
+-	int i = m_tab->indexOf(this);
+-
+-	if (i != -1)
++	QString url = u.toString();
++	qDebug() << "Clicked" << url;
++	if(TorrentDownload::acceptable(url, false) >= 3)
+ 	{
+-		if (pm.loadFromData(ba))
+-			m_tab->setTabIcon(i, QIcon(pm));
++		MainWindow* wnd = (MainWindow*) getMainWindow();
++		wnd->addTransfer(url, Transfer::Download, "TorrentDownload");
+ 	}
++	else
++		browser->load(u);
+ }
+-
+diff --git src/tools/TorrentWebView.h src/tools/TorrentWebView.h
+index c51f66e..5b1f493 100644
+--- src/tools/TorrentWebView.h
++++ src/tools/TorrentWebView.h
+@@ -28,7 +28,6 @@ respects for all of the code used other than "OpenSSL".
+ #define TORRENTWEBVIEW_H
+ #include <QWidget>
+ #include <QTabWidget>
+-#include <QNetworkAccessManager>
+ #include "ui_TorrentWebView.h"
+ 
+ class TorrentWebView : public QWidget, public Ui_TorrentWebView
+@@ -39,13 +38,12 @@ public:
+ public slots:
+ 	void titleChanged(QString title);
+ 	void progressChanged(int p);
+-	void iconChanged(const QUrl&);
+-	void iconDownloaded();
++	void iconChanged();
++	void linkClicked(const QUrl&);
+ signals:
+ 	void changeTabTitle(QString);
+ private:
+ 	QTabWidget* m_tab;
+-	QNetworkAccessManager m_net;
+ };
+ 
+ #endif
+diff --git src/tools/TorrentWebView.ui src/tools/TorrentWebView.ui
+index 5b02af8..da557a0 100644
+--- src/tools/TorrentWebView.ui
++++ src/tools/TorrentWebView.ui
+@@ -23,7 +23,7 @@
+     <number>0</number>
+    </property>
+    <item>
+-	<widget class="QWebEngineView" name="browser" >
++	<widget class="QWebView" name="browser" >
+      <property name="sizePolicy" >
+       <sizepolicy vsizetype="MinimumExpanding" hsizetype="Preferred" >
+        <horstretch>0</horstretch>
+
+
+From ae02f97f25203cb3a5da6cba60ecd1e48b4547cc Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Mon, 12 Aug 2024 09:40:29 +0800
+Subject: [PATCH] Revert 8f653160d19d6a169d4ed09e3edd0301c8848fc7
+
+diff --git CMakeLists.txt CMakeLists.txt
+index 8c7541a..c5422b3 100644
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -482,23 +482,6 @@ if(WITH_BITTORRENT)
+ 		src/engines/SettingsTorrentForm.ui
+ 	)
+ 
+-	if (HAVE_WEBENGINE)
+-		set(fatrat_SRCS
+-			${fatrat_SRCS}
+-			src/tools/TorrentSearch.cpp
+-			src/tools/TorrentWebView.cpp
+-		)
+-		set(fatrat_MOC_HDRS
+-			${fatrat_MOC_HDRS}
+-			src/tools/TorrentSearch.h
+-			src/tools/TorrentWebView.h
+-		)
+-		set(fatrat_UIS
+-			${fatrat_UIS}
+-			src/tools/TorrentSearch.ui
+-			src/tools/TorrentWebView.ui
+-		)
+-	endif (HAVE_WEBENGINE)
+ endif(WITH_BITTORRENT)
+ 
+ if(WITH_JABBER)
+diff --git config.h.in config.h.in
+index 12a62e8..e984727 100644
+--- config.h.in
++++ config.h.in
+@@ -20,7 +20,6 @@
+ 
+ #cmakedefine HAVE_SYS_EPOLL_H
+ #cmakedefine HAVE_KQUEUE
+-#cmakedefine HAVE_WEBENGINE
+ 
+ #cmakedefine GLOOX_0_9
+ #cmakedefine GLOOX_1_0
+diff --git src/AppTools.cpp src/AppTools.cpp
+index c76661e..0078ab2 100644
+--- src/AppTools.cpp
++++ src/AppTools.cpp
+@@ -30,9 +30,6 @@ respects for all of the code used other than "OpenSSL".
+ #include "AppTools.h"
+ 
+ #ifdef WITH_BITTORRENT
+-#   ifdef HAVE_WEBENGINE
+-#       include "tools/TorrentSearch.h"
+-#   endif
+ #	include "tools/CreateTorrentDlg.h"
+ #endif
+ #ifdef WITH_JPLUGINS
+@@ -46,9 +43,6 @@ QList<AppTool> g_tools;
+ void initAppTools()
+ {
+ #ifdef WITH_BITTORRENT
+-#   ifdef HAVE_WEBENGINE
+-	g_tools << AppTool(QObject::tr("Torrent search"), TorrentSearch::create);
+-#   endif
+ 	g_tools << AppTool(QObject::tr("Create a torrent"), CreateTorrentDlg::create);
+ #endif
+ 	g_tools << AppTool(QObject::tr("File hasher"), HashDlg::create);
