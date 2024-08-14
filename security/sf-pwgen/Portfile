@@ -3,7 +3,8 @@
 PortSystem          1.0
 PortGroup           github 1.0
 
-github.setup        anders pwgen 1.5
+github.setup        anders pwgen 7e1f76312901987d57593d406b2be95bb5f9195e
+version             1.1.1
 
 name                sf-pwgen
 categories          security
@@ -17,17 +18,17 @@ long_description    ${description} \
                     A command line tool that generates passwords using \
                     macOS's SecurityFoundation framework.
 
-checksums           rmd160  b1a7c50fb49dd75e694e951203c93360edf4caff \
-                    sha256  65633b914fe61725dfe9da5ff29b8cca769ff59a382a3c8fa56bb9f71ee97e7f \
-                    size 8668
+checksums           rmd160  455fd7e87a3ad513ddc8a379b6953182a1a9c044 \
+                    sha256  69bc7d6003b341f979573427997eb9e746062db80d5fd090853d31ef2df869e5 \
+                    size    2941
+
+patchfiles-append   patch-fix-build.diff
 
 use_configure       no
 build.target        ""
 
 destroot {
-    xinstall -m 0755 -W ${worksrcpath} \
-        sf-pwgen \
-        ${destroot}${prefix}/bin
+    move ${worksrcpath}/pwgen ${destroot}${prefix}/bin/sf-pwgen
 }
 
 notes "
