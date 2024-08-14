@@ -1,0 +1,9 @@
+--- Makefile.orig	2013-03-02 12:24:52.000000000 +0800
++++ Makefile	2024-08-14 16:57:24.000000000 +0800
+@@ -1,5 +1,4 @@
+-CC=clang
+-CFLAGS=-arch x86_64 -arch i386 -Wall -Wextra -O2 -g
++CFLAGS=-std=c99 -Wall -Wextra -O2 -g
+ TARGET=pwgen
+ SRC=pwgen.c
+ OBJ=$(SRC:.c=.o)
