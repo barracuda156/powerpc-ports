@@ -1,0 +1,22 @@
+--- CMakeLists.txt.orig	2022-03-31 01:32:50
++++ CMakeLists.txt	2024-08-19 06:52:08
+@@ -28,13 +28,17 @@
+     TYPE REQUIRED
+ )
+ 
+-find_package(Crypt)
+-set_package_properties(Crypt PROPERTIES
++if(NOT APPLE)
++    find_package(Crypt)
++    set_package_properties(Crypt PROPERTIES
+     PURPOSE "Login support"
+     DESCRIPTION "library provided by standard C libraries"
+     URL ""
+     TYPE REQUIRED
+ )
++else()
++    set(CRYPT_LIBRARIES "c")
++endif()
+ 
+ add_definitions(${QT_DEFINITIONS})
+ 

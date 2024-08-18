@@ -1,0 +1,28 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           cmake 1.1
+PortGroup           github 1.0
+
+github.setup        fluxer klogin 80ed2228dc949dfc1fc85027154d561471c099d1
+version             2022.03.31
+revision            0
+categories          kde x11
+license             BSD
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+description         Toy Display Manager
+long_description    {*}${description} (more like a login manager).
+
+checksums           rmd160  e2962373c2ffbaedc724121ef473496ec14b088b \
+                    sha256  340db49355697957a9abe4a1a31d76b5891030761689fe47026bbd982ee3e0ce \
+                    size    6945
+github.tarball_from archive
+
+patchfiles-append   patch-CMakeLists.diff
+
+depends_build-append \
+                    path:bin/pkg-config:pkgconfig
+
+depends_lib-append  port:katie
+
+compiler.cxx_standard   2011
