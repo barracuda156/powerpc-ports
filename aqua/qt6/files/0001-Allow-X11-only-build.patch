@@ -1,0 +1,33 @@
+From bfaffa20800c7ef3c505f12c75c592e2f6ee9c33 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Mon, 19 Aug 2024 07:21:41 +0800
+Subject: [PATCH] Allow X11-only build
+
+diff --git a/src/gui/CMakeLists.txt b/src/gui/CMakeLists.txt
+index 3b3dbd1321..da615224b8 100644
+--- src/gui/CMakeLists.txt
++++ src/gui/CMakeLists.txt
+@@ -16,7 +16,7 @@
+     elseif(ANDROID)
+         set(_default_platform "android")
+     elseif(MACOS)
+-        set(_default_platform "cocoa")
++        set(_default_platform "xcb")
+     elseif(TVOS OR IOS)
+         set(_default_platform "ios")
+     elseif(WATCHOS)
+@@ -735,12 +735,12 @@
+         WrapFreetype::WrapFreetype
+ )
+ 
+-qt_internal_extend_target(Gui CONDITION QT_FEATURE_freetype AND UNIX AND NOT APPLE
++qt_internal_extend_target(Gui CONDITION QT_FEATURE_freetype AND UNIX
+     SOURCES
+         text/unix/qgenericunixfontdatabase_p.h
+ )
+ 
+-qt_internal_extend_target(Gui CONDITION QT_FEATURE_fontconfig AND QT_FEATURE_freetype AND UNIX AND NOT APPLE
++qt_internal_extend_target(Gui CONDITION QT_FEATURE_fontconfig AND QT_FEATURE_freetype AND UNIX
+     SOURCES
+         text/unix/qfontconfigdatabase.cpp text/unix/qfontconfigdatabase_p.h
+         text/unix/qfontenginemultifontconfig.cpp text/unix/qfontenginemultifontconfig_p.h

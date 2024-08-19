@@ -1,0 +1,22 @@
+From dd3791f94e30036ac2b8936cea0c0b7485d4d886 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Mon, 19 Aug 2024 10:25:57 +0800
+Subject: [PATCH] Fix mkspec for Apple
+
+diff --git cmake/QtMkspecHelpers.cmake cmake/QtMkspecHelpers.cmake
+index a9612966b5..5afc4396f6 100644
+--- cmake/QtBuild.cmake
++++ cmake/QtBuild.cmake
+@@ -306,7 +306,11 @@
+ elseif(IOS)
+     set(QT_DEFAULT_MKSPEC macx-ios-clang)
+ elseif(APPLE)
+-    set(QT_DEFAULT_MKSPEC macx-clang)
++    if(CLANG)
++        set(QT_DEFAULT_MKSPEC macx-clang)
++    elseif(GCC)
++        set(QT_DEFAULT_MKSPEC macx-g++)
++    endif()
+ elseif(WASM)
+     set(QT_DEFAULT_MKSPEC wasm-emscripten)
+ elseif(QNX)

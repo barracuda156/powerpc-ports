@@ -1,0 +1,49 @@
+From f54fc8f9dc684ce044821f2bef59cfabbc588473 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Mon, 19 Aug 2024 09:09:23 +0800
+Subject: [PATCH] Unbreak X11 GUI
+
+--- src/gui/configure.cmake
++++ src/gui/configure.cmake
+@@ -25,7 +25,7 @@
+ 
+ 
+ #### Libraries
+-qt_set01(X11_SUPPORTED LINUX OR HPUX OR FREEBSD OR NETBSD OR OPENBSD OR SOLARIS OR HURD) # special case
++qt_set01(X11_SUPPORTED LINUX OR HPUX OR FREEBSD OR NETBSD OR OPENBSD OR SOLARIS OR HURD OR APPLE) # special case
+ qt_find_package(ATSPI2 PROVIDED_TARGETS PkgConfig::ATSPI2 MODULE_NAME gui QMAKE_LIB atspi)
+ qt_find_package(DirectFB PROVIDED_TARGETS PkgConfig::DirectFB MODULE_NAME gui QMAKE_LIB directfb)
+ qt_find_package(Libdrm PROVIDED_TARGETS Libdrm::Libdrm MODULE_NAME gui QMAKE_LIB drm)
+@@ -660,7 +660,6 @@
+ )
+ qt_feature("fontconfig" PUBLIC PRIVATE
+     LABEL "Fontconfig"
+-    AUTODETECT NOT APPLE
+     CONDITION NOT WIN32 AND QT_FEATURE_system_freetype AND Fontconfig_FOUND
+ )
+ qt_feature_definition("fontconfig" "QT_NO_FONTCONFIG" NEGATE VALUE "1")
+@@ -675,7 +674,7 @@
+ qt_feature_definition("harfbuzz" "QT_NO_HARFBUZZ" NEGATE VALUE "1")
+ qt_feature("system-harfbuzz" PRIVATE
+     LABEL "  Using system HarfBuzz"
+-    AUTODETECT NOT APPLE AND NOT WIN32
++    AUTODETECT NOT WIN32
+     CONDITION QT_FEATURE_harfbuzz AND WrapSystemHarfbuzz_FOUND
+     ENABLE INPUT_harfbuzz STREQUAL 'system'
+     DISABLE INPUT_harfbuzz STREQUAL 'qt'
+@@ -909,7 +908,6 @@
+ qt_feature("xcb" PUBLIC
+     SECTION "Platform plugins"
+     LABEL "XCB"
+-    AUTODETECT NOT APPLE
+     CONDITION QT_FEATURE_thread AND TARGET XCB::XCB AND TEST_xcb_syslibs AND QT_FEATURE_xkbcommon_x11
+ )
+ qt_feature("xcb-glx-plugin" PUBLIC
+@@ -965,7 +963,6 @@
+ )
+ qt_feature("xlib" PRIVATE
+     LABEL "XLib"
+-    AUTODETECT NOT APPLE OR QT_FEATURE_xcb
+     CONDITION X11_FOUND
+ )
+ qt_feature("texthtmlparser" PUBLIC

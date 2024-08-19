@@ -1166,6 +1166,28 @@ subport ${name}-qtbase {
                                     -DOPENSSL_LIBRARIES=[openssl::install_area]/lib \
                                     -DOPENSSL_LIBS='-L[openssl::install_area]/lib -lssl -lcrypto'
     }
+
+    variant x11 {
+        patchfiles-append           0001-Allow-X11-only-build.patch \
+                                    0002-Unbreak-X11-GUI.patch \
+                                    0003-Fix-finding-OpenGL.patch \
+                                    0004-Fix-mkspec-for-Apple.patch
+
+        depends_lib-append          port:libxkbcommon-x11 \
+                                    port:mesa \
+                                    port:xinput \
+                                    port:xorg-libxcb \
+                                    port:xorg-libXfixes \
+                                    port:xrender
+
+        configure.ldflags-prepend   -L${prefix}/lib -lGL
+
+        configure.args-delete       -no-fontconfig -no-xcb
+        configure.args-append       -qpa xcb \
+                                    -fontconfig \
+                                    -xcb-xlib
+    }
+
     default_variants-append         +openssl
 
     post-destroot {
