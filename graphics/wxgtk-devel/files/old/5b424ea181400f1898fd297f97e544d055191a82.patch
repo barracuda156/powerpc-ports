@@ -1,0 +1,1033 @@
+From 5b424ea181400f1898fd297f97e544d055191a82 Mon Sep 17 00:00:00 2001
+From: utelle <ulrich.telle@gmx.de>
+Date: Wed, 24 May 2023 08:45:49 +0200
+Subject: [PATCH] Add wxUILocale methods for getting month and day names
+
+Implement wxUILocale::GetMonthName() and wxUILocale::GetWeekDayName() in
+wxMSW, wxGTK, and wxOSX.
+
+Also extend the existing wxDateTime methods to support a 3rd month and
+weekday name representation (Name_Shortest) and a usage context
+(Context_Formatting and Context_Standalone).
+
+These changes make wxDateTime methods for getting the localized date and
+month names use the current UI locale, as set by wxUILocale, instead of
+the current C locale set by the standard C library function, which is a
+change in behaviour but a desired one and notably fixes the display of
+the months in generic calendar control in wxOSX where the current C
+locale is not changed when the UI locale is set.
+
+Replaces #23551.
+
+Closes #23191.
+---
+ include/wx/datetime.h         |  52 ++++++++++---
+ include/wx/private/uilocale.h |  11 +++
+ include/wx/uilocale.h         |  11 +++
+ interface/wx/datetime.h       | 118 ++++++++++++++++++++++++-----
+ interface/wx/uilocale.h       |  37 +++++++++
+ src/common/datetime.cpp       |  86 +++++++++------------
+ src/common/uilocale.cpp       |  37 ++++++++-
+ src/msw/uilocale.cpp          |  78 +++++++++++++++++++
+ src/osx/core/uilocale.mm      |  94 +++++++++++++++++++++++
+ src/unix/uilocale.cpp         | 137 ++++++++++++++++++++++++++++++++++
+ 10 files changed, 578 insertions(+), 83 deletions(-)
+
+diff --git a/include/wx/datetime.h b/include/wx/datetime.h
+index 8de3cf67ca47..93625babb294 100644
+--- include/wx/datetime.h
++++ include/wx/datetime.h
+@@ -265,11 +265,19 @@ class WXDLLIMPEXP_BASE wxDateTime
+         // flags for GetWeekDayName and GetMonthName
+     enum NameFlags
+     {
+-        Name_Full = 0x01,       // return full name
+-        Name_Abbr = 0x02        // return abbreviated name
++        Name_Full = 0x01,        // return full name
++        Name_Abbr = 0x02,        // return abbreviated name
++        Name_Shortest = 0x03     // return shortest name
+     };
+ 
+-        // flags for GetWeekOfYear and GetWeekOfMonth
++    // context for GetWeekDayName and GetMonthName
++    enum NameContext
++    {
++        Context_Formatting,      // return name for date formatting context
++        Context_Standalone       // return name for standalone context
++    };
++
++    // flags for GetWeekOfYear and GetWeekOfMonth
+     enum WeekFlags
+     {
+         Default_First,   // Sunday_First for US, Monday_First for the rest
+@@ -289,6 +297,28 @@ class WXDLLIMPEXP_BASE wxDateTime
+     // helper classes
+     // ------------------------------------------------------------------------
+ 
++        // Describes the form of the month or week-day name.
++    class NameForm
++    {
++    public:
++        // Ctor is non-explicit for compatibility.
++        NameForm(NameFlags flags = Name_Full) : m_flags(flags) {}
++
++        // Chainable methods allowing to set various fields.
++        NameForm& Full() { m_flags = Name_Full; return *this; }
++        NameForm& Abbr() { m_flags = Name_Abbr; return *this; }
++        NameForm& Shortest() { m_flags = Name_Shortest; return *this; }
++        NameForm& Formatting() { m_context = Context_Formatting; return *this; }
++        NameForm& Standalone() { m_context = Context_Standalone; return *this; }
++
++        NameFlags GetFlags() const { return m_flags; }
++        NameContext GetContext() const { return m_context; }
++
++    private:
++        NameFlags m_flags;
++        NameContext m_context = Context_Formatting;
++    };
++
+         // a class representing a time zone: basically, this is just an offset
+         // (in seconds) from GMT
+     class WXDLLIMPEXP_BASE TimeZone
+@@ -411,23 +441,23 @@ class WXDLLIMPEXP_BASE wxDateTime
+                                         Calendar cal = Gregorian);
+ 
+ 
+-        // get the full (default) or abbreviated month name in the current
++        // get the full (default), abbreviated or shortest month name in the current
+         // locale, returns empty string on error
+     static wxString GetMonthName(Month month,
+-                                 NameFlags flags = Name_Full);
++                                 const NameForm& form = {});
+ 
+-        // get the standard English full (default) or abbreviated month name
++        // get the standard English full (default), abbreviated or shortest month name
+     static wxString GetEnglishMonthName(Month month,
+-                                        NameFlags flags = Name_Full);
++                                        const NameForm& form = {});
+ 
+-        // get the full (default) or abbreviated weekday name in the current
++        // get the full (default), abbreviated or shortest weekday name in the current
+         // locale, returns empty string on error
+     static wxString GetWeekDayName(WeekDay weekday,
+-                                   NameFlags flags = Name_Full);
++                                   const NameForm& form = {});
+ 
+-        // get the standard English full (default) or abbreviated weekday name
++        // get the standard English full (default), abbreviated or shortest weekday name
+     static wxString GetEnglishWeekDayName(WeekDay weekday,
+-                                          NameFlags flags = Name_Full);
++                                          const NameForm& form = {});
+ 
+         // get the AM and PM strings in the current locale (may be empty)
+     static void GetAmPmStrings(wxString *am, wxString *pm);
+diff --git a/include/wx/private/uilocale.h b/include/wx/private/uilocale.h
+index bd814c89feba..dfdfca1b64ba 100644
+--- include/wx/private/uilocale.h
++++ include/wx/private/uilocale.h
+@@ -68,6 +68,14 @@ class wxUILocaleImpl : public wxRefCounter
+     // The entries contain platform-dependent identifiers.
+     static wxVector<wxString> GetPreferredUILanguages();
+ 
++    // Helper function used by GetMonthName/GetWeekDayName(): returns 0 if flags is
++    // wxDateTime::Name_Full, 1 if it is wxDateTime::Name_Abbr, and 2 if it is
++    // wxDateTime::Name_Shortest or -1 if the flags is incorrect (and asserts in this case)
++    //
++    // the return value of this function is used as an index into 2D array
++    // containing full names in its first row and abbreviated ones in the 2nd one
++    static int ArrayIndexFromFlag(wxDateTime::NameFlags flags);
++
+     // Use this locale in the UI.
+     //
+     // This is not implemented for all platforms, notably not for Mac where the
+@@ -80,6 +88,9 @@ class wxUILocaleImpl : public wxRefCounter
+     virtual wxLocaleIdent GetLocaleId() const = 0;
+     virtual wxString GetInfo(wxLocaleInfo index, wxLocaleCategory cat) const = 0;
+     virtual wxString GetLocalizedName(wxLocaleName name, wxLocaleForm form) const = 0;
++    virtual wxString GetMonthName(wxDateTime::Month month, wxDateTime::NameForm form) const = 0;
++    virtual wxString GetWeekDayName(wxDateTime::WeekDay weekday, wxDateTime::NameForm form) const = 0;
++
+     virtual wxLayoutDirection GetLayoutDirection() const = 0;
+     virtual int CompareStrings(const wxString& lhs, const wxString& rhs,
+                                int flags) const = 0;
+diff --git a/include/wx/uilocale.h b/include/wx/uilocale.h
+index 617680300846..15fe37b3f062 100644
+--- include/wx/uilocale.h
++++ include/wx/uilocale.h
+@@ -14,6 +14,7 @@
+ 
+ #if wxUSE_INTL
+ 
++#include "wx/datetime.h"
+ #include "wx/localedefs.h"
+ #include "wx/string.h"
+ #include "wx/vector.h"
+@@ -147,6 +148,16 @@ class WXDLLIMPEXP_BASE wxUILocale
+     // Query the locale for the specified localized name.
+     wxString GetLocalizedName(wxLocaleName name, wxLocaleForm form) const;
+ 
++    // Get the full (default) or abbreviated localized month name
++    // returns empty string on error
++    wxString GetMonthName(wxDateTime::Month month,
++                          wxDateTime::NameForm form = {}) const;
++
++    // Get the full (default) or abbreviated localized weekday name
++    // returns empty string on error
++    wxString GetWeekDayName(wxDateTime::WeekDay weekday,
++                            wxDateTime::NameForm form = {}) const;
++
+     // Query the layout direction of the current locale.
+     wxLayoutDirection GetLayoutDirection() const;
+ 
+diff --git a/interface/wx/datetime.h b/interface/wx/datetime.h
+index c6491474e0df..5e6aec720c96 100644
+--- interface/wx/datetime.h
++++ interface/wx/datetime.h
+@@ -215,7 +215,18 @@ class wxDateTime
+     enum NameFlags
+     {
+         Name_Full = 0x01,       ///< return full name
+-        Name_Abbr = 0x02        ///< return abbreviated name
++        Name_Abbr = 0x02,       ///< return abbreviated name
++        Name_Shortest = 0x03    ///< return shortest name @since_wx{3.3.0}
++    };
++
++    /**
++        Context for name use in GetWeekDayName() and GetMonthName() functions.
++        @since 3.3.0
++    */
++    enum NameContext
++    {
++        Context_Formatting,      ///< name for use in date formatting context
++        Context_Standalone       ///< name for use in standalone context
+     };
+ 
+     /**
+@@ -235,6 +246,63 @@ class wxDateTime
+         Sunday_First     ///< week starts with a Sunday
+     };
+ 
++    /**
++        Class representing a name form.
++
++        This class describes the form of month or weekday names used in
++        formatting a date. It contains attributes for the requested name
++        length and the formatting context. It is used as a parameter to
++        the GetWeekDayName() and GetMonthName() functions.
++        @since 3.3.0
++     */
++    class NameForm
++    {
++    public:
++        /**
++            Constructor for a name form.
++
++            Initializes this object to use the given form of the name (full by
++            default) in the formatting context.
++
++            Note that this constructor is _not_ explicit, to allow the existing
++            code which passes wxDateTime::NameFlags to various functions now
++            taking NameForm to work. Please beware of the implicit conversions
++            here.
++         */
++        NameForm(NameFlags flags = Name_Full) : m_flags(flags) {}
++
++        /// Set the flag for full month or weekday names.
++        NameForm& Full();
++
++        /// Set the flag for abbreviated month or weekday names.
++        NameForm& Abbr();
++
++        /// Set the flag for shortest month or weekday names.
++        NameForm& Shortest();
++
++        /**
++            Set the context for date formatting.
++
++            In some languages, month and day names have different forms depending
++            on whether they're used on their own, e.g. as names of the months in the
++            calendar, or as part of a date representation.
++
++            Use this function if you need to localize a date format or in another
++            similar context.
++
++            @see Standalone()
++        */
++        NameForm& Formatting();
++
++        /// Set the context for standalone use.
++        NameForm& Standalone();
++
++        /// Return the flags describing the requested name length.
++        NameFlags GetFlags() const;
++
++        /// Return the context of name usage.
++        NameContext GetContext() const;
++    };
+ 
+     /**
+         Class representing a time zone.
+@@ -1394,55 +1462,64 @@ class wxDateTime
+     /**
+         Return the standard English name of the given month.
+ 
+-        This function always returns "January" or "Jan" for January, use
++        This function always returns "January", "Jan" or "JA" for January, use
+         GetMonthName() to retrieve the name of the month in the users current
+         locale.
+ 
+         @param month
+             One of wxDateTime::Jan, ..., wxDateTime::Dec values.
+-        @param flags
+-            Either Name_Full (default) or Name_Abbr.
++        @param form
++            Name form consisting of the flags (Name_Full, Name_Abbr, or Name_Shortest)
++            and the context (Context_Formatting or Context_Standalone)
++            The default is Name_Full in Context_Formatting.
++            Example: wxNameForm().Abbr().Standalone()
+ 
+         @see GetEnglishWeekDayName()
+ 
+         @since 2.9.0
+      */
+     static wxString GetEnglishMonthName(Month month,
+-                                        NameFlags flags = Name_Full);
++                                        NameForm form = {});
+ 
+     /**
+         Return the standard English name of the given week day.
+ 
+-        This function always returns "Monday" or "Mon" for Monday, use
+-        GetWeekDayName() to retrieve the name of the month in the users current
++        This function always returns "Monday", "Mon" or "Mo" for Monday, use
++        GetWeekDayName() to retrieve the name of the month in the user's current
+         locale.
+ 
+         @param weekday
+             One of wxDateTime::Sun, ..., wxDateTime::Sat values.
+-        @param flags
+-            Either Name_Full (default) or Name_Abbr.
++        @param form
++            Name form consisting of the flags (Name_Full, Name_Abbr, or Name_Shortest)
++            and the context (Context_Formatting or Context_Standalone)
++            The default is Name_Full in Context_Formatting.
++            Example: wxNameForm().Abbr().Standalone()
+ 
+         @see GetEnglishMonthName()
+ 
+         @since 2.9.0
+      */
+     static wxString GetEnglishWeekDayName(WeekDay weekday,
+-                                          NameFlags flags = Name_Full);
++                                          NameFlags form = {});
+ 
+     /**
+-        Gets the full (default) or abbreviated name of the given month.
++        Gets the full (default), abbreviated or shortest name of the given month.
+ 
+         This function returns the name in the current locale, use
+         GetEnglishMonthName() to get the untranslated name if necessary.
+ 
+         @param month
+             One of wxDateTime::Jan, ..., wxDateTime::Dec values.
+-        @param flags
+-            Either Name_Full (default) or Name_Abbr.
++        @param form
++            Name form consisting of the flags (Name_Full, Name_Abbr, or Name_Shortest)
++            and the context (Context_Formatting or Context_Standalone)
++            The default is Name_Full in Context_Formatting.
++            Example: wxNameForm().Abbr().Standalone()
+ 
+         @see GetWeekDayName()
+     */
+-    static wxString GetMonthName(Month month, NameFlags flags = Name_Full);
++    static wxString GetMonthName(Month month, NameFlags form = {});
+ 
+     /**
+         Returns the number of days in the given year. The only supported value
+@@ -1478,27 +1555,30 @@ class wxDateTime
+     static tm* GetTmNow();
+ 
+     /**
+-        Gets the full (default) or abbreviated name of the given week day.
++        Gets the full (default), abbreviated or shortest name of the given week day.
+ 
+         This function returns the name in the current locale, use
+         GetEnglishWeekDayName() to get the untranslated name if necessary.
+ 
+         @param weekday
+             One of wxDateTime::Sun, ..., wxDateTime::Sat values.
+-        @param flags
+-            Either Name_Full (default) or Name_Abbr.
++        @param form
++            Name form consisting of the flags (Name_Full, Name_Abbr, or Name_Shortest)
++            and the context (Context_Formatting or Context_Standalone)
++            The default is Name_Full in Context_Formatting.
++            Example: wxNameForm().Abbr().Standalone()
+ 
+         @see GetMonthName()
+     */
+     static wxString GetWeekDayName(WeekDay weekday,
+-                                   NameFlags flags = Name_Full);
++                                   NameForm form = {});
+ 
+     /**
+         Returns @true if DST was used in the given year (the current one by
+         default) in the given country.
+     */
+     static bool IsDSTApplicable(int year = Inv_Year,
+-                                  Country country = Country_Default);
++                                Country country = Country_Default);
+ 
+     /**
+          Acquires the first weekday of a week based on locale and/or OS settings.
+diff --git a/interface/wx/uilocale.h b/interface/wx/uilocale.h
+index aba6a514721a..48352c2d3f58 100644
+--- interface/wx/uilocale.h
++++ interface/wx/uilocale.h
+@@ -197,6 +197,43 @@ class wxUILocale
+      */
+     wxString GetLocalizedName(wxLocaleName name, wxLocaleForm form) const;
+ 
++    /**
++        Gets the full (default), abbreviated or shortest name of the given month.
++
++        This function returns the name in the current locale, use
++        wxDateTime::GetEnglishMonthName() to get the untranslated name if necessary.
++
++        @param month
++            One of wxDateTime::Jan, ..., wxDateTime::Dec values.
++        @param form
++            Name form consisting of the flags (Name_Full, Name_Abbr, or Name_Shortest)
++            and the context (Context_Formatting or Context_Standalone)
++            The default is Name_Full in Context_Formatting.
++            Example: wxNameForm().Abbr().Standalone()
++
++        @see GetWeekDayName()
++        @since 3.3.0
++    */
++    wxString GetMonthName(wxDateTime::Month month, wxDateTime::NameForm form = {});
++
++    /**
++        Gets the full (default), abbreviated or shortest name of the given week day.
++
++        This function returns the name in the current locale, use
++        wxDateTime::GetEnglishWeekDayName() to get the untranslated name if necessary.
++
++        @param weekday
++            One of wxDateTime::Sun, ..., wxDateTime::Sat values.
++        @param form
++            Name form consisting of the flags (Name_Full, Name_Abbr, or Name_Shortest)
++            and the context (Context_Formatting or Context_Standalone)
++            The default is Name_Full in Context_Formatting.
++            Example: wxNameForm().Abbr().Standalone()
++
++        @see GetMonthName()
++    */
++    wxString GetWeekDayName(wxDateTime::WeekDay weekday, wxDateTime::NameForm form = {});
++
+     /**
+         Query the layout direction of the current locale.
+ 
+diff --git a/src/common/datetime.cpp b/src/common/datetime.cpp
+index 7c52c04fb471..146eaffce71b 100644
+--- src/common/datetime.cpp
++++ src/common/datetime.cpp
+@@ -82,6 +82,7 @@
+ #endif
+ 
+ #include "wx/datetime.h"
++#include "wx/uilocale.h"
+ 
+ // ----------------------------------------------------------------------------
+ // wxXTI
+@@ -725,21 +726,25 @@ namespace
+ {
+ 
+ // helper function used by GetEnglish/WeekDayName(): returns 0 if flags is
+-// Name_Full and 1 if it is Name_Abbr or -1 if the flags is incorrect (and
+-// asserts in this case)
++// Name_Full, 1 if it is Name_Abbr, and 2 if it isName_Shortest,
++// or -1 if the flags is incorrect (and asserts in this case)
+ //
+ // the return value of this function is used as an index into 2D array
+ // containing full names in its first row and abbreviated ones in the 2nd one
++// and very short ones in the 3rd row
+ int NameArrayIndexFromFlag(wxDateTime::NameFlags flags)
+ {
+-    switch ( flags )
++  switch ( flags )
+     {
+-        case wxDateTime::Name_Full:
++      case wxDateTime::Name_Full:
+             return 0;
+ 
+         case wxDateTime::Name_Abbr:
+             return 1;
+ 
++        case wxDateTime::Name_Shortest:
++            return 2;
++
+         default:
+             wxFAIL_MSG( "unknown wxDateTime::NameFlags value" );
+     }
+@@ -750,19 +755,21 @@ int NameArrayIndexFromFlag(wxDateTime::NameFlags flags)
+ } // anonymous namespace
+ 
+ /* static */
+-wxString wxDateTime::GetEnglishMonthName(Month month, NameFlags flags)
++wxString wxDateTime::GetEnglishMonthName(Month month, const NameForm& form)
+ {
+     wxCHECK_MSG( month != Inv_Month, wxEmptyString, "invalid month" );
+ 
+-    static const char *const monthNames[2][MONTHS_IN_YEAR] =
++    static const char *const monthNames[3][MONTHS_IN_YEAR] =
+     {
+         { "January", "February", "March", "April", "May", "June",
+           "July", "August", "September", "October", "November", "December" },
+         { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+-          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" }
++          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" },
++        { "JA", "FE", "MR", "AL", "MA", "JN",
++          "JL", "AU", "SE", "OC", "NO", "DE" }
+     };
+ 
+-    const int idx = NameArrayIndexFromFlag(flags);
++    const int idx = NameArrayIndexFromFlag(form.GetFlags());
+     if ( idx == -1 )
+         return wxString();
+ 
+@@ -770,37 +777,30 @@ wxString wxDateTime::GetEnglishMonthName(Month month, NameFlags flags)
+ }
+ 
+ /* static */
+-wxString wxDateTime::GetMonthName(wxDateTime::Month month,
+-                                  wxDateTime::NameFlags flags)
++wxString wxDateTime::GetMonthName(Month month,
++                                  const NameForm& form)
+ {
+-#ifdef wxHAS_STRFTIME
+-    wxCHECK_MSG( month != Inv_Month, wxEmptyString, wxT("invalid month") );
+-
+-    // notice that we must set all the fields to avoid confusing libc (GNU one
+-    // gets confused to a crash if we don't do this)
+-    tm tm;
+-    wxInitTm(tm);
+-    tm.tm_mon = month;
+-
+-    return wxCallStrftime(flags == Name_Abbr ? wxS("%b") : wxS("%B"), &tm);
+-#else // !wxHAS_STRFTIME
+-    return GetEnglishMonthName(month, flags);
+-#endif // wxHAS_STRFTIME/!wxHAS_STRFTIME
++    wxCHECK_MSG(month != Inv_Month, wxEmptyString, wxT("invalid month"));
++    wxString name = wxUILocale::GetCurrent().GetMonthName(month, form);
++    if (name.empty())
++        name = GetEnglishMonthName(month, form);
++    return name;
+ }
+ 
+ /* static */
+-wxString wxDateTime::GetEnglishWeekDayName(WeekDay wday, NameFlags flags)
++wxString wxDateTime::GetEnglishWeekDayName(WeekDay wday, const NameForm& form)
+ {
+     wxCHECK_MSG( wday != Inv_WeekDay, wxEmptyString, wxT("invalid weekday") );
+ 
+-    static const char *const weekdayNames[2][DAYS_PER_WEEK] =
++    static const char *const weekdayNames[3][DAYS_PER_WEEK] =
+     {
+         { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+           "Saturday" },
+         { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" },
++        { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" }
+     };
+ 
+-    const int idx = NameArrayIndexFromFlag(flags);
++    const int idx = NameArrayIndexFromFlag(form.GetFlags());
+     if ( idx == -1 )
+         return wxString();
+ 
+@@ -808,32 +808,14 @@ wxString wxDateTime::GetEnglishWeekDayName(WeekDay wday, NameFlags flags)
+ }
+ 
+ /* static */
+-wxString wxDateTime::GetWeekDayName(wxDateTime::WeekDay wday,
+-                                    wxDateTime::NameFlags flags)
+-{
+-#ifdef wxHAS_STRFTIME
+-    wxCHECK_MSG( wday != Inv_WeekDay, wxEmptyString, wxT("invalid weekday") );
+-
+-    // take some arbitrary Sunday (but notice that the day should be such that
+-    // after adding wday to it below we still have a valid date, e.g. don't
+-    // take 28 here!)
+-    tm tm;
+-    wxInitTm(tm);
+-    tm.tm_mday = 21;
+-    tm.tm_mon = Nov;
+-    tm.tm_year = 99;
+-
+-    // and offset it by the number of days needed to get the correct wday
+-    tm.tm_mday += wday;
+-
+-    // call mktime() to normalize it...
+-    (void)mktime(&tm);
+-
+-    // ... and call strftime()
+-    return wxCallStrftime(flags == Name_Abbr ? wxS("%a") : wxS("%A"), &tm);
+-#else // !wxHAS_STRFTIME
+-    return GetEnglishWeekDayName(wday, flags);
+-#endif // wxHAS_STRFTIME/!wxHAS_STRFTIME
++wxString wxDateTime::GetWeekDayName(WeekDay wday,
++                                    const NameForm& form)
++{
++    wxCHECK_MSG(wday != Inv_WeekDay, wxEmptyString, wxT("invalid weekday"));
++    wxString name = wxUILocale::GetCurrent().GetWeekDayName(wday, form);
++    if (name.empty())
++        name = GetEnglishWeekDayName(wday, form);
++    return name;
+ }
+ 
+ /* static */
+diff --git a/src/common/uilocale.cpp b/src/common/uilocale.cpp
+index 6be20a2a05e9..cf15cf9da98d 100644
+--- src/common/uilocale.cpp
++++ src/common/uilocale.cpp
+@@ -63,7 +63,6 @@ inline bool IsDefaultCLocale(const wxString& locale)
+ 
+ } // anonymous namespace
+ 
+-
+ // ----------------------------------------------------------------------------
+ // global variables
+ // ----------------------------------------------------------------------------
+@@ -602,6 +601,22 @@ wxString wxUILocale::GetLocalizedName(wxLocaleName name, wxLocaleForm form) cons
+     return m_impl->GetLocalizedName(name, form);
+ }
+ 
++wxString wxUILocale::GetMonthName(wxDateTime::Month month, wxDateTime::NameForm form) const
++{
++    if (!m_impl)
++        return wxString();
++
++    return m_impl->GetMonthName(month, form);
++}
++
++wxString wxUILocale::GetWeekDayName(wxDateTime::WeekDay weekday, wxDateTime::NameForm form) const
++{
++    if (!m_impl)
++        return wxString();
++
++    return m_impl->GetWeekDayName(weekday, form);
++}
++
+ wxLayoutDirection wxUILocale::GetLayoutDirection() const
+ {
+     if (!m_impl)
+@@ -889,4 +904,24 @@ const wxLanguageInfo* wxUILocale::FindLanguageInfo(const wxLocaleIdent& locId)
+     return infoRet;
+ }
+ 
++int wxUILocaleImpl::ArrayIndexFromFlag(wxDateTime::NameFlags flags)
++{
++    switch (flags)
++    {
++        case wxDateTime::Name_Full:
++            return 0;
++
++        case wxDateTime::Name_Abbr:
++            return 1;
++
++        case wxDateTime::Name_Shortest:
++            return 2;
++
++        default:
++            wxFAIL_MSG("unknown wxDateTime::NameFlags value");
++    }
++
++    return -1;
++}
++
+ #endif // wxUSE_INTL
+diff --git a/src/msw/uilocale.cpp b/src/msw/uilocale.cpp
+index 346ec8461085..5c20f53627d9 100644
+--- src/msw/uilocale.cpp
++++ src/msw/uilocale.cpp
+@@ -201,6 +201,16 @@ class wxUILocaleImplStdC : public wxUILocaleImpl
+         return str;
+     }
+ 
++    wxString GetMonthName(wxDateTime::Month month, wxDateTime::NameForm form) const override
++    {
++        return wxDateTime::GetEnglishMonthName(month, form);
++    }
++
++    wxString GetWeekDayName(wxDateTime::WeekDay weekday, wxDateTime::NameForm form) const override
++    {
++        return wxDateTime::GetEnglishWeekDayName(weekday, form);
++    }
++
+     wxLayoutDirection GetLayoutDirection() const override
+     {
+         return wxLayout_Default;
+@@ -457,6 +467,74 @@ class wxUILocaleImplName : public wxUILocaleImpl
+         return str;
+     }
+ 
++    wxString GetMonthName(wxDateTime::Month month, wxDateTime::NameForm form) const override
++    {
++        static LCTYPE monthNameIndex[3][12] =
++        {
++            { LOCALE_SMONTHNAME1,  LOCALE_SMONTHNAME2,  LOCALE_SMONTHNAME3,
++              LOCALE_SMONTHNAME4,  LOCALE_SMONTHNAME5,  LOCALE_SMONTHNAME6,
++              LOCALE_SMONTHNAME7,  LOCALE_SMONTHNAME8,  LOCALE_SMONTHNAME9,
++              LOCALE_SMONTHNAME10, LOCALE_SMONTHNAME11, LOCALE_SMONTHNAME12 },
++            { LOCALE_SABBREVMONTHNAME1,  LOCALE_SABBREVMONTHNAME2,  LOCALE_SABBREVMONTHNAME3,
++              LOCALE_SABBREVMONTHNAME4,  LOCALE_SABBREVMONTHNAME5,  LOCALE_SABBREVMONTHNAME6,
++              LOCALE_SABBREVMONTHNAME7,  LOCALE_SABBREVMONTHNAME8,  LOCALE_SABBREVMONTHNAME9,
++              LOCALE_SABBREVMONTHNAME10, LOCALE_SABBREVMONTHNAME11, LOCALE_SABBREVMONTHNAME12 },
++            { LOCALE_SABBREVMONTHNAME1,  LOCALE_SABBREVMONTHNAME2,  LOCALE_SABBREVMONTHNAME3,
++              LOCALE_SABBREVMONTHNAME4,  LOCALE_SABBREVMONTHNAME5,  LOCALE_SABBREVMONTHNAME6,
++              LOCALE_SABBREVMONTHNAME7,  LOCALE_SABBREVMONTHNAME8,  LOCALE_SABBREVMONTHNAME9,
++              LOCALE_SABBREVMONTHNAME10, LOCALE_SABBREVMONTHNAME11, LOCALE_SABBREVMONTHNAME12 }
++        };
++
++        const int idx = ArrayIndexFromFlag(form.GetFlags());
++        if (idx == -1)
++            return wxString();
++
++        auto lctype = monthNameIndex[idx][month];
++        switch ( form.GetContext() )
++        {
++            case wxDateTime::Context_Standalone:
++                // Nothing else needed.
++                break;
++
++            case wxDateTime::Context_Formatting:
++                lctype |= LOCALE_RETURN_GENITIVE_NAMES;
++                break;
++        }
++
++        return DoGetInfo(lctype);
++    }
++
++    wxString GetWeekDayName(wxDateTime::WeekDay weekday, wxDateTime::NameForm form) const override
++    {
++        static LCTYPE weekdayNameIndex[3][12] =
++        {
++            { LOCALE_SDAYNAME7, LOCALE_SDAYNAME1, LOCALE_SDAYNAME2, LOCALE_SDAYNAME3,
++              LOCALE_SDAYNAME4, LOCALE_SDAYNAME5, LOCALE_SDAYNAME6 },
++            { LOCALE_SABBREVDAYNAME7, LOCALE_SABBREVDAYNAME1, LOCALE_SABBREVDAYNAME2, LOCALE_SABBREVDAYNAME3,
++              LOCALE_SABBREVDAYNAME4, LOCALE_SABBREVDAYNAME5, LOCALE_SABBREVDAYNAME6 },
++            { LOCALE_SSHORTESTDAYNAME7, LOCALE_SSHORTESTDAYNAME1, LOCALE_SSHORTESTDAYNAME2, LOCALE_SSHORTESTDAYNAME3,
++              LOCALE_SSHORTESTDAYNAME4, LOCALE_SSHORTESTDAYNAME5, LOCALE_SSHORTESTDAYNAME6 }
++        };
++
++        const int idx = ArrayIndexFromFlag(form.GetFlags());
++        if (idx == -1)
++            return wxString();
++
++        auto lctype = weekdayNameIndex[idx][weekday];
++        switch ( form.GetContext() )
++        {
++            case wxDateTime::Context_Standalone:
++                // Nothing else needed.
++                break;
++
++            case wxDateTime::Context_Formatting:
++                lctype |= LOCALE_RETURN_GENITIVE_NAMES;
++                break;
++        }
++
++        return DoGetInfo(lctype);
++    }
++
+     wxLayoutDirection GetLayoutDirection() const override
+     {
+         wxString str = DoGetInfo(LOCALE_IREADINGLAYOUT);
+diff --git a/src/osx/core/uilocale.mm b/src/osx/core/uilocale.mm
+index 0cf11cb599d0..900d0507bc20 100644
+--- src/osx/core/uilocale.mm
++++ src/osx/core/uilocale.mm
+@@ -30,6 +30,7 @@
+ #import <Foundation/NSArray.h>
+ #import <Foundation/NSString.h>
+ #import <Foundation/NSLocale.h>
++#import <Foundation/NSDateFormatter.h>
+ 
+ extern wxString
+ wxGetInfoFromCFLocale(CFLocaleRef cfloc, wxLocaleInfo index, wxLocaleCategory cat);
+@@ -137,6 +138,9 @@ explicit wxUILocaleImplCF(NSLocale* nsloc)
+     wxLocaleIdent GetLocaleId() const override;
+     wxString GetInfo(wxLocaleInfo index, wxLocaleCategory cat) const override;
+     wxString GetLocalizedName(wxLocaleName name, wxLocaleForm form) const override;
++    wxString GetMonthName(wxDateTime::Month month, wxDateTime::NameForm form) const override;
++    wxString GetWeekDayName(wxDateTime::WeekDay weekday, wxDateTime::NameForm form) const override;
++
+     wxLayoutDirection GetLayoutDirection() const override;
+     int CompareStrings(const wxString& lhs, const wxString& rhs,
+                        int flags) const override;
+@@ -217,6 +221,96 @@ int CompareStrings(const wxString& lhs, const wxString& rhs,
+     return wxCFStringRef::AsString(str);
+ }
+ 
++wxString
++wxUILocaleImplCF::GetMonthName(wxDateTime::Month month, wxDateTime::NameForm form) const
++{
++    NSDateFormatter* df = [NSDateFormatter new];
++    df.locale = m_nsloc;
++
++    NSArray* monthNames = nullptr;
++
++    if (form.GetContext() == wxDateTime::Context_Standalone)
++    {
++        switch ( form.GetFlags() )
++        {
++            case wxDateTime::Name_Shortest:
++                monthNames = [df veryShortStandaloneMonthSymbols];
++                break;
++            case wxDateTime::Name_Abbr:
++                monthNames = [df shortStandaloneMonthSymbols];
++                break;
++            case wxDateTime::Name_Full:
++            default:
++                monthNames = [df standaloneMonthSymbols];
++                break;
++        }
++    }
++    else
++    {
++        switch ( form.GetFlags() )
++        {
++            case wxDateTime::Name_Shortest:
++                monthNames = [df veryShortMonthSymbols];
++                break;
++            case wxDateTime::Name_Abbr:
++                monthNames = [df shortMonthSymbols];
++                break;
++            case wxDateTime::Name_Full:
++            default:
++                monthNames = [df monthSymbols];
++                break;
++        }
++    }
++
++    NSString* monthName = [monthNames objectAtIndex:(month)];
++    return wxCFStringRef::AsString(monthName);
++}
++
++wxString
++wxUILocaleImplCF::GetWeekDayName(wxDateTime::WeekDay weekday, wxDateTime::NameForm form) const
++{
++    NSDateFormatter* df = [NSDateFormatter new];
++    df.locale = m_nsloc;
++
++    NSArray* weekdayNames = nullptr;
++
++    if (form.GetContext() == wxDateTime::Context_Standalone)
++    {
++        switch ( form.GetFlags() )
++        {
++            case wxDateTime::Name_Shortest:
++                weekdayNames = [df veryShortStandaloneWeekdaySymbols];
++                break;
++            case wxDateTime::Name_Abbr:
++                weekdayNames = [df shortStandaloneWeekdaySymbols];
++                break;
++            case wxDateTime::Name_Full:
++            default:
++                weekdayNames = [df standaloneWeekdaySymbols];
++                break;
++        }
++    }
++    else
++    {
++        switch ( form.GetFlags() )
++        {
++            case wxDateTime::Name_Shortest:
++                weekdayNames = [df veryShortWeekdaySymbols];
++                break;
++            case wxDateTime::Name_Abbr:
++                weekdayNames = [df shortWeekdaySymbols];
++                break;
++            case wxDateTime::Name_Full:
++            default:
++                weekdayNames = [df weekdaySymbols];
++                break;
++        }
++    }
++
++    NSString* weekdayName = [weekdayNames objectAtIndex:(weekday)];
++    return wxCFStringRef::AsString(weekdayName);
++}
++
+ wxLayoutDirection
+ wxUILocaleImplCF::GetLayoutDirection() const
+ {
+diff --git a/src/unix/uilocale.cpp b/src/unix/uilocale.cpp
+index c51c4f2f19e5..e84ddba987ea 100644
+--- src/unix/uilocale.cpp
++++ src/unix/uilocale.cpp
+@@ -179,6 +179,8 @@ class wxUILocaleImplUnix : public wxUILocaleImpl
+     wxLocaleIdent GetLocaleId() const override;
+     wxString GetInfo(wxLocaleInfo index, wxLocaleCategory cat) const override;
+     wxString GetLocalizedName(wxLocaleName name, wxLocaleForm form) const override;
++    wxString GetMonthName(wxDateTime::Month month, wxDateTime::NameForm form) const override;
++    wxString GetWeekDayName(wxDateTime::WeekDay weekday, wxDateTime::NameForm form) const override;
+     wxLayoutDirection GetLayoutDirection() const override;
+ 
+     int CompareStrings(const wxString& lhs, const wxString& rhs,
+@@ -188,6 +190,7 @@ class wxUILocaleImplUnix : public wxUILocaleImpl
+ #ifdef HAVE_LANGINFO_H
+     // Call nl_langinfo_l() if available, or nl_langinfo() otherwise.
+     const char* GetLangInfo(nl_item item) const;
++    const wchar_t* GetLangInfoWide(nl_item item) const;
+ 
+ #ifdef __LINUX__
+     // Call GetLangInfo() using either the native or English item depending on
+@@ -528,6 +531,20 @@ wxUILocaleImplUnix::GetLangInfo(nl_item item) const
+     return nl_langinfo(item);
+ }
+ 
++const wchar_t*
++wxUILocaleImplUnix::GetLangInfoWide(nl_item item) const
++{
++#ifdef HAVE_LOCALE_T
++    // We assume that we have nl_langinfo_l() if we have locale_t.
++    if ( m_locale )
++        return (wchar_t*) nl_langinfo_l(item, m_locale);
++#else
++    TempLocaleSetter setThisLocale(LC_CTYPE, m_locId.GetName());
++#endif // HAVE_LOCALE_T
++
++    return (wchar_t*) nl_langinfo(item);
++}
++
+ #ifdef __LINUX__
+ wxString
+ wxUILocaleImplUnix::GetFormOfLangInfo(wxLocaleForm form,
+@@ -689,6 +706,126 @@ wxUILocaleImplUnix::GetLocalizedName(wxLocaleName name, wxLocaleForm form) const
+     return str;
+ }
+ 
++wxString
++wxUILocaleImplUnix::GetMonthName(wxDateTime::Month month, wxDateTime::NameForm form) const
++{
++#if defined(HAVE_LANGINFO_H)
++#if defined(__LINUX__) && defined(__GLIBC__)
++    static int monthNameIndex[6][12] =
++    {
++        // Formatting context
++        { _NL_WMON_1,  _NL_WMON_2,  _NL_WMON_3,
++          _NL_WMON_4,  _NL_WMON_5,  _NL_WMON_6,
++          _NL_WMON_7,  _NL_WMON_8,  _NL_WMON_9,
++          _NL_WMON_10, _NL_WMON_11, _NL_WMON_12 },
++        { _NL_WABMON_1,  _NL_WABMON_2,  _NL_WABMON_3,
++          _NL_WABMON_4,  _NL_WABMON_5,  _NL_WABMON_6,
++          _NL_WABMON_7,  _NL_WABMON_8,  _NL_WABMON_9,
++          _NL_WABMON_10, _NL_WABMON_11, _NL_WABMON_12 },
++        { _NL_WABMON_1,  _NL_WABMON_2,  _NL_WABMON_3,
++          _NL_WABMON_4,  _NL_WABMON_5,  _NL_WABMON_6,
++          _NL_WABMON_7,  _NL_WABMON_8,  _NL_WABMON_9,
++          _NL_WABMON_10, _NL_WABMON_11, _NL_WABMON_12 },
++        // Standalone context
++        { _NL_WALTMON_1,  _NL_WALTMON_2,  _NL_WALTMON_3,
++          _NL_WALTMON_4,  _NL_WALTMON_5,  _NL_WALTMON_6,
++          _NL_WALTMON_7,  _NL_WALTMON_8,  _NL_WALTMON_9,
++          _NL_WALTMON_10, _NL_WALTMON_11, _NL_WALTMON_12 },
++        { _NL_WABALTMON_1,  _NL_WABALTMON_2,  _NL_WABALTMON_3,
++          _NL_WABALTMON_4,  _NL_WABALTMON_5,  _NL_WABALTMON_6,
++          _NL_WABALTMON_7,  _NL_WABALTMON_8,  _NL_WABALTMON_9,
++          _NL_WABALTMON_10, _NL_WABALTMON_11, _NL_WABALTMON_12 },
++        { _NL_WABALTMON_1,  _NL_WABALTMON_2,  _NL_WABALTMON_3,
++          _NL_WABALTMON_4,  _NL_WABALTMON_5,  _NL_WABALTMON_6,
++          _NL_WABALTMON_7,  _NL_WABALTMON_8,  _NL_WABALTMON_9,
++          _NL_WABALTMON_10, _NL_WABALTMON_11, _NL_WABALTMON_12 }
++    };
++
++    int idx = ArrayIndexFromFlag(form.GetFlags());
++    if (idx == -1)
++        return wxString();
++
++    if (form.GetContext() == wxDateTime::Context_Standalone)
++        idx += 3;
++
++    return wxString(GetLangInfoWide(monthNameIndex[idx][month]));
++#else // !__LINUX__ || !__GLIBC__
++    // If system is not Linux-like or does not have GLIBC, fall back
++    // to LC_TIME symbols that should be defined according to POSIX.
++    static int monthNameIndex[3][12] =
++    {
++        // Formatting context
++        { MON_1,  MON_2,  MON_3,
++          MON_4,  MON_5,  MON_6,
++          MON_7,  MON_8,  MON_9,
++          MON_10, MON_11, MON_12 },
++        { ABMON_1,  ABMON_2,  ABMON_3,
++          ABMON_4,  ABMON_5,  ABMON_6,
++          ABMON_7,  ABMON_8,  ABMON_9,
++          ABMON_10, ABMON_11, ABMON_12 },
++        { ABMON_1,  ABMON_2,  ABMON_3,
++          ABMON_4,  ABMON_5,  ABMON_6,
++          ABMON_7,  ABMON_8,  ABMON_9,
++          ABMON_10, ABMON_11, ABMON_12 }
++    };
++
++    int idx = ArrayIndexFromFlag(form.GetFlags());
++    if (idx == -1)
++        return wxString();
++
++    return wxString(GetLangInfo(monthNameIndex[idx][month]), wxCSConv(GetCodeSet()));
++#endif //  __LINUX__ && __GLIBC__ / !__LINUX__ || !__GLIBC__
++#else // !HAVE_LANGINFO_H
++    // If HAVE_LANGINFO_H is not available, fall back to English names.
++    return wxDateTime::GetEnglishMonthName(month, form);
++#endif // HAVE_LANGINFO_H && __LINUX__/!HAVE_LANGINFO_H || !__LINUX__
++}
++
++wxString
++wxUILocaleImplUnix::GetWeekDayName(wxDateTime::WeekDay weekday, wxDateTime::NameForm form) const
++{
++#if defined(HAVE_LANGINFO_H)
++#if defined(__LINUX__) && defined(__GLIBC__)
++    static int weekdayNameIndex[3][12] =
++    {
++        { _NL_WDAY_1, _NL_WDAY_2, _NL_WDAY_3,
++          _NL_WDAY_4, _NL_WDAY_5, _NL_WDAY_6, _NL_WDAY_7 },
++        { _NL_WABDAY_1, _NL_WABDAY_2, _NL_WABDAY_3,
++          _NL_WABDAY_4, _NL_WABDAY_5, _NL_WABDAY_6, _NL_WABDAY_7 },
++        { _NL_WABDAY_1, _NL_WABDAY_2, _NL_WABDAY_3,
++          _NL_WABDAY_4, _NL_WABDAY_5, _NL_WABDAY_6, _NL_WABDAY_7 }
++    };
++
++    const int idx = ArrayIndexFromFlag(form.GetFlags());
++    if (idx == -1)
++        return wxString();
++
++    return wxString(GetLangInfoWide(weekdayNameIndex[idx][weekday]));
++#else // !__LINUX__ || !__GLIBC__
++    // If system is not Linux-like or does not have GLIBC, fall back
++    // to LC_TIME symbols that should be defined according to POSIX.
++    static int weekdayNameIndex[3][12] =
++    {
++        { DAY_1, DAY_2, DAY_3,
++          DAY_4, DAY_5, DAY_6, DAY_7 },
++        { ABDAY_1, ABDAY_2, ABDAY_3,
++          ABDAY_4, ABDAY_5, ABDAY_6, ABDAY_7 },
++        { ABDAY_1, ABDAY_2, ABDAY_3,
++          ABDAY_4, ABDAY_5, ABDAY_6, ABDAY_7 }
++    };
++
++    const int idx = ArrayIndexFromFlag(form.GetFlags());
++    if (idx == -1)
++        return wxString();
++
++    return wxString(GetLangInfo(weekdayNameIndex[idx][weekday]), wxCSConv(GetCodeSet()));
++#endif //  __LINUX__ && __GLIBC__ / !__LINUX__ || !__GLIBC__
++#else // !HAVE_LANGINFO_H
++    // If HAVE_LANGINFO_H is not available, fall back to English names.
++    return wxDateTime::GetEnglishWeekDayName(weekday, form);
++#endif // HAVE_LANGINFO_H / !HAVE_LANGINFO_H
++}
++
+ wxLayoutDirection
+ wxUILocaleImplUnix::GetLayoutDirection() const
+ {
