@@ -1,0 +1,57 @@
+From 63b9b7cd0ab193472381b3ab59e8e66cdde42939 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sun, 28 Jul 2024 17:38:07 +0800
+Subject: [PATCH] utils_base.mm: minor fix
+
+diff --git src/osx/cocoa/utils_base.mm src/osx/cocoa/utils_base.mm
+index 5c01ca1a6c..c42f676d8b 100644
+--- src/osx/cocoa/utils_base.mm
++++ src/osx/cocoa/utils_base.mm
+@@ -24,6 +24,8 @@
+ #include "wx/osx/private.h"
+ #include "wx/osx/private/available.h"
+ 
++#include <AppKit/AppKit.h>
++
+ #if wxUSE_SOCKETS
+ // global pointer which lives in the base library, set from the net one (see
+ // sockosx.cpp) and used from the GUI code (see utilsexc_cf.cpp) -- ugly but
+@@ -223,16 +225,15 @@ bool wxCocoaLaunch(const char* const* argv, pid_t &pid)
+     }
+ 
+     NSWorkspace *ws = [NSWorkspace sharedWorkspace];
+-    
+-    
++
+     NSRunningApplication *app = nil;
+-    
++
+     if ( [params count] > 0 )
+         app = [ws openURLs:params withApplicationAtURL:url
+                    options:NSWorkspaceLaunchAsync
+              configuration:[NSDictionary dictionary]
+                      error:&error];
+-    
++
+     if ( app == nil )
+     {
+         app = [ws launchApplicationAtURL:url
+@@ -252,15 +253,17 @@ bool wxCocoaLaunch(const char* const* argv, pid_t &pid)
+             }
+         }
+     }
+-    
++
+     [params release];
+ 
+     if( app != nil )
+         pid = [app processIdentifier];
+     else
+     {
++#ifdef __WXMAC__
+         wxString errorDesc = wxCFStringRef::AsString([error localizedDescription]);
+         wxLogDebug( "wxCocoaLaunch failure: error is %s", errorDesc );
++#endif
+         return false;
+     }
+     return true;

@@ -1,0 +1,116 @@
+From d940b54acd369b315bcd37faca17ba82092fd0e1 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Tue, 30 Jul 2024 04:16:31 +0800
+Subject: [PATCH] Revert 6211d53c62ed93534029c64d468bef7d37868c52
+
+diff --git include/wx/defs.h include/wx/defs.h
+index bcfc8a74a3..dc15d0a6a1 100644
+--- include/wx/defs.h
++++ include/wx/defs.h
+@@ -2735,6 +2735,31 @@ typedef HIShapeRef WXHRGN;
+ 
+ #if defined(__WXMAC__) || defined(__OBJC__)
+ 
++/* Definitions of 32-bit/64-bit types
++ * These are typedef'd exactly the same way in newer OS X headers so
++ * redefinition when real headers are included should not be a problem.  If
++ * it is, the types are being defined wrongly here.
++ * The purpose of these types is so they can be used from public wx headers.
++ * and also because the older (pre-Leopard) headers don't define them.
++ */
++
++/* NOTE: We don't pollute namespace with CGFLOAT_MIN/MAX/IS_DOUBLE macros
++ * since they are unlikely to be needed in a public header.
++ */
++#if defined(__LP64__) && __LP64__
++    typedef double CGFloat;
++#else
++    typedef float CGFloat;
++#endif
++
++#if (defined(__LP64__) && __LP64__) || (defined(NS_BUILD_32_LIKE_64) && NS_BUILD_32_LIKE_64)
++typedef long NSInteger;
++typedef unsigned long NSUInteger;
++#else
++typedef int NSInteger;
++typedef unsigned int NSUInteger;
++#endif
++
+ /* Objective-C type declarations.
+  * These are to be used in public headers in lieu of NSSomething* because
+  * Objective-C class names are not available in C/C++ code.
+diff --git include/wx/fontutil.h include/wx/fontutil.h
+index 36f7e02757..f35ea1fd60 100644
+--- include/wx/fontutil.h
++++ include/wx/fontutil.h
+@@ -109,10 +109,10 @@ public:
+     wxString GetPostScriptName() const;
+     bool SetPostScriptName(const wxString& postScriptName);
+ 
+-    static double GetCTWeight( CTFontRef font );
+-    static double GetCTWeight( CTFontDescriptorRef font );
+-    static double GetCTwidth( CTFontDescriptorRef font );
+-    static double GetCTSlant( CTFontDescriptorRef font );
++    static CGFloat GetCTWeight( CTFontRef font );
++    static CGFloat GetCTWeight( CTFontDescriptorRef font );
++    static CGFloat GetCTwidth( CTFontDescriptorRef font );
++    static CGFloat GetCTSlant( CTFontDescriptorRef font );
+ 
+     CTFontDescriptorRef GetCTFontDescriptor() const;
+     
+@@ -120,10 +120,10 @@ public:
+ private:
+     // attributes for regenerating a CTFontDescriptor, stay close to native values
+     // for better roundtrip fidelity
+-    double        m_ctWeight;
+-    double        m_ctWidth;
++    CGFloat       m_ctWeight;
++    CGFloat       m_ctWidth;
+     wxFontStyle   m_style;
+-    double        m_ctSize;
++    CGFloat       m_ctSize;
+     wxFontFamily  m_family;
+ 
+     wxString      m_familyName;
+diff --git include/wx/osx/core/colour.h include/wx/osx/core/colour.h
+index 0346a64f27..bc28ee6b72 100644
+--- include/wx/osx/core/colour.h
++++ include/wx/osx/core/colour.h
+@@ -86,10 +86,10 @@ public:
+     wxColourRefData() = default;
+     virtual ~wxColourRefData() = default;
+ 
+-    virtual double Red() const = 0;
+-    virtual double Green() const = 0;
+-    virtual double Blue() const = 0;
+-    virtual double Alpha() const = 0;
++    virtual CGFloat Red() const = 0;
++    virtual CGFloat Green() const = 0;
++    virtual CGFloat Blue() const = 0;
++    virtual CGFloat Alpha() const = 0;
+ 
+     virtual bool IsSolid() const
+         { return true; }
+diff --git include/wx/osx/core/private.h include/wx/osx/core/private.h
+index 5eea1ad09d..af9a499088 100644
+--- include/wx/osx/core/private.h
++++ include/wx/osx/core/private.h
+@@ -15,7 +15,6 @@
+ #include "wx/defs.h"
+ 
+ #include <CoreFoundation/CoreFoundation.h>
+-#include <CoreGraphics/CoreGraphics.h>      // At least for CGFloat
+ 
+ #include "wx/osx/core/cfstring.h"
+ #include "wx/osx/core/cfdataref.h"
+@@ -68,7 +67,9 @@ WXDLLIMPEXP_BASE CFURLRef wxOSXCreateURLFromFileSystemPath( const wxString& path
+ 
+ #if wxUSE_GUI
+ 
+-#if !wxOSX_USE_IPHONE
++#if wxOSX_USE_IPHONE
++#include <CoreGraphics/CoreGraphics.h>
++#else
+ #include <ApplicationServices/ApplicationServices.h>
+ #endif
+ 

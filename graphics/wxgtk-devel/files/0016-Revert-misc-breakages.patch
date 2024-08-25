@@ -1,0 +1,785 @@
+From 2a8b9818577cb46a30e28a47deed987a62476537 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Tue, 30 Jul 2024 04:33:45 +0800
+Subject: [PATCH] Revert misc breakages
+
+diff --git src/osx/cocoa/colour.mm src/osx/cocoa/colour.mm
+index d78825a469..cae28615e1 100644
+--- src/osx/cocoa/colour.mm
++++ src/osx/cocoa/colour.mm
+@@ -178,8 +178,86 @@ WX_NSImage wxNSColorRefData::GetNSPatternImage() const
+ 
+ WX_NSColor wxColourRefData::GetNSColor() const
+ {
+-    wxOSXEffectiveAppearanceSetter helper;
+-    return [NSColor colorWithCalibratedRed:Red() green:Green() blue:Blue() alpha:Alpha() ];
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 1080
++    if ( WX_IS_MACOS_AVAILABLE(10, 8) ) {
++        wxOSXEffectiveAppearanceSetter helper;
++        return [m_nsColour CGColor];
++    }
++#endif
++    CGColorRef cgcolor = NULL;
++
++    // Simplest case is when we can directly get the RGBA components:
++    if (NSColor* colRGBA = [m_nsColour colorUsingColorSpaceName:NSCalibratedRGBColorSpace])
++    {
++        CGFloat components[4];
++        [colRGBA getRed:&components[0] green:&components[1] blue:&components[2] alpha:&components[3]];
++
++        cgcolor = CGColorCreate(wxMacGetGenericRGBColorSpace(), components);
++    }
++    // Some colours use patterns, we can handle them with the help of CGColorRef
++    else if (NSColor* colPat = [m_nsColour colorUsingColorSpaceName:NSPatternColorSpace])
++    {
++        NSImage* const nsimage = [colPat patternImage];
++        if (nsimage)
++        {
++            NSSize size = [nsimage size];
++            NSRect r = NSMakeRect(0, 0, size.width, size.height);
++            CGImageRef cgimage = [nsimage CGImageForProposedRect:&r context:nil hints:nil];
++            if (cgimage)
++            {
++                // Callbacks for CGPatternCreate()
++                struct PatternCreateCallbacks
++                {
++                    static void Draw(void* info, CGContextRef ctx)
++                    {
++                        CGImageRef image = (CGImageRef)info;
++                        CGContextDrawImage(
++                            ctx,
++                            CGRectMake(0, 0, CGImageGetWidth(image), CGImageGetHeight(image)),
++                            image);
++                    }
++
++                    static void Release(void* WXUNUSED(info))
++                    {
++                        // Do not release the image here, we don't own it as it
++                        // comes from NSImage.
++                    }
++                };
++
++                const CGPatternCallbacks callbacks = {
++                    /* version: */ 0,
++                    &PatternCreateCallbacks::Draw,
++                    &PatternCreateCallbacks::Release
++                };
++
++                CGPatternRef pattern = CGPatternCreate(
++                                            cgimage,
++                                            CGRectMake(0, 0, size.width, size.height),
++                                            CGAffineTransformMake(1, 0, 0, 1, 0, 0),
++                                            size.width,
++                                            size.height,
++                                            kCGPatternTilingConstantSpacing,
++                                            /* isColored: */ true,
++                                            &callbacks
++                                       );
++                CGColorSpaceRef space = CGColorSpaceCreatePattern(NULL);
++                CGFloat components[1] = { 1.0 };
++                cgcolor = CGColorCreateWithPattern(space, pattern, components);
++                CGColorSpaceRelease(space);
++                CGPatternRelease(pattern);
++            }
++        }
++    }
++
++    if (cgcolor == NULL)
++    {
++        // Don't assert here, this will more likely than not result in a crash as
++        // colours are often created in drawing code which will be called again
++        // when the assert dialog is shown, resulting in a recursive assertion
++        // failure and, hence, a crash.
++        NSLog(@"Failed to convert NSColor \"%@\" to CGColorRef.", m_nsColour);
++    }
++    return cgcolor;
+ }
+ 
+ WX_NSImage wxColourRefData::GetNSPatternImage() const
+diff --git src/osx/cocoa/dataview.mm src/osx/cocoa/dataview.mm
+index fde7b9e88c..1e83dc2e2f 100644
+--- src/osx/cocoa/dataview.mm
++++ src/osx/cocoa/dataview.mm
+@@ -2977,11 +2977,19 @@ bool wxDataViewTextRenderer::MacRender()
+             [par setLineBreakMode:[cell lineBreakMode]];
+             // Tightening looks very ugly when combined with non-tightened rows,
+             // so disabled it on OS X version where it's used:
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 101100
+             if ( WX_IS_MACOS_AVAILABLE(10, 11) )
++            {
+                 [par setAllowsDefaultTighteningForTruncation:NO];
++            }
+             else
++#endif
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
++            if ( WX_IS_MACOS_AVAILABLE(10, 10) )
++            {
+                 [par setTighteningFactorForTruncation:0.0];
+-
++            }
++#endif
+             [str addAttribute:NSParagraphStyleAttributeName
+                         value:par
+                         range:NSMakeRange(0, [str length])];
+diff --git src/osx/cocoa/mediactrl.mm src/osx/cocoa/mediactrl.mm
+index 931e1aa630..f9a2e14c9a 100644
+--- src/osx/cocoa/mediactrl.mm
++++ src/osx/cocoa/mediactrl.mm
+@@ -29,7 +29,7 @@
+ #include "wx/osx/private.h"
+ #include "wx/osx/private/available.h"
+ 
+-#if wxOSX_USE_COCOA
++#if wxOSX_USE_COCOA && MAC_OS_X_VERSION_MAX_ALLOWED >= 1090 && defined(__LP64__)
+     #define wxOSX_USE_AVKIT 1
+ #endif
+ 
+@@ -272,6 +272,7 @@ private:
+ 
+ #if wxOSX_USE_AVKIT
+ 
++WX_API_AVAILABLE_MACOS(10, 10)
+ @interface wxAVPlayerView : AVPlayerView
+ {
+ }
+@@ -391,12 +392,18 @@ bool wxAVMediaBackend::CreateControl(wxControl* inctrl, wxWindow* parent,
+ 
+     WXWidget view = nullptr;
+ #if wxOSX_USE_AVKIT
+-    view = [[wxAVPlayerView alloc] initWithFrame: r player:m_player];
+-    [(wxAVPlayerView*) view setControlsStyle:AVPlayerViewControlsStyleNone];
+-#else
+-    view = [[wxAVView alloc] initWithFrame: r player:m_player];
++    if ( WX_IS_MACOS_AVAILABLE(10, 10) )
++    {
++        view = [[wxAVPlayerView alloc] initWithFrame: r player:m_player];
++        [(wxAVPlayerView*) view setControlsStyle:AVPlayerViewControlsStyleNone];
++    }
+ #endif
+ 
++    if ( view == NULL )
++    {
++        view = [[wxAVView alloc] initWithFrame: r player:m_player];
++    }
++
+ #if wxOSX_USE_IPHONE
+     wxWidgetIPhoneImpl* impl = new wxWidgetIPhoneImpl(mediactrl,view);
+ #else
+@@ -553,14 +560,17 @@ bool wxAVMediaBackend::ShowPlayerControls(wxMediaCtrlPlayerControls flags)
+ void wxAVMediaBackend::DoShowPlayerControls(wxMediaCtrlPlayerControls flags)
+ {
+ #if wxOSX_USE_AVKIT
+-    NSView* view = m_ctrl->GetHandle();
+-    if ( [view isKindOfClass:[wxAVPlayerView class]] )
++    if ( WX_IS_MACOS_AVAILABLE(10, 10) )
+     {
+-        wxAVPlayerView* playerView = (wxAVPlayerView*) view;
+-        if (flags == wxMEDIACTRLPLAYERCONTROLS_NONE )
+-            playerView.controlsStyle = AVPlayerViewControlsStyleNone;
+-        else
+-            playerView.controlsStyle = AVPlayerViewControlsStyleDefault;
++        NSView* view = m_ctrl->GetHandle();
++        if ( [view isKindOfClass:[wxAVPlayerView class]] )
++        {
++            wxAVPlayerView* playerView = (wxAVPlayerView*) view;
++            if (flags == wxMEDIACTRLPLAYERCONTROLS_NONE )
++                playerView.controlsStyle = AVPlayerViewControlsStyleNone;
++            else
++                playerView.controlsStyle = AVPlayerViewControlsStyleDefault;
++        }
+     }
+ #endif
+ }
+diff --git src/osx/cocoa/notifmsg.mm src/osx/cocoa/notifmsg.mm
+index 29d84f0194..d2696c3b14 100644
+--- src/osx/cocoa/notifmsg.mm
++++ src/osx/cocoa/notifmsg.mm
+@@ -29,7 +29,9 @@
+ 
+ #include "wx/osx/private.h"
+ #include "wx/osx/private/available.h"
++#include "wx/generic/notifmsg.h"
+ #include "wx/private/notifmsg.h"
++#include "wx/generic/private/notifmsg.h"
+ #include "wx/timer.h"
+ #include "wx/platinfo.h"
+ #include "wx/artprov.h"
+@@ -39,6 +41,7 @@
+ #include "wx/utils.h"
+ #include <map>
+ 
++WX_API_AVAILABLE_MACOS(10, 8)
+ @interface wxUserNotificationHandler : NSObject <NSUserNotificationCenterDelegate>
+ 
+ @end
+@@ -47,7 +50,7 @@
+ // wxUserNotificationMsgImpl
+ // ----------------------------------------------------------------------------
+ 
+-class wxUserNotificationMsgImpl : public wxNotificationMessageImpl
++class WX_API_AVAILABLE_MACOS(10, 8) wxUserNotificationMsgImpl : public wxNotificationMessageImpl
+ {
+ public:
+     wxUserNotificationMsgImpl(wxNotificationMessageBase* notification) :
+@@ -115,7 +118,11 @@ public:
+     
+     virtual void SetIcon(const wxIcon& icon) override
+     {
+-        m_notif.contentImage = icon.GetNSImage();
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 1090
++        // Additional icon in the notification is only supported on OS X 10.9+
++        if ( WX_IS_MACOS_AVAILABLE(10, 9) )
++            m_notif.contentImage = icon.GetNSImage();
++#endif
+     }
+     
+     virtual bool AddAction(wxWindowID actionid, const wxString &label) override
+@@ -240,7 +247,12 @@ int wxUserNotificationMsgImpl::ms_notifIdBase = 1000;
+ 
+ void wxNotificationMessage::Init()
+ {
+-    m_impl = new wxUserNotificationMsgImpl(this);
++    // Native notifications are not available prior to 10.8, fallback
++    // to generic ones on 10.7
++    if ( WX_IS_MACOS_AVAILABLE(10, 8) )
++        m_impl = new wxUserNotificationMsgImpl(this);
++    else
++        m_impl = new wxGenericNotificationMessageImpl(this);
+ }
+ 
+ #endif // wxUSE_NOTIFICATION_MESSAGE && defined(wxHAS_NATIVE_NOTIFICATION_MESSAGE)
+diff --git src/osx/cocoa/power.mm src/osx/cocoa/power.mm
+index f977a3f64a..519c11c307 100644
+--- src/osx/cocoa/power.mm
++++ src/osx/cocoa/power.mm
+@@ -37,31 +37,74 @@ bool UpdatePowerResourceUsage(wxPowerResourceKind kind, const wxString& reason)
+         if( reason.IsEmpty())
+             cfreason = wxString("User Activity");
+ 
+-        if ( !g_processInfoActivity )
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 1090
++        if ( WX_IS_MACOS_AVAILABLE(10, 9) )
+         {
+-            NSActivityOptions
+-                options = NSActivityUserInitiated |
+-                          NSActivityIdleSystemSleepDisabled;
++            // Use NSProcessInfo for 10.9 and newer
++            if ( !g_processInfoActivity )
++            {
++                NSActivityOptions
++                    options = NSActivityUserInitiated |
++                              NSActivityIdleSystemSleepDisabled;
++
++                if ( kind == wxPOWER_RESOURCE_SCREEN )
++                    options |= NSActivityIdleDisplaySleepDisabled;
++
++                g_processInfoActivity = [[NSProcessInfo processInfo]
++                                         beginActivityWithOptions:options
++                                         reason:cfreason.AsNSString()];
++                [g_processInfoActivity retain];
++                return true;
++            }
++        }
++        else
++#endif
++        if ( !g_pmAssertionID )
++        {
++            CFStringRef assertType;
+ 
+             if ( kind == wxPOWER_RESOURCE_SCREEN )
+-                options |= NSActivityIdleDisplaySleepDisabled;
+-
+-            g_processInfoActivity = [[NSProcessInfo processInfo]
+-                                     beginActivityWithOptions:options
+-                                     reason:cfreason.AsNSString()];
+-            [g_processInfoActivity retain];
+-            return true;
++                assertType = kIOPMAssertionTypeNoDisplaySleep;
++            else
++                assertType = kIOPMAssertionTypeNoIdleSleep;
++
++            // Use power manager API for < 10.9 systems
++            IOReturn success = IOPMAssertionCreateWithName
++                               (
++                                    assertType,
++                                    kIOPMAssertionLevelOn,
++                                    cfreason,
++                                    &g_pmAssertionID
++                               );
++            if ( success == kIOReturnSuccess )
++                return true;
+         }
+     }
+     else if ( g_powerResourceSystemRefCount == 0 )
+     {
+-        if ( g_processInfoActivity )
++        // Release power assertion
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 1090
++        if ( WX_IS_MACOS_AVAILABLE(10, 9) )
+         {
+-            [[NSProcessInfo processInfo]
+-             endActivity:(id)g_processInfoActivity];
+-            g_processInfoActivity = nil;
++            // Use NSProcessInfo for 10.9 and newer
++            if ( g_processInfoActivity )
++            {
++                [[NSProcessInfo processInfo]
++                 endActivity:(id)g_processInfoActivity];
++                g_processInfoActivity = nil;
+ 
+-            return true;
++                return true;
++            }
++        }
++        else
++#endif
++        if ( g_pmAssertionID )
++        {
++            // Use power manager API for < 10.9 systems
++            IOReturn success = IOPMAssertionRelease(g_pmAssertionID);
++            g_pmAssertionID = 0;
++            if (success == kIOReturnSuccess)
++                return true;
+         }
+     }
+ 
+diff --git src/osx/cocoa/utils.mm src/osx/cocoa/utils.mm
+index 6fab980cf9..bec4bfcac5 100644
+--- src/osx/cocoa/utils.mm
++++ src/osx/cocoa/utils.mm
+@@ -47,15 +47,15 @@ void wxBell()
+ - (void)applicationWillFinishLaunching:(NSNotification *)application
+ {
+     wxUnusedVar(application);
+-    
++
+     // we must install our handlers later than setting the app delegate, because otherwise our handlers
+     // get overwritten in the meantime
+ 
+     NSAppleEventManager *appleEventManager = [NSAppleEventManager sharedAppleEventManager];
+-    
++
+     [appleEventManager setEventHandler:self andSelector:@selector(handleGetURLEvent:withReplyEvent:)
+                          forEventClass:kInternetEventClass andEventID:kAEGetURL];
+-    
++
+     [appleEventManager setEventHandler:self andSelector:@selector(handleOpenAppEvent:withReplyEvent:)
+                          forEventClass:kCoreEventClass andEventID:kAEOpenApplication];
+ 
+@@ -110,7 +110,14 @@ void wxBell()
+ 
+         if ( activate ) {
+             if ( [NSApp activationPolicy] == NSApplicationActivationPolicyAccessory ) {
+-                [[NSRunningApplication currentApplication] activateWithOptions: NSApplicationActivateIgnoringOtherApps];
++                if ( WX_IS_MACOS_AVAILABLE(10, 9) ) {
++                    [[NSRunningApplication currentApplication] activateWithOptions:
++                    (NSApplicationActivateAllWindows | NSApplicationActivateIgnoringOtherApps)];
++                }
++                else {
++                    [self deactivate];
++                    [self activateIgnoringOtherApps:YES];
++                }
+             }
+             else {
+                 [NSApp activateIgnoringOtherApps: YES];
+diff --git src/osx/cocoa/utils_base.mm src/osx/cocoa/utils_base.mm
+index c42f676d8b..9cb86ea307 100644
+--- src/osx/cocoa/utils_base.mm
++++ src/osx/cocoa/utils_base.mm
+@@ -24,6 +24,11 @@
+ #include "wx/osx/private.h"
+ #include "wx/osx/private/available.h"
+ 
++#if (defined(__WXOSX_COCOA__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101000) \
++    || (defined(__WXOSX_IPHONE__) && defined(__IPHONE_8_0))
++    #define wxHAS_NSPROCESSINFO 1
++#endif
++
+ #include <AppKit/AppKit.h>
+ 
+ #if wxUSE_SOCKETS
+@@ -38,28 +43,90 @@ wxSocketManager *wxOSXSocketManagerCF = nullptr;
+ // our OS version is the same in non GUI and GUI cases
+ wxOperatingSystemId wxGetOsVersion(int *verMaj, int *verMin, int *verMicro)
+ {
+-    NSOperatingSystemVersion osVer = [NSProcessInfo processInfo].operatingSystemVersion;
++#ifdef wxHAS_NSPROCESSINFO
++    // Note: we don't use WX_IS_MACOS_AVAILABLE() here because these properties
++    // are only officially supported since 10.10, but are actually available
++    // under 10.9 too, so we prefer to check for them explicitly and suppress
++    // the warnings that using without a __builtin_available() check around
++    // them generates.
++    wxCLANG_WARNING_SUPPRESS(unguarded-availability)
++
++    if ([NSProcessInfo instancesRespondToSelector:@selector(operatingSystemVersion)])
++    {
++        NSOperatingSystemVersion osVer = [NSProcessInfo processInfo].operatingSystemVersion;
++
++        if ( verMaj != NULL )
++            *verMaj = osVer.majorVersion;
++
++        if ( verMin != NULL )
++            *verMin = osVer.minorVersion;
++
++        if ( verMicro != NULL )
++            *verMicro = osVer.patchVersion;
++    }
++
++    wxCLANG_WARNING_RESTORE(unguarded-availability)
++
++    else
++#endif
++    {
++        // On OS X versions prior to 10.10 NSProcessInfo does not provide the OS version
++        // Deprecated Gestalt calls are required instead
++wxGCC_WARNING_SUPPRESS(deprecated-declarations)
++        SInt32 maj, min, micro;
++#ifdef __WXOSX_IPHONE__
++        maj = 7;
++        min = 0;
++        micro = 0;
++#else
++        Gestalt(gestaltSystemVersionMajor, &maj);
++        Gestalt(gestaltSystemVersionMinor, &min);
++        Gestalt(gestaltSystemVersionBugFix, &micro);
++#endif
++wxGCC_WARNING_RESTORE()
+ 
+     if ( verMaj != nullptr )
+-        *verMaj = osVer.majorVersion;
++        *verMaj = maj;
+ 
+     if ( verMin != nullptr )
+-        *verMin = osVer.minorVersion;
++        *verMin = min;
+ 
+     if ( verMicro != nullptr )
+-        *verMicro = osVer.patchVersion;
++        *verMicro = micro;
++    }
+ 
+     return wxOS_MAC_OSX_DARWIN;
+ }
+ 
+ bool wxCheckOsVersion(int majorVsn, int minorVsn, int microVsn)
+ {
+-    NSOperatingSystemVersion osVer;
+-    osVer.majorVersion = majorVsn;
+-    osVer.minorVersion = minorVsn;
+-    osVer.patchVersion = microVsn;
++#ifdef wxHAS_NSPROCESSINFO
++    // As above, this API is effectively available earlier than its
++    // availability attribute indicates, so check for it manually.
++    wxCLANG_WARNING_SUPPRESS(unguarded-availability)
++
++    if ([NSProcessInfo instancesRespondToSelector:@selector(isOperatingSystemAtLeastVersion:)])
++    {
++        NSOperatingSystemVersion osVer;
++        osVer.majorVersion = majorVsn;
++        osVer.minorVersion = minorVsn;
++        osVer.patchVersion = microVsn;
++
++        return [[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:osVer] != NO;
++    }
++
++    wxCLANG_WARNING_RESTORE(unguarded-availability)
++
++    else
++#endif
++    {
++        int majorCur, minorCur, microCur;
++        wxGetOsVersion(&majorCur, &minorCur, &microCur);
+ 
+-    return [[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:osVer] != NO;
++        return majorCur > majorVsn
++            || (majorCur == majorVsn && minorCur >= minorVsn)
++            || (majorCur == majorVsn && minorCur == minorVsn && microCur >= microVsn);
++    }
+ }
+ 
+ wxString wxGetOsDescription()
+@@ -184,57 +251,68 @@ bool wxCocoaLaunch(const char* const* argv, pid_t &pid)
+ 
+     NSMutableArray *params = [[NSMutableArray alloc] init];
+ 
+-    // Loop through command line arguments to the bundle,
+-    // turn them into CFURLs and then put them in cfaFiles
+-    // For use to launch services call
+-    for( ; *argv != nullptr; ++argv )
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
++    if (  WX_IS_MACOS_AVAILABLE(10, 10) )
+     {
+-        NSURL *cfurlCurrentFile;
+-        wxString dir( *argv );
+-        if( wxFileName::DirExists(dir) )
+-        {
+-            // First, try creating as a directory
+-            cfurlCurrentFile = [NSURL fileURLWithPath:wxCFStringRef(dir).AsNSString() isDirectory:YES];
+-        }
+-        else if( wxFileName::FileExists(dir) )
++        // Loop through command line arguments to the bundle,
++        // turn them into CFURLs and then put them in cfaFiles
++        // For use to launch services call
++        for( ; *argv != NULL; ++argv )
+         {
+-            // And if it isn't a directory try creating it
+-            // as a regular file
+-            cfurlCurrentFile = [NSURL fileURLWithPath:wxCFStringRef(dir).AsNSString() isDirectory:NO];
+-        }
+-        else
+-        {
+-            // Argument did not refer to
+-            // an entry in the local filesystem,
+-            // so try creating it through CFURLCreateWithString
+-            cfurlCurrentFile = [NSURL URLWithString:wxCFStringRef(dir).AsNSString()];
+-        }
++            NSURL *cfurlCurrentFile;
++            wxString dir( *argv );
++            if( wxFileName::DirExists(dir) )
++            {
++                // First, try creating as a directory
++                cfurlCurrentFile = [NSURL fileURLWithPath:wxCFStringRef(dir).AsNSString() isDirectory:YES];
++            }
++            else if( wxFileName::FileExists(dir) )
++            {
++                // And if it isn't a directory try creating it
++                // as a regular file
++                cfurlCurrentFile = [NSURL fileURLWithPath:wxCFStringRef(dir).AsNSString() isDirectory:NO];
++            }
++            else
++            {
++                // Argument did not refer to
++                // an entry in the local filesystem,
++                // so try creating it through CFURLCreateWithString
++                cfurlCurrentFile = [NSURL URLWithString:wxCFStringRef(dir).AsNSString()];
++            }
+ 
+-        // Continue in the loop if the CFURL could not be created
+-        if(cfurlCurrentFile == nil)
+-        {
+-            wxLogDebug(
+-                       wxT("wxCocoaLaunch Could not create NSURL for argument:%s"),
+-                       *argv);
+-            continue;
+-        }
++            // Continue in the loop if the CFURL could not be created
++            if(cfurlCurrentFile == nil)
++            {
++                wxLogDebug(
++                           wxT("wxCocoaLaunch Could not create NSURL for argument:%s"),
++                           *argv);
++                continue;
++            }
+ 
+-        // Add the valid CFURL to the argument array and then
+-        // release it as the CFArray adds a ref count to it
+-        [params addObject:cfurlCurrentFile];
+-    }
++            // Add the valid CFURL to the argument array and then
++            // release it as the CFArray adds a ref count to it
++            [params addObject:cfurlCurrentFile];
++        }
++     }
++#endif
+ 
+     NSWorkspace *ws = [NSWorkspace sharedWorkspace];
+ 
++
+     NSRunningApplication *app = nil;
+ 
+-    if ( [params count] > 0 )
+-        app = [ws openURLs:params withApplicationAtURL:url
+-                   options:NSWorkspaceLaunchAsync
+-             configuration:[NSDictionary dictionary]
+-                     error:&error];
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
++    if ( WX_IS_MACOS_AVAILABLE(10, 10) )
++    {
++        if ( [params count] > 0 )
++            app = [ws openURLs:params withApplicationAtURL:url
++                       options:NSWorkspaceLaunchAsync
++                 configuration:[NSDictionary dictionary]
++                         error:&error];
++    }
+ 
+     if ( app == nil )
++#endif
+     {
+         app = [ws launchApplicationAtURL:url
+                                  options:NSWorkspaceLaunchAsync
+diff --git src/osx/cocoa/window.mm src/osx/cocoa/window.mm
+index a792aa57e6..fe500cf791 100644
+--- src/osx/cocoa/window.mm
++++ src/osx/cocoa/window.mm
+@@ -1125,6 +1125,8 @@ void wxOSX_insertText(NSView* self, SEL _cmd, NSString* text)
+     impl->insertText(text, self, _cmd);
+ }
+ 
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
++WX_API_AVAILABLE_MACOS(10, 10)
+ void wxOSX_panGestureEvent(NSView* self, SEL WXUNUSED(_cmd), NSPanGestureRecognizer* panGestureRecognizer)
+ {
+     wxWidgetCocoaImpl* impl = (wxWidgetCocoaImpl* ) wxWidgetImpl::FindFromWXWidget( self );
+@@ -1134,6 +1136,7 @@ void wxOSX_panGestureEvent(NSView* self, SEL WXUNUSED(_cmd), NSPanGestureRecogni
+     impl->PanGestureEvent(panGestureRecognizer);
+ }
+ 
++WX_API_AVAILABLE_MACOS(10, 10)
+ void wxOSX_zoomGestureEvent(NSView* self, SEL WXUNUSED(_cmd), NSMagnificationGestureRecognizer* magnificationGestureRecognizer)
+ {
+     wxWidgetCocoaImpl* impl = (wxWidgetCocoaImpl* ) wxWidgetImpl::FindFromWXWidget( self );
+@@ -1143,6 +1146,7 @@ void wxOSX_zoomGestureEvent(NSView* self, SEL WXUNUSED(_cmd), NSMagnificationGes
+     impl->ZoomGestureEvent(magnificationGestureRecognizer);
+ }
+ 
++WX_API_AVAILABLE_MACOS(10, 10)
+ void wxOSX_rotateGestureEvent(NSView* self, SEL WXUNUSED(_cmd), NSRotationGestureRecognizer* rotationGestureRecognizer)
+ {
+     wxWidgetCocoaImpl* impl = (wxWidgetCocoaImpl* ) wxWidgetImpl::FindFromWXWidget( self );
+@@ -1152,6 +1156,7 @@ void wxOSX_rotateGestureEvent(NSView* self, SEL WXUNUSED(_cmd), NSRotationGestur
+     impl->RotateGestureEvent(rotationGestureRecognizer);
+ }
+ 
++WX_API_AVAILABLE_MACOS(10, 10)
+ void wxOSX_longPressEvent(NSView* self, SEL WXUNUSED(_cmd), NSPressGestureRecognizer* pressGestureRecognizer)
+ {
+     wxWidgetCocoaImpl* impl = (wxWidgetCocoaImpl* ) wxWidgetImpl::FindFromWXWidget( self );
+@@ -1161,6 +1166,7 @@ void wxOSX_longPressEvent(NSView* self, SEL WXUNUSED(_cmd), NSPressGestureRecogn
+     impl->LongPressEvent(pressGestureRecognizer);
+ }
+ 
++WX_API_AVAILABLE_MACOS(10, 10)
+ void wxOSX_touchesBegan(NSView* self, SEL WXUNUSED(_cmd), NSEvent *event)
+ {
+     wxWidgetCocoaImpl* impl = (wxWidgetCocoaImpl* ) wxWidgetImpl::FindFromWXWidget( self );
+@@ -1170,6 +1176,7 @@ void wxOSX_touchesBegan(NSView* self, SEL WXUNUSED(_cmd), NSEvent *event)
+     impl->TouchesBegan(event);
+ }
+ 
++WX_API_AVAILABLE_MACOS(10, 10)
+ void wxOSX_touchesMoved(NSView* self, SEL WXUNUSED(_cmd), NSEvent *event)
+ {
+     wxWidgetCocoaImpl* impl = (wxWidgetCocoaImpl* ) wxWidgetImpl::FindFromWXWidget( self );
+@@ -1179,6 +1186,7 @@ void wxOSX_touchesMoved(NSView* self, SEL WXUNUSED(_cmd), NSEvent *event)
+     impl->TouchesMoved(event);
+ }
+ 
++WX_API_AVAILABLE_MACOS(10, 10)
+ void wxOSX_touchesEnded(NSView* self, SEL WXUNUSED(_cmd), NSEvent *event)
+ {
+     wxWidgetCocoaImpl* impl = (wxWidgetCocoaImpl* ) wxWidgetImpl::FindFromWXWidget( self );
+@@ -1187,6 +1195,7 @@ void wxOSX_touchesEnded(NSView* self, SEL WXUNUSED(_cmd), NSEvent *event)
+ 
+     impl->TouchesEnded(event);
+ }
++#endif // MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
+ 
+ BOOL wxOSX_acceptsFirstResponder(NSView* self, SEL _cmd)
+ {
+@@ -1597,21 +1606,23 @@ void wxWidgetCocoaImpl::keyEvent(WX_NSEvent event, WXWidget slf, void *_cmd)
+ 
+         BeginNativeKeyDownEvent(event);
+     }
+-    
++
+     if ( GetFocusedViewInWindow([slf window]) != slf || m_hasEditor || !DoHandleKeyEvent(event) )
+     {
+         wxOSX_EventHandlerPtr superimpl = (wxOSX_EventHandlerPtr) [[slf superclass] instanceMethodForSelector:(SEL)_cmd];
+         superimpl(slf, (SEL)_cmd, event);
+     }
+-    
++
+     if ( [event type] == NSKeyDown )
+     {
+         EndNativeKeyDownEvent();
+     }
+ }
+ 
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
++
+ // Class containing data used for gestures support.
+-class wxCocoaGesturesImpl
++class WX_API_AVAILABLE_MACOS(10, 10) wxCocoaGesturesImpl
+ {
+ public:
+     wxCocoaGesturesImpl(wxWidgetCocoaImpl* impl, NSView* view, int eventsMask)
+@@ -2181,6 +2192,7 @@ void wxCocoaGesturesImpl::TouchesEnded(NSEvent* event)
+         m_activeGestures &= ~press_and_tap;
+     }
+ }
++#endif // MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
+ 
+ void wxWidgetCocoaImpl::insertText(NSString* text, WXWidget slf, void *_cmd)
+ {
+@@ -2639,7 +2651,9 @@ wxWidgetCocoaImpl::~wxWidgetCocoaImpl()
+     if ( m_osxView )
+         CFRelease(m_osxView);
+ 
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
+     wxCocoaGestures::EraseForObject(this);
++#endif // MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
+ }
+ 
+ void wxWidgetCocoaImpl::BeginNativeKeyDownEvent( NSEvent* event )
+@@ -3799,19 +3813,22 @@ void wxWidgetCocoaImpl::InstallEventHandler( WXWidget control )
+ 
+ bool wxWidgetCocoaImpl::EnableTouchEvents(int eventsMask)
+ {
+-    if ( HasUserMouseHandling() )
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
++    if ( WX_IS_MACOS_AVAILABLE(10, 10) )
+     {
+-        if ( eventsMask == wxTOUCH_NONE )
++        if ( HasUserMouseHandling() )
+         {
+-            if ( wxCocoaGestures::EraseForObject(this) )
++            if ( eventsMask == wxTOUCH_NONE )
+             {
+-                [m_osxView setAcceptsTouchEvents:NO];
++                if ( wxCocoaGestures::EraseForObject(this) )
++                {
++                    [m_osxView setAcceptsTouchEvents:NO];
++                }
++                //else: we didn't have any gesture data anyhow
+             }
+-            //else: we didn't have any gesture data anyhow
+-        }
+-        else // We do want to have gesture events.
+-        {
+-            // clang does not see that the owning object always destroys its extra field
++            else // We do want to have gesture events.
++            {
++                // clang does not see that the owning object always destroys its extra field
+ #ifndef __clang_analyzer__
+             wxCocoaGestures::StoreForObject
+             (
+@@ -3819,12 +3836,14 @@ bool wxWidgetCocoaImpl::EnableTouchEvents(int eventsMask)
+                 new wxCocoaGesturesImpl(this, m_osxView, eventsMask)
+             );
+ #endif
+-            
+-            [m_osxView setAcceptsTouchEvents:YES];
+-        }
+ 
+-        return true;
++                [m_osxView setAcceptsTouchEvents:YES];
++            }
++
++            return true;
++        }
+     }
++#endif // MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
+ 
+     wxUnusedVar(eventsMask);
+     return false;
+@@ -4060,8 +4079,8 @@ void wxWidgetCocoaImpl::SetCursor(const wxCursor& cursor)
+         NSRect location = NSZeroRect;
+         location.origin = [NSEvent mouseLocation];
+         location = [[m_osxView window] convertRectFromScreen:location];
+-        NSPoint locationInView = [m_osxView convertPoint:location.origin fromView:nil];        
+-        
++        NSPoint locationInView = [m_osxView convertPoint:location.origin fromView:nil];
++
+         if( NSMouseInRect(locationInView, [m_osxView bounds], YES) )
+         {
+             [(NSCursor*)cursor.GetHCURSOR() set];

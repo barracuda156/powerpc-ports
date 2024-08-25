@@ -1,0 +1,18 @@
+From 02ff1bc7b3d6e06bac302ccff9209efef7d02398 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sun, 28 Jul 2024 17:34:01 +0800
+Subject: [PATCH] Fix dirctrlg
+
+diff --git src/generic/dirctrlg.cpp src/generic/dirctrlg.cpp
+index f3076baa18..dae073dd45 100644
+--- src/generic/dirctrlg.cpp
++++ src/generic/dirctrlg.cpp
+@@ -97,7 +97,7 @@ size_t wxGetAvailableDrives(wxArrayString &paths, wxArrayString &names, wxArrayI
+ {
+ #if defined(wxHAS_FILESYSTEM_VOLUMES) || defined(__APPLE__)
+ 
+-#if (defined(__WIN32__) || defined(__WXOSX__)) && wxUSE_FSVOLUME
++#if (defined(__WIN32__) || defined(__APPLE__)) && wxUSE_FSVOLUME
+     // TODO: this code (using wxFSVolumeBase) should be used for all platforms
+     //       but unfortunately wxFSVolumeBase is not implemented everywhere
+     const wxArrayString as = wxFSVolumeBase::GetVolumes();

@@ -1,0 +1,240 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           active_variants 1.1
+PortGroup           cmake           1.1
+PortGroup           github          1.0
+PortGroup           legacysupport   1.1
+PortGroup           select          1.0
+PortGroup           wxWidgets       1.0
+
+# strnlen
+legacysupport.newest_darwin_requires_legacy 10
+
+# remember to bump version of wxWidgets-common
+# commit-based until next release due to a broken uilocale,
+# fixed in the master.
+github.setup        wxWidgets wxWidgets 5622d997f35c52e8f220bd48d2a186ddd1ed8116
+version             2024.07.29
+github.tarball_from archive
+revision            0
+
+name                wxgtk-devel
+
+set installname     wxGTK
+set wxtype          gtk3
+
+set branch          3.3
+
+wxWidgets.use       wxGTK-${branch}
+
+categories          graphics devel
+license             wxwidgets-3.1
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+
+description         C++ framework for cross-platform GUI development
+long_description    wxWidgets ${branch} is an open-source cross-platform C++ \
+                    GUI framework for Mac OS, Unix, Linux, Windows.
+
+homepage            https://www.wxwidgets.org
+
+fetch.type          git
+
+post-fetch {
+    system -W ${worksrcpath} "git submodule update --init"
+}
+
+dist_subdir         wxWidgets/${branch}
+
+set selectdir       ${workpath}/select
+select.group        wxWidgets
+select.file         ${selectdir}/${subport}
+
+cmake.generator     Ninja
+
+compiler.c_standard   2011
+compiler.cxx_standard 2017
+compiler.thread_local_storage yes
+
+depends_build-append \
+                    path:bin/pkg-config:pkgconfig
+
+depends_lib-append  path:lib/pkgconfig/cairo.pc:cairo \
+                    port:curl \
+                    port:expat \
+                    port:fontconfig \
+                    path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    path:lib/pkgconfig/gtk+-3.0.pc:gtk3 \
+                    port:jbigkit \
+                    port:libGLU \
+                    port:libiconv \
+                    path:include/turbojpeg.h:libjpeg-turbo \
+                    port:libpng \
+                    port:mesa \
+                    path:lib/pkgconfig/pango.pc:pango \
+                    port:pcre2 \
+                    port:tiff \
+                    port:xorg-libX11 \
+                    port:zlib
+
+require_active_variants path:lib/pkgconfig/cairo.pc:cairo x11
+require_active_variants gtk3 x11
+require_active_variants path:lib/pkgconfig/pango.pc:pango x11
+
+depends_run         port:wxWidgets-common \
+                    port:wxWidgets_select
+
+post-patch {
+    file mkdir ${selectdir}
+    system "echo \"${wxWidgets.wxdir}/wx-config\n${wxWidgets.wxdir}/wxrc-${branch}\" > ${select.file}"
+}
+
+# -DwxUSE_UNSAFE_WXSTRING_CONV=ON is needed, otherwise dependents may break badly:
+configure.args-append \
+                    -DCMAKE_INSTALL_PREFIX=${wxWidgets.prefix} \
+                    -DwxBUILD_COMPATIBILITY="3.0" \
+                    -DwxBUILD_MONOLITHIC=OFF \
+                    -DwxBUILD_OPTIMISE=ON \
+                    -DwxBUILD_SHARED=ON \
+                    -DwxBUILD_STRIPPED_RELEASE=OFF \
+                    -DwxBUILD_TESTS=OFF \
+                    -DwxCXX_STANDARD_DEFAULT="17" \
+                    -DwxBUILD_TOOLKIT=gtk3 \
+                    -DwxUSE_AUI=ON \
+                    -DwxUSE_CAIRO_DEFAULT=ON \
+                    -DwxUSE_DEBUGREPORT=OFF \
+                    -DwxUSE_DISPLAY=ON \
+                    -DwxUSE_EXPAT=sys \
+                    -DwxUSE_GEOMETRY=ON \
+                    -DwxUSE_GLCANVAS_EGL=OFF \
+                    -DwxUSE_LIBGNOMEVFS=OFF \
+                    -DwxUSE_HTML=ON \
+                    -DwxUSE_JOYSTICK=OFF \
+                    -DwxUSE_LIBICONV=sys \
+                    -DwxUSE_LIBJPEG=sys \
+                    -DwxUSE_LIBLZMA=OFF \
+                    -DwxUSE_LIBNOTIFY=OFF \
+                    -DwxUSE_LIBPNG=sys \
+                    -DwxUSE_LIBSDL=OFF \
+                    -DwxUSE_LIBMSPACK=OFF \
+                    -DwxUSE_LIBTIFF=sys \
+                    -DwxUSE_MIMETYPE=ON \
+                    -DwxUSE_OPENGL=ON \
+                    -DwxUSE_POSTSCRIPT=ON \
+                    -DwxUSE_PRINTF_POS_PARAMS=ON \
+                    -DwxUSE_REGEX=sys \
+                    -DwxUSE_REPRODUCIBLE_BUILD=OFF \
+                    -DwxUSE_RICHTEXT=ON \
+                    -DwxUSE_SECRETSTORE=ON \
+                    -DwxUSE_SOCKETS=ON \
+                    -DwxUSE_SPELLCHECK=OFF \
+                    -DwxUSE_STC=OFF \
+                    -DwxUSE_STDPATHS=ON \
+                    -DwxUSE_THREADS=ON \
+                    -DwxUSE_UNICODE=ON \
+                    -DwxUSE_UNSAFE_WXSTRING_CONV=ON \
+                    -DwxUSE_WEBREQUEST=ON \
+                    -DwxUSE_WEBREQUEST_CURL=ON \
+                    -DwxUSE_WEBREQUEST_URLSESSION=OFF \
+                    -DwxUSE_WEBVIEW=OFF \
+                    -DwxUSE_XRC=ON \
+                    -DwxUSE_XTEST=ON \
+                    -DwxUSE_ZLIB=sys
+
+configure.cxxflags-append \
+                    -std=gnu++17
+
+# https://github.com/wxWidgets/wxWidgets/issues/23475
+platform darwin {
+    patchfiles-append \
+                    0001-Fix-cfstring.patch \
+                    0002-Fix-display.patch \
+                    0003-Fix-mimetype.patch \
+                    0004-Fix-toolkit.cmake.patch \
+                    0005-Stop-breaking-webrequest.patch \
+                    0006-Fix-evtloop_cf.patch \
+                    0007-intl.cpp-fix.patch \
+                    0008-Fix-dirctrlg.patch \
+                    0009-utils_base.mm-minor-fix.patch \
+                    0010-gvfs-avoid-compile-error-on-macOS.patch \
+                    0011-Fix-defs.h.patch \
+                    0012-Avoid-broken-wxUSE_WEBREQUEST_URLSESSION.patch
+
+    if {${os.major} < 16} {
+        # These patches are either incompatible or unsafe for later OS:
+        patchfiles-append \
+                    0013-Revert-7be80a858d339006113c404685f2a87c32e52acf.patch \
+                    0014-Revert-6211d53c62ed93534029c64d468bef7d37868c52.patch \
+                    0015-utilsunx-no-memset_s.patch \
+                    0016-Revert-misc-breakages.patch \
+                    0017-Mimetype-hack.patch
+
+        # This disabled uilocale, which imposes some limitations.
+        # However the current code is broken otherwise.
+        # TODO: restore a working version from 3.1.
+        configure.args-append \
+                    -DwxUSE_INTL=OFF
+
+        configure.args-replace \
+                    -DwxUSE_STDPATHS=ON -DwxUSE_STDPATHS=OFF
+    }
+
+    configure.ldflags-append \
+                    -undefined dynamic_lookup
+}
+
+# https://gitlab.kitware.com/cmake/cmake/-/issues/25514
+if {[string match *gcc* ${configure.compiler}]} {
+    configure.args-append \
+                    -DwxBUILD_PRECOMP=OFF
+}
+
+if {[string match *clang* ${configure.compiler}]} {
+    configure.args-append \
+                    -DwxUSE_COMPILER_TLS=ON
+}
+
+post-destroot {
+        foreach dylib [ exec find ${destroot}${wxWidgets.prefix}/lib -name "\*.dylib" ] {
+            regsub ":$" ${dylib} "" destroot_dylib_path
+            regsub ${destroot} ${destroot_dylib_path} "" dylib_path
+            system "install_name_tool -id ${dylib_path} ${destroot_dylib_path}"
+
+            system "install_name_tool -change ${prefix}/lib/libwx_baseu-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_baseu-3.3.0.dylib \
+                ${destroot_dylib_path}"
+            system "install_name_tool -change ${prefix}/lib/libwx_baseu_net-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_baseu_net-3.3.0.dylib \
+                ${destroot_dylib_path}"
+            system "install_name_tool -change ${prefix}/lib/libwx_baseu_xml-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_baseu_xml-3.3.0.dylib \
+                ${destroot_dylib_path}"
+            system "install_name_tool -change ${prefix}/lib/libwx_gtk3u_adv-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_gtk3u_adv-3.3.0.dylib \
+                ${destroot_dylib_path}"
+            system "install_name_tool -change ${prefix}/lib/libwx_gtk3u_aui-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_gtk3u_aui-3.3.0.dylib \
+                ${destroot_dylib_path}"
+            system "install_name_tool -change ${prefix}/lib/libwx_gtk3u_core-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_gtk3u_core-3.3.0.dylib \
+                ${destroot_dylib_path}"
+            system "install_name_tool -change ${prefix}/lib/libwx_gtk3u_gl-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_gtk3u_gl-3.3.0.dylib \
+                ${destroot_dylib_path}"
+            system "install_name_tool -change ${prefix}/lib/libwx_gtk3u_html-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_gtk3u_html-3.3.0.dylib \
+                ${destroot_dylib_path}"
+            system "install_name_tool -change ${prefix}/lib/libwx_gtk3u_media-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_gtk3u_media-3.3.0.dylib \
+                ${destroot_dylib_path}"
+            system "install_name_tool -change ${prefix}/lib/libwx_gtk3u_propgrid-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_gtk3u_propgrid-3.3.0.dylib \
+                ${destroot_dylib_path}"
+            system "install_name_tool -change ${prefix}/lib/libwx_gtk3u_ribbon-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_gtk3u_ribbon-3.3.0.dylib \
+                ${destroot_dylib_path}"
+            system "install_name_tool -change ${prefix}/lib/libwx_gtk3u_richtext-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_gtk3u_richtext-3.3.0.dylib \
+                ${destroot_dylib_path}"
+            system "install_name_tool -change ${prefix}/lib/libwx_gtk3u_xrc-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_gtk3u_xrc-3.3.0.dylib \
+                ${destroot_dylib_path}"
+
+            system "install_name_tool -change ${prefix}/lib/libwx_baseu-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_baseu-3.3.0.dylib \
+                ${destroot}${wxWidgets.prefix}/bin/wxrc-3.3"
+            system "install_name_tool -change ${prefix}/lib/libwx_baseu_xml-3.3.0.dylib ${wxWidgets.prefix}/lib/libwx_baseu_xml-3.3.0.dylib \
+                ${destroot}${wxWidgets.prefix}/bin/wxrc-3.3"
+        }
+
+    set confscript ${wxWidgets.prefix}/lib/wx/config/${wxtype}-unicode-${branch}
+    ln -sf ${confscript} ${destroot}${wxWidgets.prefix}/bin/wx-config
+}
+
+github.livecheck.regex  {([0-9.]+)}
