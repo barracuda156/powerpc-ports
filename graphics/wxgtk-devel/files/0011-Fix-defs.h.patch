@@ -1,0 +1,39 @@
+From b1243d82c5d58788f9c5c1339d82add456f176d9 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sun, 28 Jul 2024 17:47:51 +0800
+Subject: [PATCH] Fix defs.h
+
+diff --git include/wx/defs.h include/wx/defs.h
+index f877d330d3..bcfc8a74a3 100644
+--- include/wx/defs.h
++++ include/wx/defs.h
+@@ -2636,10 +2636,6 @@ typedef int (* LINKAGEMODE wxListIterateFunction)(void *current);
+ #define DECLARE_WXOSX_OPAQUE_CFREF( name ) typedef struct __##name* name##Ref;
+ #define DECLARE_WXOSX_OPAQUE_CONST_CFREF( name ) typedef const struct __##name* name##Ref;
+ 
+-#endif
+-
+-#ifdef __WXMAC__
+-
+ #define WX_OPAQUE_TYPE( name ) struct wxOpaque##name
+ 
+ typedef void*       WXHCURSOR;
+@@ -2657,7 +2653,9 @@ typedef unsigned short  WXWORD;
+ 
+ typedef WX_OPAQUE_TYPE(PicHandle ) * WXHMETAFILE ;
+ 
++#if !defined(__WXX11__) && !defined(__WXGTK__)
+ typedef void*       WXDisplay;
++#endif
+ 
+ /*
+  * core frameworks
+@@ -2735,7 +2733,7 @@ typedef HIShapeRef WXHRGN;
+ 
+ #endif // __WXMAC__
+ 
+-#if defined(__WXMAC__)
++#if defined(__WXMAC__) || defined(__OBJC__)
+ 
+ /* Objective-C type declarations.
+  * These are to be used in public headers in lieu of NSSomething* because

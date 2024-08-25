@@ -1,0 +1,62 @@
+From 725ad2430cc06ee04a5628d6475a8f06a5813ddf Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Tue, 30 Jul 2024 05:48:58 +0800
+Subject: [PATCH] Avoid broken wxUSE_WEBREQUEST_URLSESSION
+
+diff --git include/wx/osx/private/webrequest_urlsession.h include/wx/osx/private/webrequest_urlsession.h
+index 9c9f9dfe4a..e9fefb830f 100644
+--- include/wx/osx/private/webrequest_urlsession.h
++++ include/wx/osx/private/webrequest_urlsession.h
+@@ -10,7 +10,7 @@
+ #ifndef _WX_OSX_WEBREQUEST_URLSESSION_H
+ #define _WX_OSX_WEBREQUEST_URLSESSION_H
+ 
+-#if wxUSE_WEBREQUEST_URLSESSION
++#if wxUSE_WEBREQUEST_URLSESSION && !defined(__APPLE__)
+ 
+ #include "wx/private/webrequest.h"
+ 
+diff --git src/common/webrequest.cpp src/common/webrequest.cpp
+index 9fa5d7c80a..8323104824 100644
+--- src/common/webrequest.cpp
++++ src/common/webrequest.cpp
+@@ -32,7 +32,7 @@
+ #if wxUSE_WEBREQUEST_WINHTTP
+ #include "wx/msw/private/webrequest_winhttp.h"
+ #endif
+-#if wxUSE_WEBREQUEST_URLSESSION
++#if wxUSE_WEBREQUEST_URLSESSION && !defined(__APPLE__)
+ #include "wx/osx/private/webrequest_urlsession.h"
+ #endif
+ #if wxUSE_WEBREQUEST_CURL
+@@ -962,7 +962,7 @@ wxWebSession wxWebSession::New(const wxString& backendOrig)
+         {
+ #if wxUSE_WEBREQUEST_WINHTTP
+             backend = wxWebSessionBackendWinHTTP;
+-#elif wxUSE_WEBREQUEST_URLSESSION
++#elif wxUSE_WEBREQUEST_URLSESSION && !defined(__APPLE__)
+             backend = wxWebSessionBackendURLSession;
+ #elif wxUSE_WEBREQUEST_CURL
+             backend = wxWebSessionBackendCURL;
+@@ -999,7 +999,7 @@ void wxWebSession::InitFactoryMap()
+ #if wxUSE_WEBREQUEST_WINHTTP
+     RegisterFactory(wxWebSessionBackendWinHTTP, new wxWebSessionFactoryWinHTTP());
+ #endif
+-#if wxUSE_WEBREQUEST_URLSESSION
++#if wxUSE_WEBREQUEST_URLSESSION && !defined(__APPLE__)
+     RegisterFactory(wxWebSessionBackendURLSession, new wxWebSessionFactoryURLSession());
+ #endif
+ #if wxUSE_WEBREQUEST_CURL
+diff --git src/osx/webrequest_urlsession.mm src/osx/webrequest_urlsession.mm
+index 63b707176f..dc4ec3f46b 100644
+--- src/osx/webrequest_urlsession.mm
++++ src/osx/webrequest_urlsession.mm
+@@ -12,7 +12,7 @@
+ 
+ #include "wx/webrequest.h"
+ 
+-#if wxUSE_WEBREQUEST && wxUSE_WEBREQUEST_URLSESSION
++#if wxUSE_WEBREQUEST && wxUSE_WEBREQUEST_URLSESSION && !defined(__APPLE__)
+ 
+ #import <Foundation/Foundation.h>
+ 
