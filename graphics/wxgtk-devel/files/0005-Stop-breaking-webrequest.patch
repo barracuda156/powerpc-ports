@@ -1,0 +1,115 @@
+From 1a9ba259a27d98855c1c007fef620f4647eb5c1a Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sun, 28 Jul 2024 16:56:33 +0800
+Subject: [PATCH 05/16] Stop breaking webrequest
+
+---
+ include/wx/android/setup.h | 6 +++++-
+ include/wx/gtk/setup.h     | 6 +++++-
+ include/wx/msw/setup.h     | 6 +++++-
+ include/wx/osx/setup.h     | 6 +++++-
+ 4 files changed, 20 insertions(+), 4 deletions(-)
+
+diff --git include/wx/android/setup.h include/wx/android/setup.h
+index 652b874574..bf85b90105 100644
+--- include/wx/android/setup.h
++++ include/wx/android/setup.h
+@@ -585,7 +585,7 @@
+ //
+ // Recommended setting: 1, can be set to 0 if wxUSE_WEBREQUEST_CURL==1,
+ // otherwise wxWebRequest won't be available at all under Mac.
+-#ifdef __APPLE__
++#ifdef __WXMAC__
+ #define wxUSE_WEBREQUEST_URLSESSION wxUSE_WEBREQUEST
+ #else
+ #define wxUSE_WEBREQUEST_URLSESSION 0
+@@ -597,7 +597,11 @@
+ //
+ // Recommended setting: 0 on Windows and macOS, otherwise 1 as it is required
+ // for wxWebRequest to be available at all.
++#ifdef __WXMAC__
+ #define wxUSE_WEBREQUEST_CURL 0
++#else
++#define wxUSE_WEBREQUEST_CURL 1
++#endif
+ 
+ // wxProtocol and related classes: if you want to use either of wxFTP, wxHTTP
+ // or wxURL you need to set this to 1.
+diff --git include/wx/gtk/setup.h include/wx/gtk/setup.h
+index 7a75f1e1ea..e752b5c3b2 100644
+--- include/wx/gtk/setup.h
++++ include/wx/gtk/setup.h
+@@ -585,7 +585,7 @@
+ //
+ // Recommended setting: 1, can be set to 0 if wxUSE_WEBREQUEST_CURL==1,
+ // otherwise wxWebRequest won't be available at all under Mac.
+-#ifdef __APPLE__
++#ifdef __WXMAC__
+ #define wxUSE_WEBREQUEST_URLSESSION wxUSE_WEBREQUEST
+ #else
+ #define wxUSE_WEBREQUEST_URLSESSION 0
+@@ -597,7 +597,11 @@
+ //
+ // Recommended setting: 0 on Windows and macOS, otherwise 1 as it is required
+ // for wxWebRequest to be available at all.
++#ifdef __WXMAC__
+ #define wxUSE_WEBREQUEST_CURL 0
++#else
++#define wxUSE_WEBREQUEST_CURL 1
++#endif
+ 
+ // wxProtocol and related classes: if you want to use either of wxFTP, wxHTTP
+ // or wxURL you need to set this to 1.
+diff --git include/wx/msw/setup.h include/wx/msw/setup.h
+index c503c75a9b..12b27a0c95 100644
+--- include/wx/msw/setup.h
++++ include/wx/msw/setup.h
+@@ -585,7 +585,7 @@
+ //
+ // Recommended setting: 1, can be set to 0 if wxUSE_WEBREQUEST_CURL==1,
+ // otherwise wxWebRequest won't be available at all under Mac.
+-#ifdef __APPLE__
++#ifdef __WXMAC__
+ #define wxUSE_WEBREQUEST_URLSESSION wxUSE_WEBREQUEST
+ #else
+ #define wxUSE_WEBREQUEST_URLSESSION 0
+@@ -597,7 +597,11 @@
+ //
+ // Recommended setting: 0 on Windows and macOS, otherwise 1 as it is required
+ // for wxWebRequest to be available at all.
++#ifdef __WXMAC__
+ #define wxUSE_WEBREQUEST_CURL 0
++#else
++#define wxUSE_WEBREQUEST_CURL 1
++#endif
+ 
+ // wxProtocol and related classes: if you want to use either of wxFTP, wxHTTP
+ // or wxURL you need to set this to 1.
+diff --git include/wx/osx/setup.h include/wx/osx/setup.h
+index 298b64233e..5a8a3dd46b 100644
+--- include/wx/osx/setup.h
++++ include/wx/osx/setup.h
+@@ -592,7 +592,7 @@
+ //
+ // Recommended setting: 1, can be set to 0 if wxUSE_WEBREQUEST_CURL==1,
+ // otherwise wxWebRequest won't be available at all under Mac.
+-#ifdef __APPLE__
++#ifdef __WXMAC__
+ #define wxUSE_WEBREQUEST_URLSESSION wxUSE_WEBREQUEST
+ #else
+ #define wxUSE_WEBREQUEST_URLSESSION 0
+@@ -604,7 +604,11 @@
+ //
+ // Recommended setting: 0 on Windows and macOS, otherwise 1 as it is required
+ // for wxWebRequest to be available at all.
++#ifdef __WXMAC__
+ #define wxUSE_WEBREQUEST_CURL 0
++#else
++#define wxUSE_WEBREQUEST_CURL 1
++#endif
+ 
+ // wxProtocol and related classes: if you want to use either of wxFTP, wxHTTP
+ // or wxURL you need to set this to 1.
+-- 
+2.45.2
+

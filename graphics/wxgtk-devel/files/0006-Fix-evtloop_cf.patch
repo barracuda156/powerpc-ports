@@ -1,0 +1,29 @@
+From b005d6b68e1669ff9bc7be7fd0bb2565a5ee313c Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sun, 28 Jul 2024 17:25:38 +0800
+Subject: [PATCH] Fix evtloop_cf
+
+diff --git src/osx/core/evtloop_cf.cpp src/osx/core/evtloop_cf.cpp
+index 54d7e36c80..00a8cee0d0 100644
+--- src/osx/core/evtloop_cf.cpp
++++ src/osx/core/evtloop_cf.cpp
+@@ -19,7 +19,6 @@
+ // for compilers that support precompilation, includes "wx.h".
+ #include "wx/wxprec.h"
+ 
+-
+ #include "wx/evtloop.h"
+ 
+ #ifndef WX_PRECOMP
+@@ -31,7 +30,10 @@
+ 
+ #include "wx/scopedptr.h"
+ 
+-#include "wx/osx/private.h"
++#include <CoreFoundation/CoreFoundation.h>
++#include <Carbon/Carbon.h>
++
++#include "wx/osx/core/cfstring.h"
+ #include "wx/osx/core/cfref.h"
+ #include "wx/thread.h"
+ 

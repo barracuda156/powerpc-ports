@@ -1,0 +1,92 @@
+From b3bcde83d6073a4f485ad7144f501f91d21c68ee Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Tue, 30 Jul 2024 06:56:47 +0800
+Subject: [PATCH] Mimetype hack
+
+diff --git include/wx/unix/mimetype.h include/wx/unix/mimetype.h
+index 0ea94b434b..5112dc5d51 100644
+--- include/wx/unix/mimetype.h
++++ include/wx/unix/mimetype.h
+@@ -98,9 +98,9 @@ protected:
+                        wxMimeTypeCommands *entry,
+                        const wxArrayString& strExtensions,
+                        const wxString& strDesc);
+-#endif
+ 
+     virtual wxString GetIconFromMimeType(const wxString& mime);
++#endif
+ 
+     // give it access to m_aXXX variables
+     friend class WXDLLIMPEXP_FWD_BASE wxFileTypeImpl;
+diff --git src/unix/mimetype.cpp src/unix/mimetype.cpp
+index a2d17cb0a8..69bf0d2558 100644
+--- src/unix/mimetype.cpp
++++ src/unix/mimetype.cpp
+@@ -258,9 +258,9 @@ void wxMimeTypesManagerImpl::LoadXDGGlobs(const wxString& filename)
+        wxArrayString exts;
+        exts.Add( ext );
+ 
++#ifndef __APPLE__
+        wxString icon = GetIconFromMimeType(mime);
+ 
+-#ifndef __APPLE__
+        AddToMimeData(mime, icon, nullptr, exts, wxEmptyString, true );
+ #endif
+     }
+@@ -712,12 +712,12 @@ wxFileType * wxMimeTypesManagerImpl::Associate(const wxFileTypeInfo& ftInfo)
+     return GetFileTypeFromMimeType(strType);
+ }
+ 
++#ifndef __APPLE__
+ wxString wxMimeTypesManagerImpl::GetIconFromMimeType(const wxString& WXUNUSED(mime))
+ {
+     return wxString();
+ }
+ 
+-#ifndef __APPLE__
+ bool wxMimeTypesManagerImpl::DoAssociation(const wxString& strType,
+                                            const wxString& strIcon,
+                                            wxMimeTypeCommands *entry,
+@@ -1001,6 +1001,7 @@ void wxMimeTypesManagerImpl::AddMimeTypeInfo(const wxString& strMimeType,
+                                              const wxString& strExtensions,
+                                              const wxString& strDesc)
+ {
++#ifndef __APPLE__
+     // reading mailcap may find image/* , while
+     // reading mime.types finds image/gif and no match is made
+     // this means all the get functions don't work  fix this
+@@ -1017,6 +1018,7 @@ void wxMimeTypesManagerImpl::AddMimeTypeInfo(const wxString& strMimeType,
+     }
+ 
+     AddToMimeData(strMimeType, strIcon, nullptr, sExts, strDesc, true);
++#endif
+ }
+ 
+ size_t wxMimeTypesManagerImpl::EnumAllFileTypes(wxArrayString& mimetypes)
+
+diff --git include/wx/gtk/mimetype.h include/wx/gtk/mimetype.h
+index f3e0779e49..c3b6b149f0 100644
+--- include/wx/gtk/mimetype.h
++++ include/wx/gtk/mimetype.h
+@@ -23,7 +23,7 @@
+ class WXDLLIMPEXP_CORE wxGTKMimeTypesManagerImpl : public wxMimeTypesManagerImpl
+ {
+ protected:
+-#if defined(__UNIX__)
++#if defined(__UNIX__) && !defined(__APPLE__)
+     wxString GetIconFromMimeType(const wxString& mime) override;
+ #endif
+ };
+diff --git src/gtk/mimetype.cpp src/gtk/mimetype.cpp
+index 99f5aa19a0..5bfe54da0e 100644
+--- src/gtk/mimetype.cpp
++++ src/gtk/mimetype.cpp
+@@ -18,7 +18,7 @@
+ #include "wx/gtk/private/string.h"
+ #include "wx/gtk/private/object.h"
+ 
+-#if defined(__UNIX__)
++#if defined(__UNIX__) && !defined(__APPLE__)
+ wxString wxGTKMimeTypesManagerImpl::GetIconFromMimeType(const wxString& mime)
+ {
+     wxString icon;

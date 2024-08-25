@@ -1,0 +1,32 @@
+From 379d5560e9470fee66f76a8c3fd5df0b9739014e Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sun, 28 Jul 2024 15:37:12 +0800
+Subject: [PATCH] Fix display
+
+diff --git src/osx/core/display.cpp src/osx/core/display.cpp
+index 7ac37076c4..f891515735 100644
+--- src/osx/core/display.cpp
++++ src/osx/core/display.cpp
+@@ -31,6 +31,8 @@
+ 
+ #include "wx/osx/private.h"
+ 
++#ifdef __WXMAC__
++
+ // ----------------------------------------------------------------------------
+ // common helpers compiled even in wxUSE_DISPLAY==0 case
+ // ----------------------------------------------------------------------------
+@@ -441,4 +443,13 @@ protected:
+     return new wxDisplayFactorySingleMacOSX;
+ }
+ 
++#else
++
++/* static */ wxDisplayFactory *wxDisplay::CreateFactory()
++{
++    return new wxDisplayFactorySingle;
++}
++
++#endif
++
+ #endif // wxUSE_DISPLAY
