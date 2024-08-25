@@ -10,6 +10,8 @@ PortGroup               perl5 1.0
 PortGroup               compiler_blacklist_versions 1.0
 PortGroup               conflicts_build 1.0
 
+PortGroup               fixme 1.0
+
 github.setup            darktable-org darktable 4.8.1 release-
 name                    darktable-devel
 conflicts               darktable
