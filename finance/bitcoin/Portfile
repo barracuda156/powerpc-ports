@@ -13,7 +13,7 @@ legacysupport.use_mp_libcxx \
 name                    bitcoin
 categories              finance crypto
 version                 27.1
-revision                1
+revision                0
 license                 MIT
 maintainers             {easieste @easye} yopmail.com:sami.laine openmaintainer
 description             server daemon and client user interface for a peer-to-peer digital currency
