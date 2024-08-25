@@ -5,6 +5,8 @@ PortGroup           python 1.0
 PortGroup           app 1.0
 PortGroup           github 1.0
 
+PortGroup           fixme 1.0
+
 name                zim
 platforms           {darwin any}
 supported_archs     noarch
