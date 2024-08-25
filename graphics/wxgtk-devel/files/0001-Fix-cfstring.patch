@@ -1,0 +1,72 @@
+From 1e05bc356c61d1bd956e3baac8864756b89767fe Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sun, 28 Jul 2024 15:30:04 +0800
+Subject: [PATCH] Fix cfstring
+
+diff --git include/wx/osx/core/cfstring.h include/wx/osx/core/cfstring.h
+index e1a557fde8..b0ca3f4fcf 100644
+--- include/wx/osx/core/cfstring.h
++++ include/wx/osx/core/cfstring.h
+@@ -64,11 +64,10 @@ public:
+ 
+     static wxString AsString( CFStringRef ref ) ;
+     static wxString AsStringWithNormalizationFormC( CFStringRef ref ) ;
+-#ifdef __WXMAC__
++#ifdef __OBJC__
+     static wxString AsString( WX_NSString ref ) ;
+     static wxString AsStringWithNormalizationFormC( WX_NSString ref ) ;
+-#endif
+-#ifdef __OBJC__
++
+     WX_NSString AsNSString() const { return (WX_OSX_BRIDGE WX_NSString)(CFStringRef) *this; }
+ #endif
+ private:
+@@ -85,7 +84,7 @@ inline wxCFStringRef wxCFStringRefFromGet(CFStringRef p)
+     return wxCFStringRef(wxCFRetain(p));
+ }
+ 
+-#ifdef __WXMAC__
++#ifdef __OBJC__
+ /*! @function   wxCFStringRefFromGet
+     @abstract   Factory function to create wxCFStringRefRef from a NSString* obtained from a Get-rule function
+     @param  p           The NSString pointer to retain and create a wxCFStringRefRef from.  May be null.
+@@ -96,6 +95,17 @@ inline wxCFStringRef wxCFStringRefFromGet(NSString *p)
+ {
+     return wxCFStringRefFromGet((WX_OSX_BRIDGE CFStringRef)p);
+ }
++
++inline wxString wxCFStringRef::AsString( NSString* ref )
++{
++    return AsString( (CFStringRef) ref );
++}
++
++inline wxString wxCFStringRef::AsStringWithNormalizationFormC( NSString* ref )
++{
++    return AsStringWithNormalizationFormC( (CFStringRef) ref );
++}
++
+ #endif
+ 
+ #endif //__WXCFSTRINGHOLDER_H__
+diff --git src/osx/core/cfstring.cpp src/osx/core/cfstring.cpp
+index a692dbead1..3430607349 100644
+--- src/osx/core/cfstring.cpp
++++ src/osx/core/cfstring.cpp
+@@ -673,17 +673,3 @@ wxString wxCFStringRef::AsString() const
+ {
+     return AsString( get() );
+ }
+-
+-#ifdef __WXMAC__
+-
+-wxString wxCFStringRef::AsString( NSString* ref )
+-{
+-    return AsString( (CFStringRef) ref );
+-}
+-
+-wxString wxCFStringRef::AsStringWithNormalizationFormC( NSString* ref )
+-{
+-    return AsStringWithNormalizationFormC( (CFStringRef) ref );
+-}
+-
+-#endif

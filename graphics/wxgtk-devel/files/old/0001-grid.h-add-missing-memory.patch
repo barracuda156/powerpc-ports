@@ -1,0 +1,21 @@
+From 34411a7c77aee79e6f28152fc4527925183ea27e Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sun, 28 Jul 2024 16:41:15 +0800
+Subject: [PATCH] grid.h: add missing <memory>
+
+---
+ include/wx/generic/grid.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git include/wx/generic/grid.h include/wx/generic/grid.h
+index 6da5c5eac4..ad2b9de648 100644
+--- include/wx/generic/grid.h
++++ include/wx/generic/grid.h
+@@ -20,6 +20,7 @@
+ #include <iterator>
+ #include <unordered_map>
+ #include <unordered_set>
++#include <memory>
+ 
+ // ----------------------------------------------------------------------------
+ // constants

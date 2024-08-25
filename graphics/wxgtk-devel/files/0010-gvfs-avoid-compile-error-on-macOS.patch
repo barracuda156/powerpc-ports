@@ -1,0 +1,35 @@
+From 8559fc8ff325b6a5ddb949ac267472ec61cd0c09 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sun, 28 Jul 2024 17:45:27 +0800
+Subject: [PATCH] gvfs: avoid compile error on macOS
+
+diff --git src/gtk/gnome/gvfs.cpp src/gtk/gnome/gvfs.cpp
+index 951c64c296..784f82bfa3 100644
+--- src/gtk/gnome/gvfs.cpp
++++ src/gtk/gnome/gvfs.cpp
+@@ -101,7 +101,6 @@ wxMimeTypesManagerImpl *wxGnomeVFSMimeTypesManagerFactory::CreateMimeTypesManage
+     return new wxGnomeVFSMimeTypesManagerImpl;
+ }
+ 
+-
+ //----------------------------------------------------------------------------
+ // wxGnomeVFSMimeTypesManagerImpl
+ //----------------------------------------------------------------------------
+@@ -112,6 +111,9 @@ bool wxGnomeVFSMimeTypesManagerImpl::DoAssociation(const wxString& strType,
+                        const wxArrayString& strExtensions,
+                        const wxString& strDesc)
+ {
++#ifdef __APPLE__
++    return true; // nothing to do here at the moment
++#else
+     return AddToMimeData
+            (
+             strType,
+@@ -121,6 +123,7 @@ bool wxGnomeVFSMimeTypesManagerImpl::DoAssociation(const wxString& strType,
+             strDesc,
+             true
+            ) != wxNOT_FOUND;
++#endif
+ }
+ 
+ //----------------------------------------------------------------------------

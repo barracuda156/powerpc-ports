@@ -1,0 +1,18 @@
+From 9eed96cc2dfcfbb6ea5128d2969d396cad2a32a7 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Tue, 30 Jul 2024 04:17:32 +0800
+Subject: [PATCH] utilsunx: no memset_s
+
+diff --git src/unix/utilsunx.cpp src/unix/utilsunx.cpp
+index bec5151a0b..63458fe678 100644
+--- src/unix/utilsunx.cpp
++++ src/unix/utilsunx.cpp
+@@ -223,7 +223,7 @@ void wxSecureZeroMemory(void* v, size_t n)
+     // but may be found in a non-standard header file, or in a library that is
+     // not linked by default.
+     explicit_bzero(v, n);
+-#elif defined(__DARWIN__) || defined(__STDC_LIB_EXT1__)
++#elif defined(__STDC_LIB_EXT1__) && !defined(__APPLE__)
+     // memset_s() is available since OS X 10.9, and may be available on
+     // other platforms.
+     memset_s(v, n, 0, n);

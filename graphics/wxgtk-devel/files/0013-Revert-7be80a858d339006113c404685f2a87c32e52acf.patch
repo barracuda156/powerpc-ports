@@ -1,0 +1,31 @@
+From bbd71e99f16e381179e0c311ca2c9d8601866d41 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Tue, 30 Jul 2024 04:13:51 +0800
+Subject: [PATCH] Revert 7be80a858d339006113c404685f2a87c32e52acf
+
+diff --git src/osx/core/mimetype.cpp src/osx/core/mimetype.cpp
+index 432e519765..1fc83daa4d 100644
+--- src/osx/core/mimetype.cpp
++++ src/osx/core/mimetype.cpp
+@@ -423,14 +423,16 @@ void wxMimeTypesManagerImpl::LoadDisplayDataForUti(const wxString& uti)
+     const static wxCFStringRef descKey( "CFBundleTypeName" );
+     const static wxCFStringRef iconKey( "CFBundleTypeIconFile" );
+ 
+-    wxCFStringRef cfuti(uti);
+-
+-    wxCFStringRef ext = UTTypeCopyPreferredTagWithClass( cfuti, kUTTagClassFilenameExtension );
++    // The call for finding the preferred application for a UTI is LSCopyDefaultRoleHandlerForContentType
++    // This returns an empty string on OS X 10.5
++    // Instead it is necessary to get the primary extension and use LSGetApplicationForInfo
++    wxCFStringRef ext = UTTypeCopyPreferredTagWithClass( wxCFStringRef( uti ), kUTTagClassFilenameExtension );
+ 
+     // Look up the preferred application
+-    wxCFRef<CFURLRef> appUrl = LSCopyDefaultApplicationURLForContentType( cfuti, kLSRolesAll, nullptr);
++    CFURLRef appUrl;
++    OSStatus status = LSGetApplicationForInfo( kLSUnknownType, kLSUnknownCreator, ext, kLSRolesAll, NULL, &appUrl );
+ 
+-    if( !appUrl )
++    if( status != noErr )
+         return;
+ 
+     // Create a bundle object for that application
