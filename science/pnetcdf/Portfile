@@ -5,7 +5,7 @@ PortGroup               mpi 1.0
 
 name                    pnetcdf
 version                 1.12.3
-revision                0
+revision                1
 maintainers             {@thiagoveloso gmail.com:thiagoveloso} openmaintainer
 categories              science devel
 license                 Permissive
@@ -30,7 +30,7 @@ checksums               rmd160  68beaa5d32f0da382f832d3bd7db41485a0a2352 \
 if {${os.arch} eq "powerpc"} {
    mpi.setup            require -clang -gfortran
 } else {
-   mpi.setup            require -gcc12 -gfortran
+   mpi.setup            require -gcc14 -gfortran
 }
 
 #compilers.choose       fc f77 f90 cc cxx
@@ -41,7 +41,7 @@ depends_build-append    port:perl5 \
                         port:libtool \
                         port:m4
 
-default_variants        +gcc12 +mpich
+default_variants        +gcc14 +mpich
 
 use_parallel_build      yes
 
