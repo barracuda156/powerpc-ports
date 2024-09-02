@@ -1,0 +1,67 @@
+From 5c3b209d655347d6aa96ab94b3d7cd0916066888 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sat, 31 Aug 2024 02:48:27 +0800
+Subject: [PATCH 14/17] Fix some autoreleasepools
+
+---
+ hw/xquartz/pbproxy/main.m    |  5 +++--
+ hw/xquartz/pbproxy/x-input.m | 13 +++++++++++--
+ 2 files changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/hw/xquartz/pbproxy/main.m b/hw/xquartz/pbproxy/main.m
+index 92cde0437..0c0d5df98 100644
+--- a/hw/xquartz/pbproxy/main.m
++++ b/hw/xquartz/pbproxy/main.m
+@@ -78,7 +78,7 @@ x_error_handler(Display *dpy, XErrorEvent *errevent)
+ int
+ xpbproxy_run(void)
+ {
+-    @autoreleasepool {
++    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+         size_t i;
+ 
+         for (i = 0, xpbproxy_dpy = NULL; !xpbproxy_dpy && i < 5; i++) {
+@@ -119,7 +119,8 @@ xpbproxy_run(void)
+         if (!xpbproxy_input_register()) {
+             return EXIT_FAILURE;
+         }
+-    }
++
++    [pool release];
+ 
+     CFRunLoopRun();
+ 
+diff --git a/hw/xquartz/pbproxy/x-input.m b/hw/xquartz/pbproxy/x-input.m
+index 3be9ce407..71b46a8b3 100644
+--- a/hw/xquartz/pbproxy/x-input.m
++++ b/hw/xquartz/pbproxy/x-input.m
+@@ -89,7 +89,14 @@ x_event_apple_wm_notify(XAppleWMNotifyEvent *e)
+ static void
+ xpbproxy_process_xevents(void)
+ {
+-    while (XPending(xpbproxy_dpy) != 0) { @autoreleasepool {
++    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
++
++    if (pool == nil) {
++        ErrorF("unable to allocate/init auto release pool!\n");
++        return;
++    }
++
++    while (XPending(xpbproxy_dpy) != 0) {
+         XEvent e;
+ 
+         XNextEvent(xpbproxy_dpy, &e);
+@@ -127,7 +134,9 @@ xpbproxy_process_xevents(void)
+         }
+ 
+         XFlush(xpbproxy_dpy);
+-    }}
++    }
++
++    [pool release];
+ }
+ 
+ static BOOL
+-- 
+2.46.0
+

@@ -1,0 +1,110 @@
+From 527fd87795a08bbae6f5736a8ba7d98b0f8b9c33 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sat, 31 Aug 2024 02:45:14 +0800
+Subject: [PATCH 13/15] X11Application.m
+
+---
+ hw/xquartz/X11Application.m | 38 +++++--------------------------------
+ 1 file changed, 5 insertions(+), 33 deletions(-)
+
+diff --git a/hw/xquartz/X11Application.m b/hw/xquartz/X11Application.m
+index b99781956..0d24b1aaa 100644
+--- a/hw/xquartz/X11Application.m
++++ b/hw/xquartz/X11Application.m
+@@ -87,11 +87,6 @@ extern Bool noRenderExtension;
+ 
+ static TISInputSourceRef last_key_layout;
+ 
+-/* This preference is only tested on Lion or later as it's not relevant to
+- * earlier OS versions.
+- */
+-Bool XQuartzScrollInDeviceDirection = FALSE;
+-
+ extern int darwinFakeButtons;
+ 
+ /* Store the mouse location while in the background, and update X11's pointer
+@@ -160,10 +155,6 @@ CFStringRef app_prefs_domain_cfstr = NULL;
+ - (void) sendX11NSEvent:(NSEvent *)e;
+ @end
+ 
+-@interface X11Application ()
+-@property (nonatomic, readwrite, assign) OSX_BOOL x_active;
+-@end
+-
+ @implementation X11Application
+ 
+ typedef struct message_struct message;
+@@ -268,12 +259,10 @@ message_kit_thread(SEL selector, NSObject *arg)
+ 
+ - (void) activateX:(OSX_BOOL)state
+ {
+-    OSX_BOOL const x_active = self.x_active;
+-
+-    if (x_active == state)
++    if (_x_active == state)
+         return;
+ 
+-    DEBUG_LOG("state=%d, x_active=%d, \n", state, x_active);
++    DEBUG_LOG("state=%d, x_active=%d, \n", state, _x_active);
+     if (state) {
+         if (bgMouseLocationUpdated) {
+             DarwinSendPointerEvents(darwinPointer, MotionNotify, 0,
+@@ -297,7 +286,7 @@ message_kit_thread(SEL selector, NSObject *arg)
+         DarwinSendDDXEvent(kXquartzDeactivate, 0);
+     }
+ 
+-    self.x_active = state;
++    _x_active = state;
+ }
+ 
+ - (void) became_key:(NSWindow *)win
+@@ -316,7 +305,6 @@ message_kit_thread(SEL selector, NSObject *arg)
+     }
+ 
+     OSX_BOOL for_appkit, for_x;
+-    OSX_BOOL const x_active = self.x_active;
+ 
+     /* By default pass down the responder chain and to X. */
+     for_appkit = YES;
+@@ -334,13 +322,13 @@ message_kit_thread(SEL selector, NSObject *arg)
+         if ([e window] != nil) {
+             /* Pointer event has an (AppKit) window. Probably something for the kit. */
+             for_x = NO;
+-            if (x_active) [self activateX:NO];
++            if (_x_active) [self activateX:NO];
+         }
+         else if ([self modalWindow] == nil) {
+             /* Must be an X window. Tell appkit windows to resign main/key */
+             for_appkit = NO;
+ 
+-            if (!x_active && quartzProcs->IsX11Window([e windowNumber])) {
++            if (!_x_active && quartzProcs->IsX11Window([e windowNumber])) {
+                 if ([self respondsToSelector:@selector(_setKeyWindow:)] && [self respondsToSelector:@selector(_setMainWindow:)]) {
+                     NSWindow *keyWindow = [self keyWindow];
+                     if (keyWindow) {
+@@ -1688,22 +1676,6 @@ handle_mouse:
+         CGEventRef cge = [e CGEvent];
+         BOOL isContinuous =
+             CGEventGetIntegerValueField(cge, kCGScrollWheelEventIsContinuous);
+-
+-#if 0
+-        /* Scale the scroll value by line height */
+-        CGEventSourceRef source = CGEventCreateSourceFromEvent(cge);
+-        if (source) {
+-            double lineHeight = CGEventSourceGetPixelsPerLine(source);
+-            CFRelease(source);
+-            
+-            /* There's no real reason for the 1/5 ratio here other than that
+-             * it feels like a good ratio after some testing.
+-             */
+-            
+-            deltaX *= lineHeight / 5.0;
+-            deltaY *= lineHeight / 5.0;
+-        }
+-#endif
+         
+         if (XQuartzScrollInDeviceDirection &&
+             [e isDirectionInvertedFromDevice]) {
+-- 
+2.46.0
+

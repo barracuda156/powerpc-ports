@@ -1,0 +1,121 @@
+From 8711ddac35e16ed55730acc91da3a45f2640f65c Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sat, 31 Aug 2024 05:33:37 +0800
+Subject: [PATCH 21/25] mach-startup/bundle-main.c: fix build with gcc
+
+---
+ hw/xquartz/mach-startup/bundle-main.c | 55 ++++++++++++++++++++++++++-
+ 1 file changed, 53 insertions(+), 2 deletions(-)
+
+diff --git a/hw/xquartz/mach-startup/bundle-main.c b/hw/xquartz/mach-startup/bundle-main.c
+index de82e2280..1f79a1bfe 100644
+--- a/hw/xquartz/mach-startup/bundle-main.c
++++ b/hw/xquartz/mach-startup/bundle-main.c
+@@ -43,7 +43,11 @@
+ #include <stdbool.h>
+ #include <signal.h>
+ 
++#ifdef __clang__
+ #include <dispatch/dispatch.h>
++#else
++#include <pthread.h>
++#endif
+ 
+ #include <sys/socket.h>
+ #include <sys/un.h>
+@@ -114,6 +118,23 @@ static char *pref_app_to_run;
+ static char *pref_login_shell;
+ static char *pref_startx_script;
+ 
++#ifndef __clang__
++/*** Pthread Magics ***/
++static pthread_t
++create_thread(void *(*func)(void *), void *arg)
++{
++    pthread_attr_t attr;
++    pthread_t tid;
++
++    pthread_attr_init(&attr);
++    pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
++    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
++    pthread_create(&tid, &attr, func, arg);
++    pthread_attr_destroy(&attr);
++
++    return tid;
++}
++#endif
+ 
+ /*** Mach-O IPC Stuffs ***/
+ 
+@@ -221,9 +242,16 @@ typedef struct {
+ /* This thread accepts an incoming connection and hands off the file
+  * descriptor for the new connection to accept_fd_handoff()
+  */
++#ifdef __clang__
+ static void
+ socket_handoff(socket_handoff_t *handoff_data)
+ {
++#else
++static void *
++socket_handoff_thread(void *arg)
++{
++    socket_handoff_t *handoff_data = (socket_handoff_t *)arg;
++#endif
+ 
+     int launchd_fd = -1;
+     int connected_fd;
+@@ -258,6 +286,9 @@ socket_handoff(socket_handoff_t *handoff_data)
+         launchd_fd);
+     DarwinListenOnOpenFD(launchd_fd);
+ 
++#ifndef __clang__
++    return NULL;
++#endif
+ }
+ 
+ static int
+@@ -341,10 +372,14 @@ do_request_fd_handoff_socket(mach_port_t port, string_t filename)
+ 
+     strlcpy(filename, handoff_data->filename, STRING_T_SIZE);
+ 
++#ifdef __clang__
+     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT,
+                                              0), ^ {
+                        socket_handoff(handoff_data);
+                    });
++#else
++    create_thread(socket_handoff_thread, handoff_data);
++#endif
+ 
+ #ifdef DEBUG
+     ErrorF(
+@@ -523,8 +558,24 @@ setup_console_redirect(const char *bundle_id)
+ 
+     asl_set_filter(aslc, ASL_FILTER_MASK_UPTO(ASL_LEVEL_WARNING));
+ 
+-    asl_log_descriptor(aslc, NULL, ASL_LEVEL_INFO, STDOUT_FILENO, ASL_LOG_DESCRIPTOR_WRITE);
+-    asl_log_descriptor(aslc, NULL, ASL_LEVEL_NOTICE, STDERR_FILENO, ASL_LOG_DESCRIPTOR_WRITE);
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 1080
++# if MAC_OS_X_VERSION_MIN_REQUIRED < 1080
++    if (asl_log_descriptor)
++# endif
++    {
++        asl_log_descriptor(aslc, NULL, ASL_LEVEL_INFO, STDOUT_FILENO, ASL_LOG_DESCRIPTOR_WRITE);
++        asl_log_descriptor(aslc, NULL, ASL_LEVEL_NOTICE, STDERR_FILENO, ASL_LOG_DESCRIPTOR_WRITE);
++    }
++# if MAC_OS_X_VERSION_MIN_REQUIRED < 1080
++    else {
++        xq_asl_capture_fd(aslc, NULL, ASL_LEVEL_INFO, STDOUT_FILENO);
++        xq_asl_capture_fd(aslc, NULL, ASL_LEVEL_NOTICE, STDERR_FILENO);
++    }
++# endif
++#else
++    xq_asl_capture_fd(aslc, NULL, ASL_LEVEL_INFO, STDOUT_FILENO);
++    xq_asl_capture_fd(aslc, NULL, ASL_LEVEL_NOTICE, STDERR_FILENO);
++#endif
+ }
+ 
+ static void
+-- 
+2.46.0
+

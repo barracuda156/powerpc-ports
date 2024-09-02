@@ -1,0 +1,29 @@
+From 5a2bb86cc45d3e9b20c4eebef53891bfe8e970c2 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Thu, 29 Aug 2024 14:19:30 +0800
+Subject: [PATCH 04/12] applewmExt.h: fix defines
+
+---
+ hw/xquartz/applewmExt.h | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/hw/xquartz/applewmExt.h b/hw/xquartz/applewmExt.h
+index 9a8b8d639..14c77214a 100644
+--- a/hw/xquartz/applewmExt.h
++++ b/hw/xquartz/applewmExt.h
+@@ -35,6 +35,12 @@
+ #include "window.h"
+ #include <Xplugin.h>
+ 
++#if XPLUGIN_VERSION < 4
++typedef int xp_frame_attr;
++typedef int xp_frame_class;
++typedef int xp_frame_rect;
++#endif
++
+ typedef int (*DisableUpdateProc)(void);
+ typedef int (*EnableUpdateProc)(void);
+ typedef int (*SetWindowLevelProc)(WindowPtr pWin, int level);
+-- 
+2.46.0
+
