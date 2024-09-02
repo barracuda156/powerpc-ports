@@ -1,0 +1,130 @@
+From bbe87b004a22c6c025e8f2bb9ac40d16d054d709 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Fri, 30 Aug 2024 17:27:45 +0800
+Subject: [PATCH 10/12] Revert "xquartz: Fold spaces related preferences into
+ NSUserDefaults+XQuartzDefaults"
+
+This reverts commit f40610e0b4f2b4ae54ef6bbff756cb4a60e17e3b.
+---
+ hw/xquartz/NSUserDefaults+XQuartzDefaults.h |  2 --
+ hw/xquartz/NSUserDefaults+XQuartzDefaults.m | 38 ---------------------
+ hw/xquartz/X11Application.m                 | 26 +++++++++++---
+ 3 files changed, 22 insertions(+), 44 deletions(-)
+
+diff --git a/hw/xquartz/NSUserDefaults+XQuartzDefaults.h b/hw/xquartz/NSUserDefaults+XQuartzDefaults.h
+index 2f180b241..b8fc4a631 100644
+--- a/hw/xquartz/NSUserDefaults+XQuartzDefaults.h
++++ b/hw/xquartz/NSUserDefaults+XQuartzDefaults.h
+@@ -42,8 +42,6 @@ extern NSString * const XQuartzPrefKeySyncPrimaryOnSelect;
+ 
+ @interface NSUserDefaults (XQuartzDefaults)
+ 
+-+ (NSUserDefaults *)globalDefaults;
+-+ (NSUserDefaults *)dockDefaults;
+ + (NSUserDefaults *)xquartzDefaults;
+ 
+ @end
+diff --git a/hw/xquartz/NSUserDefaults+XQuartzDefaults.m b/hw/xquartz/NSUserDefaults+XQuartzDefaults.m
+index ecc192197..ddf04de68 100644
+--- a/hw/xquartz/NSUserDefaults+XQuartzDefaults.m
++++ b/hw/xquartz/NSUserDefaults+XQuartzDefaults.m
+@@ -44,44 +44,6 @@ NSString * const XQuartzPrefKeySyncPrimaryOnSelect = @"sync_primary_on_select";
+ 
+ @implementation NSUserDefaults (XQuartzDefaults)
+ 
+-+ (NSUserDefaults *)globalDefaults
+-{
+-    static dispatch_once_t once;
+-    static NSUserDefaults *defaults;
+-
+-    dispatch_once(&once, ^{
+-        NSString * const defaultsDomain = @".GlobalPreferences";
+-        defaults = [[[NSUserDefaults alloc] initWithSuiteName:defaultsDomain] retain];
+-
+-        NSDictionary<NSString *, id> * const defaultDefaultsDict = @{
+-            @"AppleSpacesSwitchOnActivate" : @(YES),
+-        };
+-
+-        [defaults registerDefaults:defaultDefaultsDict];
+-    });
+-
+-    return defaults;
+-}
+-
+-+ (NSUserDefaults *)dockDefaults
+-{
+-    static dispatch_once_t once;
+-    static NSUserDefaults *defaults;
+-
+-    dispatch_once(&once, ^{
+-        NSString * const defaultsDomain = @"com.apple.dock";
+-        defaults = [[[NSUserDefaults alloc] initWithSuiteName:defaultsDomain] retain];
+-
+-        NSDictionary<NSString *, id> * const defaultDefaultsDict = @{
+-            @"workspaces" : @(NO),
+-        };
+-
+-        [defaults registerDefaults:defaultDefaultsDict];
+-    });
+-
+-    return defaults;
+-}
+-
+ + (NSUserDefaults *)xquartzDefaults
+ {
+     static dispatch_once_t once;
+diff --git a/hw/xquartz/X11Application.m b/hw/xquartz/X11Application.m
+index 587427e3f..e9637ad2c 100644
+--- a/hw/xquartz/X11Application.m
++++ b/hw/xquartz/X11Application.m
+@@ -478,7 +478,7 @@ message_kit_thread(SEL selector, NSObject *arg)
+         case NSApplicationActivatedEventType:
+             for_x = NO;
+             if ([e window] == nil && x_was_active) {
+-                BOOL order_all_windows = YES;
++                BOOL order_all_windows = YES, workspaces, ok;
+                 for_appkit = NO;
+ 
+ #if APPKIT_APPFLAGS_HACK
+@@ -491,9 +491,26 @@ message_kit_thread(SEL selector, NSObject *arg)
+                 [self set_front_process:nil];
+ 
+                 /* Get the Spaces preference for SwitchOnActivate */
+-                BOOL const workspaces = [NSUserDefaults.dockDefaults boolForKey:@"workspaces"];
++                (void)CFPreferencesAppSynchronize(CFSTR("com.apple.dock"));
++                workspaces =
++                    CFPreferencesGetAppBooleanValue(CFSTR("workspaces"),
++                                                    CFSTR(
++                                                        "com.apple.dock"),
++                                                    &ok);
++                if (!ok)
++                    workspaces = NO;
++
+                 if (workspaces) {
+-                    order_all_windows = [NSUserDefaults.globalDefaults boolForKey:@"AppleSpacesSwitchOnActivate"];
++                    (void)CFPreferencesAppSynchronize(CFSTR(
++                                                          ".GlobalPreferences"));
++                    order_all_windows =
++                        CFPreferencesGetAppBooleanValue(CFSTR(
++                                                            "AppleSpacesSwitchOnActivate"),
++                                                        CFSTR(
++                                                            ".GlobalPreferences"),
++                                                        &ok);
++                    if (!ok)
++                        order_all_windows = YES;
+                 }
+ 
+                 /* TODO: In the workspaces && !AppleSpacesSwitchOnActivate case, the windows are ordered
+@@ -504,7 +521,8 @@ message_kit_thread(SEL selector, NSObject *arg)
+                  *       be restoring one of them.
+                  */
+                 if ([e data2] & 0x10) {         // 0x10 (bfCPSOrderAllWindowsForward) is set when we use cmd-tab or the dock icon
+-                    DarwinSendDDXEvent(kXquartzBringAllToFront, 1, order_all_windows);
++                    DarwinSendDDXEvent(kXquartzBringAllToFront, 1,
++                                       order_all_windows);
+                 }
+             }
+             break;
+-- 
+2.46.0
+

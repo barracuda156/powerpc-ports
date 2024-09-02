@@ -1,0 +1,84 @@
+From 488b397cf140ca1bc6bf1e22af2f2ad86517abcd Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Thu, 29 Aug 2024 13:27:28 +0800
+Subject: [PATCH 01/12] meson.build: fix non-working opts
+
+---
+ hw/xquartz/mach-startup/meson.build | 16 ++++++++--------
+ hw/xquartz/pbproxy/meson.build      |  4 ++--
+ 2 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/hw/xquartz/mach-startup/meson.build b/hw/xquartz/mach-startup/meson.build
+index 2f7694252..33dba806d 100644
+--- a/hw/xquartz/mach-startup/meson.build
++++ b/hw/xquartz/mach-startup/meson.build
+@@ -28,14 +28,14 @@ x11appdir = join_paths(bundle_root, 'Contents/MacOS')
+ 
+ x11_bin_deps = [
+      meson.get_compiler('c').find_library('Xplugin'),
+-     dependency('Carbon', method: 'extraframework'),
+-     cocoa,
+-     dependency('CoreAudio', method: 'extraframework'),
+-     dependency('IOKit', method: 'extraframework')
++     # dependency('Carbon', method: 'extraframework'),
++     # cocoa,
++     # dependency('CoreAudio', method: 'extraframework'),
++     # dependency('IOKit', method: 'extraframework')
+ ]
+ 
+ if build_glx
+-    x11_bin_deps += [dependency('OpenGL', method: 'extraframework')]
++    # x11_bin_deps += [dependency('OpenGL', method: 'extraframework')]
+ endif
+ 
+ if build_sparkle
+@@ -65,7 +65,7 @@ x11_bin = executable('X11.bin',
+      dependencies: [xproto_dep, x11_bin_deps, mach_startup_dep],
+      include_directories: [inc, '..', top_dir_inc],
+      c_args: xquartz_defs,
+-     link_args: ['-Objc'],
++     link_args: ['-lobjc'],
+      install: true,
+      install_dir: x11appdir,
+ )
+@@ -76,14 +76,14 @@ x11 = executable('X11',
+       'bundle_trampoline.c',
+      ],
+      c_args: xquartz_defs,
+-     link_args: ['-Objc'],
++     link_args: ['-lobjc'],
+      install: true,
+      install_dir: x11appdir,
+ )
+ 
+ # Xquartz
+ xquartz_deps = [
+-    dependency('CoreServices', method: 'extraframework'),
++    # dependency('CoreServices', method: 'extraframework'),
+ ]
+ 
+ xquartz = executable('Xquartz',
+diff --git a/hw/xquartz/pbproxy/meson.build b/hw/xquartz/pbproxy/meson.build
+index 206cbdca3..d6e43d6eb 100644
+--- a/hw/xquartz/pbproxy/meson.build
++++ b/hw/xquartz/pbproxy/meson.build
+@@ -20,14 +20,14 @@ libxpbproxy = static_library('xpbproxy',
+     objc_args: pbproxy_defs,
+ )
+ 
+-cocoa = dependency('Cocoa', method: 'extraframework')
++# cocoa = dependency('Cocoa', method: 'extraframework')
+ 
+ # standalone xpbproxy
+ if build_standalone_pbproxy
+     executable('xpbproxy',
+         'app-main.m',
+         link_with: libxpbproxy,
+-        dependencies: [cocoa, dependency('x11')],
++        dependencies: [dependency('x11')],
+         objc_args: pbproxy_defs,
+         install: true,
+     )
+-- 
+2.46.0
+
