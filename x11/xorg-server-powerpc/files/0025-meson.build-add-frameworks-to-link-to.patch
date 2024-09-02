@@ -1,0 +1,50 @@
+From e64dcf9d78aa8fa8e94cb9bb79ca3c88f7879cfe Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sat, 31 Aug 2024 06:07:59 +0800
+Subject: [PATCH 25/25] meson.build: add frameworks to link to
+
+---
+ hw/xquartz/mach-startup/meson.build | 8 +++++++-
+ hw/xquartz/pbproxy/meson.build      | 1 +
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/hw/xquartz/mach-startup/meson.build b/hw/xquartz/mach-startup/meson.build
+index 33dba806d..388ae0ecc 100644
+--- a/hw/xquartz/mach-startup/meson.build
++++ b/hw/xquartz/mach-startup/meson.build
+@@ -65,7 +65,12 @@ x11_bin = executable('X11.bin',
+      dependencies: [xproto_dep, x11_bin_deps, mach_startup_dep],
+      include_directories: [inc, '..', top_dir_inc],
+      c_args: xquartz_defs,
+-     link_args: ['-lobjc'],
++     link_args: ['-lobjc',
++      '-framework', 'Carbon',
++      '-framework', 'Cocoa',
++      '-framework', 'CoreAudio',
++      '-framework', 'IOKit',
++      '-framework', 'OpenGL'],
+      install: true,
+      install_dir: x11appdir,
+ )
+@@ -95,5 +100,6 @@ xquartz = executable('Xquartz',
+     include_directories: inc,
+     c_args: xquartz_defs,
+     dependencies: [xquartz_deps, mach_startup_dep],
++    link_args: ['-framework', 'CoreServices'],
+     install: true,
+ )
+diff --git a/hw/xquartz/pbproxy/meson.build b/hw/xquartz/pbproxy/meson.build
+index a9b8442a0..e1df08ad9 100644
+--- a/hw/xquartz/pbproxy/meson.build
++++ b/hw/xquartz/pbproxy/meson.build
+@@ -26,6 +26,7 @@ if build_standalone_pbproxy
+         'app-main.m',
+         link_with: libxpbproxy,
+         dependencies: [dependency('x11')],
++        link_args: ['-framework', 'Cocoa'],
+         objc_args: pbproxy_defs,
+         install: true,
+     )
+-- 
+2.46.0
+

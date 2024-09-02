@@ -1,0 +1,142 @@
+From cba6d8de3dc74bef610d241ccdab0d02b9f67292 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Thu, 29 Aug 2024 15:02:51 +0800
+Subject: [PATCH 05/12] quartzKeyboard.c: restore working code
+
+---
+ hw/xquartz/quartzKeyboard.c | 94 ++++++++++++++++++++++++++++++-------
+ 1 file changed, 77 insertions(+), 17 deletions(-)
+
+diff --git a/hw/xquartz/quartzKeyboard.c b/hw/xquartz/quartzKeyboard.c
+index c35a2d15d..ade31bf35 100644
+--- a/hw/xquartz/quartzKeyboard.c
++++ b/hw/xquartz/quartzKeyboard.c
+@@ -746,34 +746,64 @@ make_dead_key(KeySym in)
+ static Bool
+ QuartzReadSystemKeymap(darwinKeyboardInfo *info)
+ {
+-    __block const void *chr_data = NULL;
++#if !defined(__LP64__)
++    KeyboardLayoutRef key_layout;
++    int is_uchr = 1;
++#endif
++    const void *chr_data = NULL;
+     int num_keycodes = NUM_KEYCODES;
+-    __block UInt32 keyboard_type;
++    UInt32 keyboard_type = LMGetKbdType();
+     int i, j;
+     OSStatus err;
+     KeySym *k;
++    CFDataRef currentKeyLayoutDataRef = NULL;
++
++    TISInputSourceRef currentKeyLayoutRef =
++        TISCopyCurrentKeyboardLayoutInputSource();
+ 
+-    dispatch_block_t getKeyboardData = ^{
+-        keyboard_type = LMGetKbdType();
++    if (currentKeyLayoutRef) {
++        currentKeyLayoutDataRef = (CFDataRef)TISGetInputSourceProperty(
++            currentKeyLayoutRef, kTISPropertyUnicodeKeyLayoutData);
++        if (currentKeyLayoutDataRef)
++            chr_data = CFDataGetBytePtr(currentKeyLayoutDataRef);
++    }
+ 
+-        TISInputSourceRef currentKeyLayoutRef = TISCopyCurrentKeyboardLayoutInputSource();
++#if !defined(__LP64__)
++    if (chr_data == NULL) {
++        ErrorF(
++            "X11.app: Error detected in determining keyboard layout.  If you are using an Apple-provided keyboard layout, please report this error at http://xquartz.macosforge.org and http://bugreport.apple.com\n");
++        ErrorF(
++            "X11.app: Debug Info: keyboard_type=%u, currentKeyLayoutRef=%p, currentKeyLayoutDataRef=%p, chr_data=%p\n",
++            (unsigned)keyboard_type, currentKeyLayoutRef,
++            currentKeyLayoutDataRef, chr_data);
+ 
+-        if (currentKeyLayoutRef) {
+-            CFDataRef currentKeyLayoutDataRef = (CFDataRef)TISGetInputSourceProperty(currentKeyLayoutRef,
+-                                                                                     kTISPropertyUnicodeKeyLayoutData);
+-            if (currentKeyLayoutDataRef)
+-                chr_data = CFDataGetBytePtr(currentKeyLayoutDataRef);
++        KLGetCurrentKeyboardLayout(&key_layout);
++        KLGetKeyboardLayoutProperty(key_layout, kKLuchrData, &chr_data);
+ 
+-            CFRelease(currentKeyLayoutRef);
++        if (chr_data != NULL) {
++            ErrorF(
++                "X11.app: Fallback succeeded, but this is still a bug.  Please report the above information.\n");
+         }
+-    };
++    }
+ 
+-    /* This is an ugly ant-pattern, but it is more expedient to address the problem right now. */
+-    if (pthread_main_np()) {
+-        getKeyboardData();
+-    } else {
+-        dispatch_sync(dispatch_get_main_queue(), getKeyboardData);
++    if (chr_data == NULL) {
++        ErrorF(
++            "X11.app: Debug Info: kKLuchrData failed, trying kKLKCHRData.\n");
++        ErrorF(
++            "If you are using a 3rd party keyboard layout, please see http://xquartz.macosforge.org/trac/ticket/154\n");
++        KLGetKeyboardLayoutProperty(key_layout, kKLKCHRData, &chr_data);
++        is_uchr = 0;
++        num_keycodes = 128;
++
++        if (chr_data != NULL) {
++            ErrorF(
++                "X11.app: Fallback succeeded, but this is still a bug.  Please report the above information.\n");
++        }
+     }
++#endif
++
++    if (currentKeyLayoutRef)
++        CFRelease(currentKeyLayoutRef);
+ 
+     if (chr_data == NULL) {
+         ErrorF("Couldn't get uchr or kchr resource\n");
+@@ -797,6 +827,9 @@ QuartzReadSystemKeymap(darwinKeyboardInfo *info)
+         k = info->keyMap + i * GLYPHS_PER_KEY;
+ 
+         for (j = 0; j < 4; j++) {
++#if !defined(__LP64__)
++            if (is_uchr) {
++#endif
+             UniChar s[8];
+             UniCharCount len;
+             UInt32 dead_key_state = 0, extra_dead = 0;
+@@ -823,6 +856,33 @@ QuartzReadSystemKeymap(darwinKeyboardInfo *info)
+                 k[j] = ucs2keysym(s[0]);
+                 if (dead_key_state != 0) k[j] = make_dead_key(k[j]);
+             }
++#if !defined(__LP64__)
++        }
++        else {       // kchr
++            UInt32 c, state = 0, state2 = 0;
++            UInt16 code;
++
++            code = i | mods[j];
++
++            c = KeyTranslate(chr_data, code, &state);
++
++            /* Dead keys are only processed on key-down, so ask
++               to translate those events. When we find a dead key,
++               translating the matching key up event will give
++               us the actual dead character. */
++
++            if (state != 0)
++                c = KeyTranslate(chr_data, code | 128, &state2);
++
++            /* Characters seem to be in MacRoman encoding. */
++
++            if (c != 0 && c != 0x0010) {
++                k[j] = ucs2keysym(macroman2ucs(c & 255));
++
++                if (state != 0) k[j] = make_dead_key(k[j]);
++            }
++        }
++#endif
+         }
+ 
+         if (k[3] == k[2]) k[3] = NoSymbol;
+-- 
+2.46.0
+
