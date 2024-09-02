@@ -1,0 +1,168 @@
+From 83f65c8ab09bc4ef7288aa334339d6669a5e2a39 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Fri, 30 Aug 2024 17:29:16 +0800
+Subject: [PATCH 11/12] Revert "xquartz pbproxy: Adopt
+ NSUserDefaults+XQuartzDefaults for preferences"
+
+This reverts commit 6134c73aebc3f928639e8f802be49ec8ecc17e66.
+---
+ hw/xquartz/pbproxy/app-main.m    | 40 ++++++++++++++++++++++++++++
+ hw/xquartz/pbproxy/meson.build   |  4 +--
+ hw/xquartz/pbproxy/x-selection.m | 45 +++++++++++++++++++++++++-------
+ 3 files changed, 77 insertions(+), 12 deletions(-)
+
+diff --git a/hw/xquartz/pbproxy/app-main.m b/hw/xquartz/pbproxy/app-main.m
+index 825980caf..eda9a9e67 100644
+--- a/hw/xquartz/pbproxy/app-main.m
++++ b/hw/xquartz/pbproxy/app-main.m
+@@ -31,6 +31,13 @@
+ #include "pbproxy.h"
+ #import "x-selection.h"
+ 
++#include <pthread.h>
++#include <unistd.h> /*for getpid*/
++#include <Cocoa/Cocoa.h>
++
++static const char *app_prefs_domain = BUNDLE_ID_PREFIX ".xpbproxy";
++CFStringRef app_prefs_domain_cfstr;
++
+ /* Stubs */
+ char *display = NULL;
+ 
+@@ -75,8 +82,41 @@ xq_asl_log(int level, const char *subsystem, const char *file,
+ int
+ main(int argc, const char *argv[])
+ {
++    const char *s;
++    int i;
++
++#ifdef DEBUG
++    ErrorF("pid: %u\n", getpid());
++#endif
++
+     xpbproxy_is_standalone = YES;
+ 
++    if ((s = getenv("X11_PREFS_DOMAIN")))
++        app_prefs_domain = s;
++
++    for (i = 1; i < argc; i++) {
++        if (strcmp(argv[i], "--prefs-domain") == 0 && i + 1 < argc) {
++            app_prefs_domain = argv[++i];
++        }
++        else if (strcmp(argv[i], "--help") == 0) {
++            ErrorF(
++                "usage: xpbproxy OPTIONS\n"
++                "Pasteboard proxying for X11.\n\n"
++                "--prefs-domain <domain>   Change the domain used for reading preferences\n"
++                "                          (default: %s)\n",
++                app_prefs_domain);
++            return 0;
++        }
++        else {
++            ErrorF("usage: xpbproxy OPTIONS...\n"
++                   "Try 'xpbproxy --help' for more information.\n");
++            return 1;
++        }
++    }
++
++    app_prefs_domain_cfstr = CFStringCreateWithCString(NULL, app_prefs_domain,
++                                                       kCFStringEncodingUTF8);
++
+     signal(SIGINT, signal_handler);
+     signal(SIGTERM, signal_handler);
+     signal(SIGHUP, signal_handler);
+diff --git a/hw/xquartz/pbproxy/meson.build b/hw/xquartz/pbproxy/meson.build
+index d6e43d6eb..a9b8442a0 100644
+--- a/hw/xquartz/pbproxy/meson.build
++++ b/hw/xquartz/pbproxy/meson.build
+@@ -11,11 +11,9 @@ endif
+ libapplewm_dep = dependency('applewm', version: '>=1.4')
+ 
+ libxpbproxy = static_library('xpbproxy',
+-    ['../NSUserDefaults+XQuartzDefaults.m',
+-     'main.m',
++    ['main.m',
+      'x-input.m',
+      'x-selection.m'],
+-    include_directories: ['..'],
+     dependencies: [applewmproto_dep, libapplewm_dep, dependency('xfixes'), dependency('x11')],
+     objc_args: pbproxy_defs,
+ )
+diff --git a/hw/xquartz/pbproxy/x-selection.m b/hw/xquartz/pbproxy/x-selection.m
+index f4f2b9a6b..21b5b3172 100644
+--- a/hw/xquartz/pbproxy/x-selection.m
++++ b/hw/xquartz/pbproxy/x-selection.m
+@@ -38,8 +38,6 @@
+ #import <AppKit/NSImage.h>
+ #import <AppKit/NSBitmapImageRep.h>
+ 
+-#import "NSUserDefaults+XQuartzDefaults.h"
+-
+ /*
+  * The basic design of the pbproxy code is as follows.
+  *
+@@ -101,6 +99,18 @@ dump_prefs()
+ }
+ #endif
+ 
++extern CFStringRef app_prefs_domain_cfstr;
++
++static BOOL
++prefs_get_bool(CFStringRef key, BOOL defaultValue)
++{
++    Boolean value, ok;
++
++    value = CFPreferencesGetAppBooleanValue(key, app_prefs_domain_cfstr, &ok);
++
++    return ok ? (BOOL)value : defaultValue;
++}
++
+ static void
+ init_propdata(struct propdata *pdata)
+ {
+@@ -1384,18 +1394,35 @@ get_property(Window win, Atom property, struct propdata *pdata, Bool delete,
+ 
+ - (void) reload_preferences
+ {
+-    NSUserDefaults * const defaults = NSUserDefaults.xquartzDefaults;
+-
++    /*
++     * It's uncertain how we could handle the synchronization failing, so cast to void.
++     * The prefs_get_bool should fall back to defaults if the org.x.X11 plist doesn't exist or is invalid.
++     */
++    (void)CFPreferencesAppSynchronize(app_prefs_domain_cfstr);
+ #ifdef STANDALONE_XPBPROXY
+     if (xpbproxy_is_standalone)
+         pbproxy_prefs.active = YES;
+     else
+ #endif
+-    pbproxy_prefs.active = [defaults boolForKey:XQuartzPrefKeySyncPasteboard];
+-    pbproxy_prefs.primary_on_grab = [defaults boolForKey:XQuartzPrefKeySyncPrimaryOnSelect];
+-    pbproxy_prefs.clipboard_to_pasteboard = [defaults boolForKey:XQuartzPrefKeySyncClipboardToPasteBoard];
+-    pbproxy_prefs.pasteboard_to_primary = [defaults boolForKey:XQuartzPrefKeySyncPasteboardToPrimary];
+-    pbproxy_prefs.pasteboard_to_clipboard = [defaults boolForKey:XQuartzPrefKeySyncPasteboardToClipboard];
++    pbproxy_prefs.active = prefs_get_bool(CFSTR(
++                                              "sync_pasteboard"),
++                                          pbproxy_prefs.active);
++    pbproxy_prefs.primary_on_grab =
++        prefs_get_bool(CFSTR(
++                           "sync_primary_on_select"),
++                       pbproxy_prefs.primary_on_grab);
++    pbproxy_prefs.clipboard_to_pasteboard =
++        prefs_get_bool(CFSTR(
++                           "sync_clipboard_to_pasteboard"),
++                       pbproxy_prefs.clipboard_to_pasteboard);
++    pbproxy_prefs.pasteboard_to_primary =
++        prefs_get_bool(CFSTR(
++                           "sync_pasteboard_to_primary"),
++                       pbproxy_prefs.pasteboard_to_primary);
++    pbproxy_prefs.pasteboard_to_clipboard =
++        prefs_get_bool(CFSTR(
++                           "sync_pasteboard_to_clipboard"),
++                       pbproxy_prefs.pasteboard_to_clipboard);
+ 
+     /* This is used for debugging. */
+     //dump_prefs();
+-- 
+2.46.0
+
