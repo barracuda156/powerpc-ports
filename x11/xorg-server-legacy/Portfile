@@ -13,7 +13,7 @@ github.setup    XQuartz xorg-server 16f52e51a203bdb90de5d94478aa9bca4e9c2e67
 name            xorg-server-legacy
 conflicts       xorg-server-1.18 xorg-server xorg-server-devel
 version         1.20.10
-revision        2
+revision        3
 categories      x11 devel
 license         X11
 maintainers     {jeremyhu @jeremyhu} openmaintainer
@@ -127,7 +127,7 @@ variant xcsecurity description "Enable Security Extensions" {
                 --enable-xcsecurity
 }
 
-variant dispatch description "Build against Macports libdispatch-legacy" {
+variant libdispatch_legacy description "Build against Macports libdispatch-legacy" {
     # This builds, but it highly experimental at the point.
     depends_lib-append \
                 port:libdispatch-legacy
@@ -141,11 +141,15 @@ variant dispatch description "Build against Macports libdispatch-legacy" {
 platform darwin 10 powerpc {
     # This patch is safe to apply unconditionally:
     patchfiles-append \
-                0001-xprScreen.c-fix-for-SL.patch \
-                0002-quartzRandR.c-fix-for-SL.patch
+                patch-10.6-fixes.diff
+
+    default_variants-append \
+                +libdispatch_legacy
 
     # And these are needed to build without libdispatch:
-    if {![variant_isset dispatch]} {
+    if {![variant_isset libdispatch_legacy]} {
+        macosx_deployment_target 10.5
+
         configure.args-append \
                 ac_cv_func_dispatch_async=0
 
