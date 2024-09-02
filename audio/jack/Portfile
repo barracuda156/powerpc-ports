@@ -1,78 +1,61 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
-PortSystem          1.0
-PortGroup           compiler_blacklist_versions 1.0
-PortGroup           github 1.0
-PortGroup           waf 1.0
+PortSystem      1.0
 
-name                jack
-github.setup        jackaudio jack2 1.9.22 v
-revision            1
-checksums           rmd160  1f13a7ac5020d95b5b51f1c43d7cfe3507e7b8b0 \
-                    sha256  1e42b9fc4ad7db7befd414d45ab2f8a159c0b30fcd6eee452be662298766a849 \
-                    size    933448
+name            jack
+version         0.124.1
+revision        2
+license         {GPL LGPL}
+distname        jack-audio-connection-kit-${version}
 
-categories          audio
-maintainers         nomaintainer
-license             GPL-2+ LGPL-2.1+
+categories      audio
+maintainers     nomaintainer
+description     Jack Audio Connection Kit
+long_description \
+                JACK is a low-latency audio server, written for \
+                POSIX conformant operating systems such as GNU/Linux \
+                and Apple's OS X.
+homepage        http://jackaudio.org
+master_sites    ${homepage}/downloads/
 
-description         JACK Audio Connection Kit
-long_description    \
-    JACK (JACK Audio Connection Kit) refers to an API and two implementations \
-    of this API, jack1 and jack2. It provides a basic infrastructure for audio \
-    applications to communicate with each other and with audio hardware. \
-    Through JACK, users are enabled to build powerful systems for signal \
-    processing and music production.
+checksums       rmd160  075c6ce5342d31e359908c01d7123f20818021aa \
+                sha256  eb42df6065576f08feeeb60cb9355dce4eb53874534ad71534d7aa31bae561d6 \
+                size    1113456
 
-homepage            https://jackaudio.org
-github.tarball_from archive
+patchfiles-append \
+                carbon.patch \
+                deploymenttarget.patch \
+                clock_nanosleep_check.patch
 
 platform darwin {
-    if {${os.major} < 12} {
-        patchfiles  MacTypes.diff
+    if {${os.major} >= 12} {
+        patchfiles-append mactypes.patch
     }
 }
 
-compiler.blacklist-append \
-                    *gcc-3.* *gcc-4.*
+set db_v        60
 
-# Fix build failures for 10.12/10.13, with Xcode Clang 9.x:
-#   error: static_assert failed "fCounter must be aligned within JackAtomicState"
-# See: https://trac.macports.org/ticket/66681
-compiler.blacklist-append \
-                    {clang >= 900 < 1000}
+depends_build   path:bin/pkg-config:pkgconfig
 
-compiler.cxx_standard \
-                    2011
+depends_lib     port:db${db_v} \
+                port:libsamplerate \
+                port:libsndfile \
+                port:libxml2 \
+                port:libxslt \
+                port:readline \
+                port:zlib
 
-# This won't be needed after the next update
-# see: https://github.com/jackaudio/jack2/issues/898#issuecomment-2185323342
-patchfiles-append   patch-waflib-Context.py.diff
+configure.args  --enable-posix-shm \
+                --with-default-tmpdir=/tmp/
 
-waf.python_branch   3.12
+configure.cppflags-append \
+                -isystem${prefix}/include/db${db_v}
+configure.ldflags-append \
+                -L${prefix}/lib/db${db_v}
 
-depends_build-append \
-                    port:pkgconfig
+use_autoreconf  yes
+autoreconf.args -fvi
 
-depends_lib         port:libsamplerate \
-                    port:libsndfile \
-                    port:aften
-
-configure.post_args-delete --nocache
-
-configure.args      --doxygen=no \
-                    --alsa=no \
-                    --firewire=no \
-                    --iio=no \
-                    --portaudio=no \
-                    --winmme=no \
-                    --celt=no \
-                    --opus=no \
-                    --samplerate=yes \
-                    --db=no
-
-platform darwin {
-    if {[string match *clang* ${configure.compiler}] && ${configure.cxx_stdlib} ne ""} {
-        configure.ldflags-append -stdlib=${configure.cxx_stdlib}
-    }
-}
+livecheck.type  regex
+livecheck.url   [lindex ${master_sites} 0]
+livecheck.regex jack-audio-connection-kit-(0\\.\[0-9.\]+)${extract.suffix}
