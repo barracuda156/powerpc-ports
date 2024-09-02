@@ -1,0 +1,26 @@
+From cb79f9d3c02dea7064d419702c7973835ebaa639 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sun, 18 Aug 2024 14:36:53 +0800
+Subject: [PATCH 5/7] qfontengine_ft.cpp: fix for macOS
+
+---
+ src/gui/text/qfontengine_ft.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/gui/text/qfontengine_ft.cpp b/src/gui/text/qfontengine_ft.cpp
+index 492207cd9..8e645eb90 100644
+--- a/src/gui/text/qfontengine_ft.cpp
++++ b/src/gui/text/qfontengine_ft.cpp
+@@ -50,7 +50,9 @@ QT_BEGIN_NAMESPACE
+ #define ROUND(x)    (((x)+32) & -64)
+ 
+ // failsafe in case Freetype breaks ABI
++#ifndef Q_OS_MAC
+ #define QT_MEMCPY_FT_OUTLINE
++#endif
+ 
+ // -------------------------- Freetype support ------------------------------
+ 
+-- 
+2.46.0
+
