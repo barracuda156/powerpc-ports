@@ -1,0 +1,157 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem      1.0
+PortGroup       compiler_blacklist_versions 1.0
+PortGroup       github 1.0
+PortGroup       legacysupport 1.1
+PortGroup       meson 1.0
+
+PortGroup       fixme 1.0
+
+# for strnlen, at least
+legacysupport.newest_darwin_requires_legacy 10
+
+github.setup    XQuartz xorg-server 2.8.5 XQuartz-
+
+name            xorg-server-powerpc
+conflicts       xorg-server-legacy xorg-server-1.18 xorg-server xorg-server-devel
+revision        0
+categories      x11 devel
+license         X11
+maintainers     {@barracuda156 gmail.com:vital.had} openmaintainer
+description     The X.org / Xquartz X server.
+homepage        https://www.x.org
+platforms       {darwin < 11}
+long_description \
+                The X.org X server allows you to run X11 applications on your computer.
+
+checksums       rmd160  3e5b9111ecbcf26966ef95e931484fd875d1764f \
+                sha256  b602add0aad88a8dc40e4098c464891dfc731ec7cef04c6c002bddcc82581cc6 \
+                size    5422823
+github.tarball_from archive
+
+# Yes, mesa is a *BUILD* dependency
+depends_build-append \
+        port:mesa \
+        path:bin/pkg-config:pkgconfig \
+        port:xorg-font-util \
+        port:xorg-util-macros \
+        port:xorg-xorgproto \
+        port:xorg-xtrans
+
+# This xinit dependency needs to be port: not bin: because we specifically run ${prefix}/bin/startx from bundle-main.c
+depends_run-append \
+        port:quartz-wm \
+        port:xinit \
+        port:xkeyboard-config \
+        port:xorg-fonts
+
+depends_lib-append \
+        path:lib/pkgconfig/pixman-1.pc:libpixman \
+        port:xorg-libAppleWM \
+        port:xorg-libXfixes \
+        port:xorg-libXfont \
+        port:xorg-libXfont2 \
+        port:xorg-libXinerama \
+        port:xorg-libxkbfile \
+        port:xorg-libXres \
+        port:xorg-libXScrnSaver \
+        port:xorg-libxshmfence \
+        port:xorg-libXt \
+        port:xorg-libXv
+
+compiler.blacklist \
+        *gcc-4.0 *gcc-4.2 {clang}
+
+# https://gitlab.freedesktop.org/xorg/xserver/-/issues/1370
+configure.args-append \
+        -Dapple-applications-dir=${applications_dir} \
+        -Ddocs=false \
+        -Ddri2=false \
+        -Ddri3=false \
+        -Ddtrace=false \
+        -Dglamor=false \
+        -Dint10=false \
+        -Dlibunwind=false \
+        -Dpciaccess=false \
+        -Dscreensaver=true \
+        -Dsecure-rpc=false \
+        -Dsha1="CommonCrypto" \
+        -Dsystemd_logind=false \
+        -Dudev=false \
+        -Dxcsecurity=false \
+        -Dxephyr=false \
+        -Dxf86bigfont=false \
+        -Dxinerama=true \
+        -Dxnest=false \
+        -Dxorg=false \
+        -Dxquartz=true \
+        -Dxres=true \
+        -Dxv=true
+
+patch.pre_args-replace -p0 -p1
+
+patchfiles-append \
+        0001-meson.build-fix-non-working-opts.patch \
+        0002-client.c-drop-broken-code.patch \
+        0003-x-list.h-replace-__private_extern__-with-working-__a.patch \
+        0004-applewmExt.h-fix-defines.patch \
+        0005-quartzKeyboard.c-restore-working-code.patch \
+        0006-quartzRandR.c-fix-for-powerpc.patch \
+        0007-No-pthread_attr_set_qos_class_np-on-Darwin.patch \
+        0008-quartz.c-minor-fix.patch \
+        0009-hw-xquartz-X11-fix-compiling.patch \
+        0010-Revert-xquartz-Fold-spaces-related-preferences-into-.patch \
+        0011-Revert-xquartz-pbproxy-Adopt-NSUserDefaults-XQuartzD.patch \
+        0012-X11-restore-working-code.patch \
+        0013-X11Application.m.patch \
+        0014-Fix-some-autoreleasepools.patch \
+        0015-xpr-xprAppleWM.c-fix-compilation.patch \
+        0016-xpr-xprScreen.c-fix-compilation.patch \
+        0017-xquartz-X11-for-now-restore-working-code-of-1.20.x.patch \
+        0018-xpr-xprFrame.c-fix-build-with-gcc.patch \
+        0019-xpr-xprEvent.c-fix-build-with-gcc.patch \
+        0020-X11Application.patch \
+        0021-mach-startup-bundle-main.c-fix-build-with-gcc.patch \
+        0022-quartzKeyboard.c-restore-macroman2ucs.patch \
+        0023-X11-still-need-_XQuartzScrollInDeviceDirection.patch \
+        0024-xquartz-console_redirect-restore-to-fix-asl-linking.patch \
+        0025-meson.build-add-frameworks-to-link-to.patch
+
+platform macosx {
+    if { ${os.major} < 10 } {
+        # Xplugin.h is missing on Tiger and incorrect on Leopard
+        configure.cppflags-append -I${filespath}/include
+    }
+}
+
+# render/picture.c:876:26: error: array subscript 'union _SourcePict[0]' is partly outside array bounds of 'unsigned char[16]' [-Werror=array-bounds=]
+# os/client.c:162:14: error: assignment to 'char **' from 'int' makes pointer from integer without a cast [-Wint-conversion]
+# xquartz/quartz.c:417:9: error: implicit declaration of function 'xp_disable_hot_keys'; did you mean 'xp_disable_update'? [-Wimplicit-function-declaration]
+# xquartz/X11Controller.m:596:1: error: control reaches end of non-void function [-Werror=return-type]
+# xquartz/pbproxy/x-selection.m:1205:5: error: '-fobjc-exceptions' is required to enable Objective-C exception syntax
+if {[string match *gcc* ${configure.compiler}]} {
+    configure.cflags-append \
+        -Wno-error=array-bounds= \
+        -Wno-error=implicit-function-declaration \
+        -Wno-error=int-conversion
+    configure.objcflags-append \
+        -fobjc-exceptions \
+        -Wno-error=return-type
+}
+
+platform darwin powerpc {
+    depends_lib-append \
+                port:libdispatch-legacy
+
+    configure.cppflags-append \
+        -I${prefix}/libexec/dispatch/usr/include
+    configure.ldflags-append \
+        ${prefix}/libexec/dispatch/usr/lib/libdispatch.a
+}
+
+post-destroot {
+        ln -s Xquartz ${destroot}${prefix}/bin/X
+}
+
+livecheck.type none

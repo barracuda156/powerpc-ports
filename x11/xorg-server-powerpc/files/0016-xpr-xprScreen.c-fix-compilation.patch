@@ -1,0 +1,51 @@
+From d976056cfe549bd07f14d521172e7065c7ccde86 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sat, 31 Aug 2024 03:42:40 +0800
+Subject: [PATCH 16/19] xpr/xprScreen.c: fix compilation
+
+---
+ hw/xquartz/xpr/xprScreen.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/hw/xquartz/xpr/xprScreen.c b/hw/xquartz/xpr/xprScreen.c
+index 562d6a0c3..5738d451b 100644
+--- a/hw/xquartz/xpr/xprScreen.c
++++ b/hw/xquartz/xpr/xprScreen.c
+@@ -322,6 +322,10 @@ xprAddScreen(int index, ScreenPtr pScreen)
+     DEBUG_LOG("index=%d depth=%d\n", index, depth);
+ 
+     if (depth == -1) {
++#if MAC_OS_X_VERSION_MIN_REQUIRED < 1060 || defined __ppc__
++        depth = CGDisplaySamplesPerPixel(kCGDirectMainDisplay) *
++                CGDisplayBitsPerSample(kCGDirectMainDisplay);
++#else
+         CGDisplayModeRef modeRef;
+         CFStringRef encStrRef;
+ 
+@@ -351,6 +355,7 @@ xprAddScreen(int index, ScreenPtr pScreen)
+         }
+ 
+         CFRelease(encStrRef);
++#endif
+     }
+ 
+ have_depth:
+@@ -366,7 +371,6 @@ have_depth:
+         dfb->blueMask = 0;
+         break;
+ 
+-#if 0
+     // Removed because Mountain Lion removed support for
+     // 15bit backing stores.  We can possibly re-add
+     // this once libXplugin is updated to work around it.
+@@ -380,7 +384,6 @@ have_depth:
+         dfb->greenMask = GM_ARGB(0, 5, 5, 5);
+         dfb->blueMask = BM_ARGB(0, 5, 5, 5);
+         break;
+-#endif
+ 
+     //        case 24:
+     default:
+-- 
+2.46.0
+

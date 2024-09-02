@@ -1,0 +1,28 @@
+From 59ea307222d001e3feaf41ffaa59f76f8669bb42 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sat, 31 Aug 2024 07:08:08 +0800
+Subject: [PATCH 23/25] X11*: still need _XQuartzScrollInDeviceDirection
+
+---
+ hw/xquartz/X11Application.m | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/hw/xquartz/X11Application.m b/hw/xquartz/X11Application.m
+index 2c895b9a2..2e2580a24 100644
+--- a/hw/xquartz/X11Application.m
++++ b/hw/xquartz/X11Application.m
+@@ -93,6 +93,11 @@ extern Bool noRenderExtension;
+ 
+ static TISInputSourceRef last_key_layout;
+ 
++/* This preference is only tested on Lion or later as it's not relevant to
++ * earlier OS versions.
++ */
++Bool XQuartzScrollInDeviceDirection = FALSE;
++
+ extern int darwinFakeButtons;
+ 
+ /* Store the mouse location while in the background, and update X11's pointer
+-- 
+2.46.0
+

@@ -1,0 +1,54 @@
+From 074aa3fc7b90ea2ff954ff26c5518e750507b11a Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sat, 31 Aug 2024 05:04:13 +0800
+Subject: [PATCH 19/21] xpr/xprEvent.c: fix build with gcc
+
+---
+ hw/xquartz/xpr/xprEvent.c | 23 ++++++++++++++++++++---
+ 1 file changed, 20 insertions(+), 3 deletions(-)
+
+diff --git a/hw/xquartz/xpr/xprEvent.c b/hw/xquartz/xpr/xprEvent.c
+index eb321a52f..6d7a486c5 100644
+--- a/hw/xquartz/xpr/xprEvent.c
++++ b/hw/xquartz/xpr/xprEvent.c
+@@ -52,7 +52,9 @@
+ #include <sys/uio.h>
+ #include <unistd.h>
+ 
++#ifdef __clang__
+ #include <dispatch/dispatch.h>
++#endif
+ 
+ #include "rootlessWindow.h"
+ #include "xprEvent.h"
+@@ -74,9 +76,24 @@ QuartzModeEventHandler(int screenNum, XQuartzEvent *e, DeviceIntPtr dev)
+ 
+     case kXquartzBringAllToFront:
+         DEBUG_LOG("kXquartzBringAllToFront\n");
+-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+-            xp_window_bring_all_to_front();
+-        });
++        /* There's no need to do xp_window_bring_all_to_front on Leopard,
++         * and we don't care about the result, so just do it async.
++         */
++#if __clang__ && defined(XPLUGIN_VERSION) && XPLUGIN_VERSION >= 6
++#  if defined(XPLUGIN_VERSION_MIN_REQUIRED) && XPLUGIN_VERSION_MIN_REQUIRED < 6
++        if (&xp_window_bring_all_to_front) {
++#  endif
++            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
++                xp_window_bring_all_to_front();
++            });
++#  if defined(XPLUGIN_VERSION_MIN_REQUIRED) && XPLUGIN_VERSION_MIN_REQUIRED < 6
++        } else {
++            RootlessOrderAllWindows(e->data[0]);
++        }
++#  endif
++#else
++        RootlessOrderAllWindows(e->data[0]);
++#endif
+ 
+         return TRUE;
+ 
+-- 
+2.46.0
+

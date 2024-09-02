@@ -1,0 +1,59 @@
+From 67de07531398f6ccd674158c76a80c6d4c749768 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Thu, 29 Aug 2024 13:20:54 +0800
+Subject: [PATCH 07/12] No pthread_attr_set_qos_class_np on Darwin
+
+---
+ hw/xquartz/darwinEvents.c  | 2 ++
+ hw/xquartz/quartzStartup.c | 2 ++
+ os/inputthread.c           | 2 +-
+ 3 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/hw/xquartz/darwinEvents.c b/hw/xquartz/darwinEvents.c
+index 15c1bc5d8..397528399 100644
+--- a/hw/xquartz/darwinEvents.c
++++ b/hw/xquartz/darwinEvents.c
+@@ -129,9 +129,11 @@ create_thread(void *(*func)(void *), void *arg)
+     pthread_attr_init(&attr);
+     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
+     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
++#ifndef __APPLE__
+     if (&pthread_attr_set_qos_class_np) {
+         pthread_attr_set_qos_class_np(&attr, QOS_CLASS_USER_INITIATED, 0);
+     }
++#endif
+     pthread_create(&tid, &attr, func, arg);
+     pthread_attr_destroy(&attr);
+ 
+diff --git a/hw/xquartz/quartzStartup.c b/hw/xquartz/quartzStartup.c
+index 9137edb66..4d7a03549 100644
+--- a/hw/xquartz/quartzStartup.c
++++ b/hw/xquartz/quartzStartup.c
+@@ -74,9 +74,11 @@ create_thread(void *func, void *arg)
+     pthread_attr_init(&attr);
+     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
+     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
++#ifndef __APPLE__
+     if (&pthread_attr_set_qos_class_np) {
+         pthread_attr_set_qos_class_np(&attr, QOS_CLASS_USER_INTERACTIVE, 0);
+     }
++#endif
+     pthread_create(&tid, &attr, func, arg);
+     pthread_attr_destroy(&attr);
+ 
+diff --git a/os/inputthread.c b/os/inputthread.c
+index bd0a8335f..21380b535 100644
+--- a/os/inputthread.c
++++ b/os/inputthread.c
+@@ -479,7 +479,7 @@ InputThreadInit(void)
+     if (pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM) != 0)
+         ErrorF("input-thread: error setting thread scope\n");
+ 
+-#ifdef __APPLE__
++#ifndef __APPLE__
+     if (&pthread_attr_set_qos_class_np) {
+         pthread_attr_set_qos_class_np(&attr, QOS_CLASS_USER_INTERACTIVE, 0);
+     }
+-- 
+2.46.0
+
