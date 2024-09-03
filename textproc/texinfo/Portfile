@@ -31,7 +31,7 @@ long_description    Texinfo is the official documentation format of \
                     if only the info command is used).
 homepage            https://www.gnu.org/software/texinfo/
 
-perl5.major         5.34
+perl5.major         5.26
 
 depends_build       port:gettext \
                     port:help2man
