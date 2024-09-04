@@ -163,6 +163,10 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             patchfiles-append \
                             ${perl5.major}/patch-want-implicit-errors.diff
         }
+        if {${perl5.major} >= 5.32} {
+            # https://trac.macports.org/ticket/70609
+            conflicts_build gettext-dev
+        }
 
         post-patch {
             reinplace -W ${worksrcpath} "s|__PREFIX__|${prefix}|g" \
