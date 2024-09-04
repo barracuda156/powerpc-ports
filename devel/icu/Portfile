@@ -143,7 +143,8 @@ if {${subport} eq ${name} || ${subport} eq "${name}-lx"} {
     } elseif {${os.platform} eq "darwin" && ${os.major} >= 19} {
         configure.python        /usr/bin/python3
     } else {
-        configure.python        /usr/bin/python
+        depends_build-append    port:python39
+        configure.python        ${prefix}/bin/python3.9
     }
 
     if {${build_arch} eq "ppc" || ${build_arch} eq "ppc64"} {
