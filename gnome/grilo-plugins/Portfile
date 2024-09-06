@@ -25,7 +25,7 @@ checksums           rmd160  0baffd5b1808ca6447505227c67a53ba1113c205 \
                     sha256  686844b34ec73b24931ff6cc4f6033f0072947a6db60acdc7fb3eaf157a581c8 \
                     size    1836512
 
-depends_build       port:pkgconfig \
+depends_build       path:bin/pkg-config:pkgconfig \
                     port:gettext \
                     port:itstool
 
@@ -61,6 +61,16 @@ variant dmap description {Enable optional dmap sharing support} {
 variant tracker description {Enable optional tracker support} {
     depends_lib-append  port:tracker
     configure.args-delete   -Denable-tracker=no
+}
+
+platform darwin {
+    if {${configure.cxx_stdlib} ne "libc++"} {
+        # gnome-online-accounts needs webkit2-gtk,
+        # which in turn needs libc++ on macOS.
+        depends_lib-delete  port:gnome-online-accounts
+        configure.args-append \
+                            -Denable-goa=no
+    }
 }
 
 # grilo expects plugin modules with .so extensions

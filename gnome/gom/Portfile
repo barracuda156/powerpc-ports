@@ -5,7 +5,7 @@ PortGroup           python 1.0
 PortGroup           meson 1.0
 
 name                gom
-version             0.4
+version             0.5.3
 revision            0
 license             LGPL-2.1+
 set branch          [join [lrange [split ${version} .] 0 1] .]
@@ -14,19 +14,18 @@ long_description    ${description}
 
 maintainers         {devans @dbevans} openmaintainer
 categories          gnome
-platforms           darwin
 homepage            https://wiki.gnome.org/Gom
 master_sites        gnome:sources/${name}/${branch}/
 
 use_xz              yes
 
-checksums           rmd160  312e4b14a815e04fdc369b3f7cf47d899be05b6a \
-                    sha256  68d08006aaa3b58169ce7cf1839498f45686fba8115f09acecb89d77e1018a9d \
-                    size    102744
+checksums           rmd160  3450554cb61003f779afbe2bf18750246dc2a3ea \
+                    sha256  069d0909fbdc6b4d27edf7a879366194e3ab508b03548bf5b89ff63546d20177 \
+                    size    106204
 
-python.default_version 310
+python.default_version 312
 
-depends_build       port:pkgconfig \
+depends_build       path:bin/pkg-config:pkgconfig \
                     port:gtk-doc
 
 depends_lib         path:lib/pkgconfig/gdk-pixbuf-2.0.pc:gdk-pixbuf2 \
@@ -35,14 +34,16 @@ depends_lib         path:lib/pkgconfig/gdk-pixbuf-2.0.pc:gdk-pixbuf2 \
                     port:py${python.version}-gobject3 \
                     port:sqlite3
 
-patchfiles          use-g-add-private.patch \
-                    fix-trivial-doc-typo.patch
-
-patch.pre_args-replace  -p0 -p1
-
 use_configure       yes
 configure.args      -Denable-gtk-doc=true \
+                    -Denable-introspection=true \
                     -Dpygobject-override-dir="${python.pkgd}/gi/overrides"
+
+# gom-resource-group.c: error: ‘for’ loop initial declaration used outside C99 mode
+# But -std=c99 not sufficient:
+# gom-resource-group.c: error: ‘ItemData’ has no member named ‘resource’, etc.
+compiler.blacklist-append \
+                    *gcc-4.0 *gcc-4.2
 
 destroot.cmd        ${build.cmd}
 
