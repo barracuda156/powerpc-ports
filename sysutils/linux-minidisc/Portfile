@@ -1,0 +1,48 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           qmake 1.0
+
+github.setup        linux-minidisc linux-minidisc 2b82dd76270a74c143b6acaeb8e88ddd6035cf7d
+version             2022.07.11
+revision            0
+categories          sysutils multimedia
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+license             {GPL-2 LGPL-2.1}
+
+description         Free software for accessing MiniDisc devices
+long_description    {*}${description}
+
+checksums           rmd160  5a2b5d4046550dadba0dd7959a5d67ab54c5eeac \
+                    sha256  3a9a107afb58860325f6c0082527d320209d1542253d28d3905908c324277b0e \
+                    size    2464154
+github.tarball_from archive
+
+# https://github.com/linux-minidisc/linux-minidisc/pull/97
+patchfiles-append   0001-qmdmodel.cpp-fix-code-for-Qt-5.11.patch
+
+# https://github.com/linux-minidisc/linux-minidisc/pull/72
+patchfiles-append   0002-f678b4fcf071f1530841afb72d30e065c1f205ba.patch
+
+depends_build-append \
+                    port:gettext \
+                    path:bin/pkg-config:pkgconfig
+
+depends_lib-append  port:gettext-runtime \
+                    path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    port:libgcrypt \
+                    port:libid3tag \
+                    port:libmad \
+                    path:lib/pkgconfig/libusb-1.0.pc:libusb \
+                    port:sox \
+                    port:taglib \
+                    port:zlib
+
+# https://github.com/linux-minidisc/linux-minidisc/issues/95
+use_parallel_build  no
+
+destroot {
+    copy ${worksrcpath}/qhimdtransfer/QHiMDTransfer.app \
+        ${destroot}${applications_dir}/
+}

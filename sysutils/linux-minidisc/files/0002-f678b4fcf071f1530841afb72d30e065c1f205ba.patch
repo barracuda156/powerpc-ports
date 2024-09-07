@@ -1,0 +1,85 @@
+From f678b4fcf071f1530841afb72d30e065c1f205ba Mon Sep 17 00:00:00 2001
+From: Jessica Stokes <hello@jessicastokes.net>
+Date: Mon, 28 Dec 2020 20:38:38 -0800
+Subject: [PATCH] Ensure pkg-config is correctly queried
+
+---
+ build/libgcrypt.pri   | 25 ++++++++++++++++++++++++-
+ himdcli/himdcli.pro   |  2 --
+ libhimd/libhimd.pro   |  2 ++
+ netmdcli/netmdcli.pro |  1 +
+ 4 files changed, 27 insertions(+), 3 deletions(-)
+
+diff --git a/build/libgcrypt.pri b/build/libgcrypt.pri
+index 54811ac3..56241916 100644
+--- build/libgcrypt.pri
++++ build/libgcrypt.pri
+@@ -1,5 +1,28 @@
+ !without_gcrypt {
+-  LIBS += -lgcrypt
++  # We use qt's own check to see if pkg-config can find libgcrypt, and if it can't, fall back to libgcrypt-config
++  # https://github.com/qt/qtbase/blob/5.3/mkspecs/features/qt_functions.prf#L323-L336
++  packagesExist(libgcrypt) {
++    PKGCONFIG += libgcrypt
++  } else {
++    # The following is based upon the qt5 link_pkgconfig mkspec logic:
++    # https://github.com/qt/qtbase/blob/5.3/mkspecs/features/link_pkgconfig.prf#L12-L27
++    GCRYPT_CONFIG_CFLAGS = $$system(libgcrypt-config --cflags)
++
++    GCRYPT_CONFIG_INCLUDEPATH = $$find(GCRYPT_CONFIG_CFLAGS, ^-I.*)
++    GCRYPT_CONFIG_INCLUDEPATH ~= s/^-I(.*)/\\1/g
++
++    GCRYPT_CONFIG_DEFINES = $$find(GCRYPT_CONFIG_CFLAGS, ^-D.*)
++    GCRYPT_CONFIG_DEFINES ~= s/^-D(.*)/\\1/g
++
++    GCRYPT_CONFIG_CFLAGS ~= s/^-[ID].*//g
++
++    INCLUDEPATH *= $$GCRYPT_CONFIG_INCLUDEPATH
++    DEFINES *= $$GCRYPT_CONFIG_DEFINES
++
++    QMAKE_CXXFLAGS += $$GCRYPT_CONFIG_CFLAGS
++    QMAKE_CFLAGS += $$GCRYPT_CONFIG_CFLAGS
++    LIBS += $$system(libgcrypt-config --libs)
++  }
+   DEFINES += CONFIG_WITH_GCRYPT
+ }
+ else: !build_pass: message(You disabled gcrypt: No PCM and ATRAC transfer will be supported)
+diff --git a/himdcli/himdcli.pro b/himdcli/himdcli.pro
+index 3ea4d4cf..091c76da 100644
+--- himdcli/himdcli.pro
++++ himdcli/himdcli.pro
+@@ -6,9 +6,7 @@ CONFIG += console link_pkgconfig link_prl
+ SOURCES += himdcli.c
+ 
+ include(../libhimd/use_libhimd.pri)
+-include(../build/libid3tag.pri)
+ include(../build/libmad.pri)
+-include(../build/libz.pri)
+ include(../build/libglib.pri)
+ include(../build/installunix.pri)
+ include(../build/common.pri)
+diff --git a/libhimd/libhimd.pro b/libhimd/libhimd.pro
+index f6760f13..247b1ea0 100644
+--- libhimd/libhimd.pro
++++ libhimd/libhimd.pro
+@@ -6,6 +6,8 @@ CONFIG += staticlib link_pkgconfig create_prl console debug_and_release_target
+ HEADERS += codecinfo.h himd.h himd_private.h sony_oma.h
+ SOURCES += codecinfo.c encryption.c himd.c mdstream.c trackindex.c sony_oma.c frag.c mp3tools.c mp3download.c
+ 
++include(../build/libid3tag.pri)
++include(../build/libz.pri)
+ include(../build/libmad.pri)
+ include(../build/libgcrypt.pri)
+ include(../build/libglib.pri)
+diff --git a/netmdcli/netmdcli.pro b/netmdcli/netmdcli.pro
+index 08d44236..71f8601d 100644
+--- netmdcli/netmdcli.pro
++++ netmdcli/netmdcli.pro
+@@ -4,6 +4,7 @@ CONFIG += console link_pkgconfig link_prl
+ SOURCES += netmdcli.c
+ 
+ include(../libnetmd/use_libnetmd.prl)
++include(../build/libgcrypt.pri)
+ include(../build/libusb.pri)
+ include(../build/installunix.pri)
+ include(../build/common.pri)
