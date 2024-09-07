@@ -46,7 +46,8 @@ checksums           ${distname}${extract.suffix} \
 
 patchfiles          patch-apple-screen.diff \
                     patch-apple-window.diff \
-                    patch-tic.diff
+                    patch-tic.diff \
+                    patch-use-right-environ.diff
 depends_lib-append  port:ncurses
 
 extract.only        ${distname}${extract.suffix}
