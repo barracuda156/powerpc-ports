@@ -62,10 +62,6 @@ if {${os.platform} eq "darwin" && ${os.major} < 20} {
     # Non-Apple OS on ppc will need libatomic linking too, but leave it until tested.
     patchfiles-append \
                     patch-linking.diff
-
-    post-patch {
-        reinplace "s,@PREFIX@,${prefix},g" ${worksrcpath}/cmake/Modules/FindMagic_EP.cmake
-    }
 }
 
 # Can be rewritten unconditionally, but no point in making a patch more complex:
