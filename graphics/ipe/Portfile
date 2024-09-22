@@ -5,7 +5,7 @@ PortGroup               github 1.0
 
 github.setup            otfried ipe 7.2.29 v
 
-revision                0
+revision                1
 categories              graphics
 maintainers             {gmail.com:jjstickel @jjstickel} \
                         openmaintainer
@@ -26,7 +26,7 @@ checksums               rmd160  3aab1c281c938f10c80d29d23c46df963c645b8c \
                         sha256  2d7e87ad8a2a84c33bca16dd2cc6c91b4aa931500a6ad0b7970bc7d2d7955e1a \
                         size    932128
 
-depends_build-append    port:pkgconfig
+depends_build-append    path:bin/pkg-config:pkgconfig
 
 depends_lib-append      port:freetype \
                         port:gsl \
@@ -36,8 +36,36 @@ depends_lib-append      port:freetype \
                         port:libspiro \
                         port:zlib
 
+# cc1plus: error: unrecognized command line option "-std=c++20"
+compiler.cxx_standard   2020
+
 use_configure           no
 universal_variant       no
+
+# https://github.com/otfried/ipe/issues/522
+patchfiles-append       patch-ipeplatform.cpp.diff
+
+# Default variant for clang-using macOS:
+variant cocoa conflicts gtk description {Use native GUI} { }
+
+# Variant for non-Apple systems and older macOS using gcc.
+# FIXME: https://github.com/otfried/ipe/issues/523
+variant gtk conflicts cocoa description {Use GTK GUI} {
+    # ipebitmap_unix.cpp: fatal error: CoreGraphics/CoreGraphics.h: No such file or directory
+    # https://trac.macports.org/ticket/59917
+    # Also removes clangisms and fixes deployment target.
+    patchfiles-append   patch-gtk-build.diff
+
+    depends_lib-append  path:lib/pkgconfig/cairo.pc:cairo \
+                        path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                        path:lib/pkgconfig/gtk+-2.0.pc:gtk2 \
+                        path:lib/pkgconfig/harfbuzz.pc:harfbuzz \
+                        path:lib/pkgconfig/pango.pc:pango
+
+    post-patch {
+        reinplace "s|@TARGET@|${macosx_deployment_target}|" ${worksrcpath}/common.mak
+    }
+}
 
 variant qvoronoi description {Add qvoronoi ipelet} {
     depends_lib-append  port:qhull
@@ -47,6 +75,15 @@ variant qvoronoi description {Add qvoronoi ipelet} {
 
 default_variants        +qvoronoi
 
+if {${os.platform} eq "darwin" && [string match *clang* ${configure.compiler}] \
+    && ![variant_isset gtk]} {
+    default_variants-append \
+                        +cocoa
+} else {
+    default_variants-append \
+                        +gtk
+}
+
 pre-build {
     build.env           CXXFLAGS=[get_canonical_archflags cxx] \
                         LDFLAGS=[get_canonical_archflags ld]
@@ -54,29 +91,42 @@ pre-build {
                         CXX=${configure.cxx} \
                         LUA_PACKAGE="lua" \
                         JPEG_LIBS="-framework ApplicationServices" \
-                        IPECONFIGMAK="config.mak" \
+                        IPECONFIGMAK="config.mak"
+
+    # Bundle cannot be build with GTK here:
+    # main_gtk.cpp:53:24: error: expected ')' before 'IPELUADIR'
+    # main_gtk.cpp:62:45: error: 'IPESTYLEDIR' was not declared in this scope; did you mean 'IPESTYLE_H'?
+    if {[variant_isset cocoa]} {
+        build.args-append \
                         IPEBUNDLE=1
+    }
 }
 
 use_parallel_build      no
 
 destroot.args-append    IPEPREFIX=${prefix} \
-                        IPECONFIGMAK="config.mak" \
+                        IPECONFIGMAK="config.mak"
+
+if {[variant_isset cocoa]} {
+    destroot.args-append \
                         IPEBUNDLE=1
 
-destroot.target         app
-use_xcode               yes
+    destroot.target     app
+    use_xcode           yes
 
-
-platform macosx {
-    post-destroot {
-        copy ${worksrcpath}/../build/Ipe.app ${destroot}${applications_dir}/Ipe.app
-        reinplace "s|/usr/local/bin|/usr/local/bin:${prefix}/bin|g" ${destroot}${applications_dir}/Ipe.app/Contents/Info.plist
-        xinstall -m 755 ${filespath}/ipe.in ${destroot}${prefix}/bin/ipe
-        reinplace "s|@APPLICATIONSDIR@|${applications_dir}|g" ${destroot}${prefix}/bin/ipe
-        xinstall -m 755 ${filespath}/ipetoipe.in ${destroot}${prefix}/bin/ipetoipe
-        reinplace "s|@APPLICATIONSDIR@|${applications_dir}|g" ${destroot}${prefix}/bin/ipetoipe
+    platform macosx {
+        post-destroot {
+            copy ${worksrcpath}/../build/Ipe.app ${destroot}${applications_dir}/Ipe.app
+            reinplace "s|/usr/local/bin|/usr/local/bin:${prefix}/bin|g" ${destroot}${applications_dir}/Ipe.app/Contents/Info.plist
+            xinstall -m 755 ${filespath}/ipe.in ${destroot}${prefix}/bin/ipe
+            reinplace "s|@APPLICATIONSDIR@|${applications_dir}|g" ${destroot}${prefix}/bin/ipe
+            xinstall -m 755 ${filespath}/ipetoipe.in ${destroot}${prefix}/bin/ipetoipe
+            reinplace "s|@APPLICATIONSDIR@|${applications_dir}|g" ${destroot}${prefix}/bin/ipetoipe
+        }
     }
+} else {
+    destroot.args-append \
+                        INSTALL_ROOT=${destroot}
 }
 
 livecheck.type          regex

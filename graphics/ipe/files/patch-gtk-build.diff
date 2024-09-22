@@ -1,0 +1,131 @@
+--- common.mak	2024-05-25
++++ common.mak	2024-09-22 04:06:22.000000000 +0800
+@@ -17,10 +17,10 @@
+   UNAME = $(shell uname)
+   ifeq "$(UNAME)" "Darwin"
+     MACOS = 1
+-    IPEUI = COCOA
++    IPEUI = GTK
+     IPECONFIGMAK ?= macos.mak
+   else
+-    IPEUI ?= QT
++    IPEUI ?= GTK
+     IPECONFIGMAK ?= config.mak
+   endif
+ endif
+@@ -176,9 +176,9 @@
+ ifdef MACOS
+   # -------------------- Mac OS X --------------------
+   CXXFLAGS	  += -g -Os
+-  IPEOBJCPP       = -x objective-c++ -fobjc-arc
+-  OSXTARGET       ?= -mmacosx-version-min=10.10
+-  CXXFLAGS        += $(OSXTARGET) -Wdeprecated-declarations
++  IPEOBJCPP       = -x objective-c++
++  OSXTARGET       ?= -mmacosx-version-min=@TARGET@
++  CXXFLAGS        += $(OSXTARGET) -D_GLIBCXX_USE_CXX11_ABI=0 -Wdeprecated-declarations -F/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks
+   CFLAGS          += $(OSXTARGET)
+   LDFLAGS         += $(OSXTARGET)
+   DLL_LDFLAGS	  += -dynamiclib 
+@@ -186,7 +186,7 @@
+   DL_LIBS         ?= -ldl
+   ZLIB_CFLAGS     ?=
+   ZLIB_LIBS       ?= -lz
+-  JPEG_CFLAGS     :=
++  JPEG_CFLAGS     := -F/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks
+   JPEG_LIBS       := -framework ApplicationServices
+   CURL_CFLAGS     := $(IPEOBJCPP)
+   CURL_LIBS       := -framework Foundation
+
+--- macos.mak	2024-05-25
++++ macos.mak	2024-09-22 04:08:06.000000000 +0800
+@@ -31,6 +31,6 @@
+ #
+ IPEVERS = 7.2.29
+ #
+-CXX = clang++
++CXX ?= $(CXX)
+ #
+ # --------------------------------------------------------------------
+
+--- config.mak
++++ config.mak	2024-09-22 05:34:27.000000000 +0800
+@@ -46,28 +46,28 @@
+ # Until Qt 6.3.1, the pkg-config files are missing
+ # here is an ugly hack using the Qt5 pkg-config instead
+ #
+-QT6PKGCONFIG  := $(shell $(PKG_CONFIG) --exists Qt6Gui && echo "YES")
+-ifndef QT_CFLAGS
+-ifeq "$(QT6PKGCONFIG)" "YES"
+-QT_CFLAGS     ?= $(shell $(PKG_CONFIG) --cflags Qt6Gui Qt6Widgets Qt6Core)
+-else
+-QT_CFLAGS1    := $(shell $(PKG_CONFIG) --cflags Qt5Gui Qt5Widgets Qt5Core)
+-QT_CFLAGS     ?= $(subst qt5,qt6,$(QT_CFLAGS1))
+-endif
+-endif
+-ifndef QT_LIBS
+-ifeq "$(QT6PKGCONFIG)" "YES"
+-QT_LIBS	      ?= $(shell $(PKG_CONFIG) --libs Qt6Gui Qt6Widgets Qt6Core)
+-else
+-QT_LIBS1      := $(shell $(PKG_CONFIG) --libs Qt5Gui Qt5Widgets Qt5Core)
+-QT_LIBS	      ?= $(subst Qt5,Qt6,$(QT_LIBS1))
+-endif
+-endif
+-#
+-ifdef IPE_SPELLCHECK
+-SPELL_CFLAGS  ?= $(shell $(PKG_CONFIG) --cflags QtSpell-qt6)
+-SPELL_LIBS    ?= $(shell $(PKG_CONFIG) --libs QtSpell-qt6)
+-endif
++#QT6PKGCONFIG  := $(shell $(PKG_CONFIG) --exists Qt6Gui && echo "YES")
++#ifndef QT_CFLAGS
++#ifeq "$(QT6PKGCONFIG)" "YES"
++#QT_CFLAGS     ?= $(shell $(PKG_CONFIG) --cflags Qt6Gui Qt6Widgets Qt6Core)
++#else
++#QT_CFLAGS1    := $(shell $(PKG_CONFIG) --cflags Qt5Gui Qt5Widgets Qt5Core)
++#QT_CFLAGS     ?= $(subst qt5,qt6,$(QT_CFLAGS1))
++#endif
++#endif
++#ifndef QT_LIBS
++#ifeq "$(QT6PKGCONFIG)" "YES"
++#QT_LIBS	      ?= $(shell $(PKG_CONFIG) --libs Qt6Gui Qt6Widgets Qt6Core)
++#else
++#QT_LIBS1      := $(shell $(PKG_CONFIG) --libs Qt5Gui Qt5Widgets Qt5Core)
++#QT_LIBS	      ?= $(subst Qt5,Qt6,$(QT_LIBS1))
++#endif
++#endif
++#
++#ifdef IPE_SPELLCHECK
++#SPELL_CFLAGS  ?= $(shell $(PKG_CONFIG) --cflags QtSpell-qt6)
++#SPELL_LIBS    ?= $(shell $(PKG_CONFIG) --libs QtSpell-qt6)
++#endif
+ #
+ # Library needed to use dlopen/dlsym/dlclose calls
+ #
+@@ -75,14 +75,14 @@
+ #
+ # MOC is the Qt meta-object compiler.
+ # Make sure it's the right one for Qt6.
+-MOC	      ?= /usr/lib/qt6/libexec/moc
++#MOC	      ?= /usr/lib/qt6/libexec/moc
+ #
+ # --------------------------------------------------------------------
+ #
+ # The C++ compiler
+ # I'm testing with g++ and clang++.
+ #
+-CXX = g++
++CXX ?= $(CXX)
+ #
+ # Special compilation flags for compiling shared libraries
+ # 64-bit Linux requires shared libraries to be compiled as
+
+--- ipecurl/Makefile
++++ ipecurl/Makefile	2024-09-22 07:38:35.000000000 +0800
+@@ -16,7 +16,7 @@
+ cocoa_sources = ipecurl_osx.cpp
+ 
+ ifndef WIN32
+-ifndef MACOS
++ifdef MACOS
+ IPECURL_SH=1
+ endif
+ endif
