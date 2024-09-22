@@ -1,0 +1,11 @@
+--- ipelib/ipeplatform.cpp	2024-05-25 19:02:08.000000000 +0800
++++ ipelib/ipeplatform.cpp	2024-09-22 05:17:17.000000000 +0800
+@@ -596,7 +596,7 @@
+     s += ":$TEXINPUTS\"; ";
+   }
+   if (online) {
+-#ifdef __APPLE__
++#if defined(__APPLE__) && defined(IPEBUNDLE)
+     s += "\"";
+     s += ipeDir("../MacOS", "ipecurl");
+     s += "\" ";
