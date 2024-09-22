@@ -1,0 +1,31 @@
+From dd24ef1934de452d2c69ee7628d057c0626258bb Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sun, 22 Sep 2024 12:18:17 +0800
+Subject: [PATCH] parsing_tests.cpp: use Boost regex on macOS with gcc
+
+---
+ Release/tests/functional/json/parsing_tests.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git Release/tests/functional/json/parsing_tests.cpp Release/tests/functional/json/parsing_tests.cpp
+index bd43ee25..bd23a302 100644
+--- Release/tests/functional/json/parsing_tests.cpp
++++ Release/tests/functional/json/parsing_tests.cpp
+@@ -14,7 +14,7 @@
+ #include <array>
+ #include <iomanip>
+ 
+-#if defined(_WIN32) || defined(__APPLE__)
++#if defined(_WIN32) || (defined(__APPLE__) && defined(__clang__))
+ #include <regex>
+ #elif (defined(ANDROID) || defined(__ANDROID__))
+ #else
+@@ -172,7 +172,7 @@ namespace json_tests
+ {
+ inline bool verify_parsing_error_msg(const std::string& str)
+ {
+-#if defined(_WIN32) || defined(__APPLE__)
++#if defined(_WIN32) || (defined(__APPLE__) && defined(__clang__))
+     auto spattern = "^\\* Line \\d+, Column \\d+ Syntax error: .+";
+     static std::regex pattern(spattern);
+     return std::regex_match(str, pattern, std::regex_constants::match_flag_type::match_not_null);

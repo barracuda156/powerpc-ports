@@ -28,11 +28,36 @@ depends_lib-append  port:libiconv \
 
 compiler.cxx_standard  2011
 
-configure.args-append -DBUILD_SAMPLES=OFF -DBUILD_TESTS=OFF \
-    -DOPENSSL_ROOT_DIR=${prefix} -DWERROR=OFF
+# asyncrt_utils.h:317:13: error: 'locale_t' does not name a type
+# asyncrt_utils.h:320:24: error: 'xplat_locale' does not name a type
+# https://github.com/microsoft/cpprestsdk/pull/1804
+patchfiles-append   0001-asyncrt_utils.h-include-xlocale-on-macOS.patch
+# Fallback to Boost regex when using GCC.
+patchfiles-append   0002-parsing_tests.cpp-use-Boost-regex-on-macOS-with-gcc.patch
+
+configure.args-append \
+                    -DBUILD_SAMPLES=OFF \
+                    -DBUILD_TESTS=OFF \
+                    -DOPENSSL_ROOT_DIR=${prefix} \
+                    -DWERROR=OFF
 
 variant tests description {build tests.} {
     configure.args-replace      -DBUILD_TESTS=OFF -DBUILD_TESTS=ON
     configure.post_args-append  -DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=OFF
     test.run                    yes
+}
+
+# The following block is only used on macOS powerpc.
+platform darwin powerpc {
+    patchfiles-append \
+                    0003-x509_cert_utilities.h-no-support-for-ASIO_CERT_VERIF.patch
+
+    # pplxapple.cpp uses dispatch since:
+    # https://github.com/microsoft/cpprestsdk/commit/a5346271951e5b301b962516aeb26179a9fc2fc7
+    depends_lib-append \
+                    port:libdispatch-legacy
+    configure.cppflags-append \
+                    -I${prefix}/libexec/dispatch/usr/include
+    configure.ldflags-append \
+                    ${prefix}/libexec/dispatch/usr/lib/libdispatch.a
 }
