@@ -1,0 +1,22 @@
+From 532fb1edcee321633550c5ad52dd28a99d51e06a Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sun, 22 Sep 2024 06:14:49 +0800
+Subject: [PATCH] asyncrt_utils.h: include xlocale on macOS
+
+---
+ Release/include/cpprest/asyncrt_utils.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git Release/include/cpprest/asyncrt_utils.h Release/include/cpprest/asyncrt_utils.h
+index 3e4bfdd5..616ceae5 100644
+--- Release/include/cpprest/asyncrt_utils.h
++++ Release/include/cpprest/asyncrt_utils.h
+@@ -26,7 +26,7 @@
+ 
+ #ifndef _WIN32
+ #include <sys/time.h>
+-#if !defined(ANDROID) && !defined(__ANDROID__) && defined(HAVE_XLOCALE_H) // CodePlex 269
++#if !defined(ANDROID) && !defined(__ANDROID__) && (defined(HAVE_XLOCALE_H) || defined(__APPLE__)) // CodePlex 269
+ /* Systems using glibc: xlocale.h has been removed from glibc 2.26
+    The above include of locale.h is sufficient
+    Further details: https://sourceware.org/git/?p=glibc.git;a=commit;h=f0be25b6336db7492e47d2e8e72eb8af53b5506d */

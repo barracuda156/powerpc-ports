@@ -1,0 +1,23 @@
+From a97b324431895777ff6ca9852e5f3ec6ab124a16 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sun, 22 Sep 2024 11:14:52 +0800
+Subject: [PATCH] x509_cert_utilities.h: no support for ASIO_CERT_VERIFICATION
+ on ppc
+
+---
+ Release/src/http/common/x509_cert_utilities.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git Release/src/http/common/x509_cert_utilities.h Release/src/http/common/x509_cert_utilities.h
+index 854e3053..9096546e 100644
+--- Release/src/http/common/x509_cert_utilities.h
++++ Release/src/http/common/x509_cert_utilities.h
+@@ -61,7 +61,7 @@ struct winhttp_cert_chain_context
+ } // namespace web
+ #endif // _WIN32
+ 
+-#if defined(__APPLE__) || (defined(ANDROID) || defined(__ANDROID__)) ||                                                \
++#if (defined(__APPLE__) && !defined(__ppc__)) || (defined(ANDROID) || defined(__ANDROID__)) ||                                                \
+     (defined(_WIN32) && defined(CPPREST_FORCE_HTTP_CLIENT_ASIO)) ||                                                    \
+     (defined(_WIN32) && !defined(__cplusplus_winrt) && !defined(_M_ARM) && !defined(CPPREST_EXCLUDE_WEBSOCKETS))
+ #define CPPREST_PLATFORM_ASIO_CERT_VERIFICATION_AVAILABLE
