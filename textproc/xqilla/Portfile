@@ -28,6 +28,9 @@ depends_lib \
 
 patchfiles      patch-src-functions-FunctionParseHTML.cpp.diff
 
+compiler.cxx_standard \
+                2011
+
 configure.cppflags  -isystem${prefix}/include
 
 configure.args \
