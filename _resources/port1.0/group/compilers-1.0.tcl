@@ -98,12 +98,15 @@ if { ${os.arch} eq "arm" || ${os.platform} ne "darwin" } {
     if { ${os.major} < 15 } {
         lappend gcc_versions 5 6 7 8 9
     }
-    if { ${os.major} >= 10 } {
+    if { ${os.major} >= 9 } {
         if { [vercmp ${xcodeversion} < 16.0] && [vercmp ${xcodecltversion} < 16.0] } {
             lappend gcc_versions 10 11 12 13
         }
     }
     lappend gcc_versions 14 devel
+    if { ${os.arch} eq "powerpc" } {
+        lappend gcc_versions powerpc
+    }
 }
 
 # GCC version providing the primary runtime
@@ -122,6 +125,10 @@ foreach ver ${gcc_versions} {
         set cdb(gcc$ver_nodot,depends)  port:gcc-devel
         set cdb(gcc$ver_nodot,dependsl) "port:libgcc-devel"
         set cdb(gcc$ver_nodot,dependsa) gcc-devel
+    } elseif { $ver eq "powerpc" } {
+        set cdb(gcc$ver_nodot,depends)  port:gcc-powerpc
+        set cdb(gcc$ver_nodot,dependsl) "port:libgcc-powerpc"
+        set cdb(gcc$ver_nodot,dependsa) gcc-powerpc
     } else {
         set cdb(gcc$ver_nodot,depends)  port:gcc$ver_nodot
         if {[vercmp ${ver} < 4.6]} {
@@ -834,7 +841,7 @@ proc compilers::add_fortran_legacy_support {} {
     global compilers.allow_arguments_mismatch
     if {${compilers.allow_arguments_mismatch}} {
         set gcc_v [compilers::get_current_gcc_version]
-        if { ${gcc_v} >= 10 || ${gcc_v} == "devel" } {
+        if { ${gcc_v} >= 10 || ${gcc_v} == "devel" || ${gcc_v} == "powerpc" } {
             configure.fflags-delete     -fallow-argument-mismatch
             configure.fcflags-delete    -fallow-argument-mismatch
             configure.f90flags-delete   -fallow-argument-mismatch
@@ -850,7 +857,7 @@ port::register_callback compilers::add_fortran_legacy_support
 proc compilers::add_gcc_rpath_support {} {
     global prefix os.platform os.major
     set gcc_v [compilers::get_current_gcc_version]
-    if { ${gcc_v} >= 10 || ${gcc_v} == "devel" } {
+    if { ${gcc_v} >= 10 || ${gcc_v} == "devel" || ${gcc_v} == "powerpc" } {
         if {${os.platform} eq "darwin" && ${os.major} > 8} {
             ui_debug "compilers PG: RPATH added to ldflags as GCC version is ${gcc_v}"
             configure.ldflags-delete  -Wl,-rpath,${prefix}/lib/libgcc
