@@ -2,8 +2,8 @@
 
 PortSystem              1.0
 PortGroup               github 1.0
-PortGroup               meson 1.0
 PortGroup               legacysupport 1.1
+PortGroup               meson 1.0
 
 github.setup            haasn libplacebo 7.349.0 v
 revision                1
@@ -26,7 +26,7 @@ set python_branch       [string map {. {}} ${python_ver}]
 
 # Vulkan headers required regardless of vulkan feature
 depends_build-append    port:fast-float \
-                        port:pkgconfig \
+                        path:bin/pkg-config:pkgconfig \
                         port:vulkan-headers \
                         port:py${python_branch}-jinja2
 
@@ -46,6 +46,31 @@ configure.args-append   -Dvulkan=disabled \
                         -Dxxhash=enabled \
                         -Dlcms=enabled \
                         -Dunwind=disabled
+
+if {${os.platform} eq "darwin" && ${os.major} < 11} {
+    # For now, due to: https://trac.macports.org/ticket/68962
+    github.setup        haasn libplacebo 5.264.1 v
+    # Need to revbump here due to Python changed to 3.12:
+    revision            1
+    checksums           rmd160  06f222bcd4147881bffb5837cd00a63e940260ef \
+                        sha256  47dac5926da6e0682ea545536ea143b7bba3eef139c9b96606c8f1fb44404c5f \
+                        size    725437
+
+    patchfiles-append   patch-legacy.diff
+
+    post-patch {
+        reinplace "s|@PREFIX@|${prefix}|" ${worksrcpath}/meson.build
+    }
+
+    depends_build-delete \
+                        port:vulkan-headers \
+                        port:py${python_branch}-jinja2
+
+    depends_lib-delete  port:xxhashlib
+
+    configure.args-delete \
+                        -Dxxhash=enabled
+}
 
 post-patch {
     reinplace "s|import\(\'python\'\).find_installation\(\)|import\(\'python\'\).find_installation\(\'${frameworks_dir}/Python.framework/Versions/${python_ver}/bin/python${python_ver}\'\)|" \
