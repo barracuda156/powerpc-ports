@@ -1,4 +1,5 @@
 PortSystem       1.0
+PortGroup        gnulib 1.0
 
 name             idutils
 version             4.6
@@ -26,7 +27,6 @@ long_description `mkid' is a simple, fast, high-capacity, language-independent \
 	             since 1996!), it now understands C++.
 
 homepage         https://www.gnu.org/software/idutils/
-platforms        darwin
 
 master_sites     gnu
 use_xz              yes
