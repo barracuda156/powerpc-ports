@@ -11,6 +11,11 @@ revision                3
 
 set llvmppc_ver         7.1.1
 
+# Since we switch to llvm-powerpc on PowerPC systems
+platform darwin powerpc {
+    incr revision
+}
+
 # simulate stealth update; remove with next version change
 dist_subdir             ${name}/${version}_1
 
@@ -129,6 +134,9 @@ if { ![some_llvm_variant_set] && ![variant_isset xcode] && ![variant_isset xtool
     } elseif {${os.major} >= 9 && ${build_arch} ni [list ppc ppc64]} {
         # llvm-3.4 is the newest llvm the system toolchain can build on these systems
         default_variants +llvm34
+    } elseif {${build_arch} in [list ppc ppc64]} {
+        # Use our llvm-powerpc on PowerPC systems
+        default_variants +llvmppc
     }
 
     # we purposefully don't force an llvm variant on cctools for < darwin10
@@ -222,8 +230,15 @@ post-patch {
         if {${llvm_version} ne ""} {
             reinplace "s:\"llvm-objdump\":\"llvm-objdump-mp-${llvm_version}\":" ${worksrcpath}/otool/main.c
             reinplace "s:\"llvm-mc\":\"llvm-mc-mp-${llvm_version}\":" ${worksrcpath}/as/driver.c
-            reinplace "s:@@LLVM_LIBDIR@@:${prefix}/libexec/llvm-${llvmppc_ver}/lib:" ${worksrcpath}/libstuff/lto.c
+            if {${llvm_version} eq "powerpc"} {
+                reinplace "s:@@LLVM_LIBDIR@@:${prefix}/libexec/llvm-${llvmppc_ver}/lib:" ${worksrcpath}/libstuff/lto.c
+            } else {
+                reinplace "s:@@LLVM_LIBDIR@@:${prefix}/libexec/llvm-${llvm_version}/lib:" ${worksrcpath}/libstuff/lto.c
+            }
         }
+
+        # TODO: consider using llas on PowerPC.
+        # https://github.com/iains/darwin-toolchains-start-here/discussions/50
 
         # List of clang versions to search for at runtime internally by 'as'
         # Build list from llvm variants, excluding clang < 5 and devel version
@@ -308,10 +323,15 @@ pre-build {
             RC_ARCHS="[get_canonical_archs]" \
             SDK="${configure.cppflags}"
 
-        if {${llvm_version} ne ""} {
+        if {${llvm_version} eq "powerpc"} {
             build.args-append \
                 LTO=-DLTO_SUPPORT \
                 RC_CFLAGS="[get_canonical_archflags] -I${prefix}/libexec/llvm-${llvmppc_ver}/include" \
+                LLVM_MC="llvm-mc-mp-${llvm_version}"
+        } elseif {${llvm_version} ne ""} {
+            build.args-append \
+                LTO=-DLTO_SUPPORT \
+                RC_CFLAGS="[get_canonical_archflags] `llvm-config-mp-${llvm_version} --cflags`" \
                 LLVM_MC="llvm-mc-mp-${llvm_version}"
         } else {
             build.args-append \
@@ -334,10 +354,15 @@ pre-destroot {
             RC_ARCHS="[get_canonical_archs]" \
             SDK="${configure.cppflags}"
 
-        if {${llvm_version} ne ""} {
+        if {${llvm_version} eq "powerpc"} {
             destroot.args-append \
                 LTO=-DLTO_SUPPORT \
                 RC_CFLAGS="[get_canonical_archflags] -I${prefix}/libexec/llvm-${llvmppc_ver}/include" \
+                LLVM_MC="llvm-mc-mp-${llvm_version}"
+        } elseif {${llvm_version} ne ""} {
+            destroot.args-append \
+                LTO=-DLTO_SUPPORT \
+                RC_CFLAGS="[get_canonical_archflags] `llvm-config-mp-${llvm_version} --cflags`" \
                 LLVM_MC="llvm-mc-mp-${llvm_version}"
         } else {
             destroot.args-append \
