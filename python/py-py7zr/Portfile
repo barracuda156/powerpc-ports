@@ -33,11 +33,22 @@ if {${name} ne ${subport}} {
                     port:py${python.version}-inflate64 \
                     port:py${python.version}-multivolumefile \
                     port:py${python.version}-psutil\
-                    port:py${python.version}-pybcj \
                     port:py${python.version}-pycryptodomex \
                     port:py${python.version}-pyppmd \
                     port:py${python.version}-pyzstd \
                     port:py${python.version}-texttable
+
+    platform darwin {
+        if {${os.major} > 10} {
+            depends_lib-append \
+                    port:py${python.version}-pybcj
+        } elseif {${python.version} <= 310} {
+            # Legacy fallback, supported up to Python 3.10.
+            # This does not appear to be a required dependency anyway.
+            depends_lib-append \
+                    port:py${python.version}-pyobjc6
+        }
+    }
 
     depends_test-append \
                     port:py${python.version}-cpuinfo \
