@@ -1,6 +1,6 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
-PortSystem 1.0
+PortSystem          1.0
 
 name                fop
 
@@ -35,7 +35,7 @@ homepage            https://xmlgraphics.apache.org/fop/
 
 if {${name} eq ${subport}} {
     version         1.1
-    revision        1
+    revision        2
 
     checksums       rmd160  fdeee43b73f0b005738661bb9b86d9f9a4434f63 \
                     sha256  0697a90c2f0b0602bf707070267caecc59638a8bf7a719d5950acff764f57b8e \
@@ -43,16 +43,29 @@ if {${name} eq ${subport}} {
 
     patchfiles      patch-fop-java_home.diff
 
+    post-patch {
+        if {${os.arch} eq "powerpc"} {
+            reinplace "s|@JAVAROOT@|${prefix}/Library/Java/JavaVirtualMachines/openjdk8/Contents/Home|" ${worksrcpath}/fop
+        } else {
+            reinplace "s|@JAVAROOT@|/System/Library/Frameworks/JavaVM.framework/Home|" ${worksrcpath}/fop
+        }
+    }
+
+    platform darwin powerpc {
+        depends_run-append \
+                    port:openjdk8-powerpc
+    }
+
     livecheck.type  none
 }
 
 subport ${name}2 {
-    version         2.10
+    version         2.9
     revision        0
 
-    checksums       rmd160  b365c37039bf95550bd0dc9382bfa7ad62d73d8e \
-                    sha256  f9bd842a349ac35914a13eed97fb6bfa66361c24350cd1182c0aaa0de98d0cff \
-                    size    16907687
+    checksums       rmd160  f12260dfbcf7e0460e4a5aa8887b731434cf4f50 \
+                    sha256  b698bfba5d6dea9d01aafd94d1a1359e443ebfb6b2b9ea69c6ed2852ab554784 \
+                    size    16800910
 
     livecheck.type  regex
     livecheck.url   https://www.apache.org/dist/xmlgraphics/fop/binaries/
