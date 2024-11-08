@@ -46,10 +46,19 @@ checksums               dyld-655.1.1.tar.gz \
 
 set llvmppc_ver         7.1.1
 
+# Since we switch to llvm-powerpc on PowerPC systems
+platform darwin powerpc {
+    incr revision
+}
+
 subport ld64-97 {
     # Xcode 3.2.6
     version             97.17
     revision            9
+
+    platform darwin powerpc {
+        incr revision
+    }
 
     set makefile        "Makefile-97"
     set ld64_ver        97
@@ -84,6 +93,10 @@ subport ld64-127 {
     version             127.2
     revision            14
 
+    platform darwin powerpc {
+        incr revision
+    }
+
     # multiple errors with macports clang versions newer than 3.7
     compiler.blacklist-append {macports-clang-[5-9].0} macports-clang-devel
 
@@ -112,12 +125,12 @@ subport ld64-127 {
         PR-29117886.patch \
         ld64-ppc-9610466.patch
 
-    platforms   {darwin < 17}
-
-    # libSystem in PPCSL does not have the symbol this needs
+    # libSystem in 10.6 PPC does not have the symbol this needs
     if  {${os.major} == 10 && ${configure.build_arch} eq "ppc"} {
         patchfiles-append ld64-127-no-compressed-dyldinfo-on-PPCSL.diff
     }
+
+    platforms   {darwin < 17}
 }
 
 subport ld64-236 {
@@ -416,6 +429,8 @@ if {${subport} eq ${name}} {
         if {${os.major} == 12 || ${os.major} == 13} {
             # Using llvm-3.7 to break a dependency cycle (https://trac.macports.org/ticket/53138)
             default_variants +llvm37
+        } elseif {${build_arch} in [list ppc ppc64]} {
+            default_variants +llvmppc
         } elseif {${os.major} == 10 || ${os.major} == 11} {
             default_variants +llvm34
         } elseif {${os.major} == 9} {
@@ -440,8 +455,8 @@ if {${subport} eq ${name}} {
         configure.cxx_stdlib    libstdc++
     }
 
-    if {${os.major} < 10 || ${configure.build_arch} eq "ppc"} {
-        # Leopard and earlier didn't have libunwind.h in the SDK
+    if {${os.major} < 10 || ${build_arch} eq "ppc"} {
+        # 10a190, Leopard and earlier didn't have libunwind.h in the SDK
         depends_build-append    path:include/libunwind.h:libunwind-headers
     }
 
@@ -572,8 +587,13 @@ if {${subport} eq ${name}} {
         #           }
         #       }
 
-        if {${llvm_version} != ""} {
+        if {${llvm_version} eq "powerpc"} {
             system "install_name_tool -change ${prefix}/libexec/llvm-${llvmppc_ver}/lib/libLTO.dylib \
+                    @executable_path/../lib/libLTO.dylib ${destroot}${prefix}/libexec/ld64/ld-${ld64_ver}"
+            system "install_name_tool -change @rpath/libLTO.dylib \
+                    @executable_path/../lib/libLTO.dylib ${destroot}${prefix}/libexec/ld64/ld-${ld64_ver}"
+        } elseif {${llvm_version} != ""} {
+            system "install_name_tool -change ${prefix}/libexec/llvm-${llvm_version}/lib/libLTO.dylib \
                     @executable_path/../lib/libLTO.dylib ${destroot}${prefix}/libexec/ld64/ld-${ld64_ver}"
             system "install_name_tool -change @rpath/libLTO.dylib \
                     @executable_path/../lib/libLTO.dylib ${destroot}${prefix}/libexec/ld64/ld-${ld64_ver}"
