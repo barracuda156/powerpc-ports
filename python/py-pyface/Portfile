@@ -32,16 +32,32 @@ if {${name} ne ${subport}} {
                             port:py${python.version}-importlib-metadata \
                             port:py${python.version}-pygments
 
-    variant pyside description "Qt backend using PySide2" {
-        depends_lib-append  port:py${python.version}-pyside2
-    }
+    if {${os.platform} eq "darwin" && ${os.major} < 11} {
+        # On systems without Qt5+ support just default to using Qt4.
+        # https://github.com/enthought/pyface/issues/1258
+        github.setup    enthought pyface 7.4.4
+        revision        0
+        checksums       rmd160  09b4f56cfbb3fd62111ec2c62c675b67eae385bd \
+                        sha256  e34f8fb285517e25bfe41a4b8d1d54860d2636bd5fa5b9bff26ab96c1a098895 \
+                        size    7850673
+        # Due to py-pyqt4 restricted to python310 due to py-sip4.
+        # Notice, at least 310 must be preserved to keep this working.
+        python.versions         39 310
+        # No need in any variants.
+        depends_lib-append      port:py${python.version}-pyqt4
+    } else {
+        # These variants make sense only on systems with Qt5+:
+        variant pyside description "Qt backend using PySide2" {
+            depends_lib-append  port:py${python.version}-pyside2
+        }
 
-    variant pyqt5 description "Qt backend using PyQt5" {
-        depends_lib-append  port:py${python.version}-pyqt5
-    }
+        variant pyqt5 description "Qt backend using PyQt5" {
+            depends_lib-append  port:py${python.version}-pyqt5
+        }
 
-    if {![variant_isset pyqt5] && ![variant_isset pyside]} {
-        default_variants    +pyqt5
+        if {![variant_isset pyqt5] && ![variant_isset pyside]} {
+            default_variants    +pyqt5
+        }
     }
 
     notes-append "If multiple backends are installed, the toolkit backend may be set\
