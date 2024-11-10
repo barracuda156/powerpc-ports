@@ -72,6 +72,10 @@ if {${name} ne ${subport}} {
 
     build.env-append    PATH=${python.prefix}/bin:$env(PATH)
 
+    # Do not let meson use a temp dir which is wiped out by meson.
+    # MacPorts handles it via port clean.
+    build.args-append   -Cbuild-dir=build
+
     depends_lib-append  port:py${python.version}-numpy \
                         port:py${python.version}-pybind11 \
                         port:py${python.version}-mypy
