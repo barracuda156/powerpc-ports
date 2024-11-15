@@ -1,0 +1,68 @@
+From ccbd34251a34a6bfefe1af0bc06145b230e299c6 Mon Sep 17 00:00:00 2001
+From: Nick Logozzo <nlogozzo225@gmail.com>
+Date: Thu, 14 Nov 2024 09:51:19 -0500
+Subject: [PATCH] All - Fix IFDEFs for Non-Windows/Non-Linux Support
+
+Fixes #946
+---
+ libparabolic/include/controllers/mainwindowcontroller.h  | 2 ++
+ libparabolic/src/controllers/mainwindowcontroller.cpp    | 2 ++
+ libparabolic/src/models/downloadoptions.cpp              | 4 +++-
+ org.nickvision.tubeconverter.qt/src/views/mainwindow.cpp | 2 ++
+ 4 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/libparabolic/include/controllers/mainwindowcontroller.h b/libparabolic/include/controllers/mainwindowcontroller.h
+index e53c9ec66..cf6136bdc 100644
+--- libparabolic/include/controllers/mainwindowcontroller.h
++++ libparabolic/include/controllers/mainwindowcontroller.h
+@@ -135,6 +135,8 @@ namespace Nickvision::TubeConverter::Shared::Controllers
+         Nickvision::App::WindowGeometry startup(HWND hwnd);
+ #elif defined(__linux__)
+         Nickvision::App::WindowGeometry startup(const std::string& desktopFile);
++#else
++        Nickvision::App::WindowGeometry startup();
+ #endif
+         /**
+          * @brief Shuts down the application.
+diff --git a/libparabolic/src/controllers/mainwindowcontroller.cpp b/libparabolic/src/controllers/mainwindowcontroller.cpp
+index 30a68a6a0..045575ffd 100644
+--- libparabolic/src/controllers/mainwindowcontroller.cpp
++++ libparabolic/src/controllers/mainwindowcontroller.cpp
+@@ -214,6 +214,8 @@ namespace Nickvision::TubeConverter::Shared::Controllers
+     Nickvision::App::WindowGeometry MainWindowController::startup(HWND hwnd)
+ #elif defined(__linux__)
+     Nickvision::App::WindowGeometry MainWindowController::startup(const std::string& desktopFile)
++#else
++    Nickvision::App::WindowGeometry MainWindowController::startup()
+ #endif
+     {
+         if (m_started)
+diff --git a/libparabolic/src/models/downloadoptions.cpp b/libparabolic/src/models/downloadoptions.cpp
+index 7c0c75199..b45879bbe 100644
+--- libparabolic/src/models/downloadoptions.cpp
++++ libparabolic/src/models/downloadoptions.cpp
+@@ -3,8 +3,10 @@
+ #include <libnick/system/environment.h>
+ #ifdef _WIN32
+ #include <windows.h>
+-#else
++#elif defined(__linux__)
+ #include <linux/limits.h>
++#else
++#include <sys/syslimits.h>
+ #endif
+ 
+ using namespace Nickvision::Helpers;
+diff --git a/org.nickvision.tubeconverter.qt/src/views/mainwindow.cpp b/org.nickvision.tubeconverter.qt/src/views/mainwindow.cpp
+index 2ee972127..88240a331 100644
+--- org.nickvision.tubeconverter.qt/src/views/mainwindow.cpp
++++ org.nickvision.tubeconverter.qt/src/views/mainwindow.cpp
+@@ -324,6 +324,8 @@ namespace Nickvision::TubeConverter::QT::Views
+         ShellNotification::send(args, reinterpret_cast<HWND>(winId()));
+ #elif defined(__linux__)
+         ShellNotification::send(args, m_controller->getAppInfo().getId(), _("Open"));
++#else
++        ShellNotification::send(args);
+ #endif
+     }
+ 

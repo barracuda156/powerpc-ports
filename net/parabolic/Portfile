@@ -1,0 +1,47 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           boost 1.0
+PortGroup           cmake 1.1
+PortGroup           github 1.0
+
+boost.version       1.81
+
+name                parabolic
+github.setup        NickvisionApps Parabolic 782a00187f24b55bb5fe9bb5a137e6ff64e66248
+version             2024.11.0.15
+revision            0
+categories          net gnome multimedia
+license             GPL-3
+maintainers         nomaintainer
+description         Download web video and audio
+long_description    {*}${description}
+checksums           rmd160  f0e4fe3fa454c39581490cd095ee19c9e58f0256 \
+                    sha256  23891978b76090a69f05074559c6995eb4f9685b23dbc333f6d1e57ad2e33e81 \
+                    size    4374521
+github.tarball_from archive
+
+cmake.build_type    Release
+
+depends_build-append \
+                    port:blueprint-compiler \
+                    port:gettext \
+                    port:itstool \
+                    path:bin/pkg-config:pkgconfig \
+                    port:yelp-tools
+
+depends_lib-append  port:desktop-file-utils \
+                    port:gettext-runtime \
+                    path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    path:lib/pkgconfig/gtk+-4.0.pc:gtk4 \
+                    port:libadwaita \
+                    port:libepoxy \
+                    port:libxmlxx5
+
+# Backport from upstream, see: https://github.com/NickvisionApps/Parabolic/issues/946
+# patchfiles-append   ccbd34251a34a6bfefe1af0bc06145b230e299c6.patch
+
+compiler.cxx_standard   2020
+
+configure.args-append \
+                    -DUI_PLATFORM=gnome

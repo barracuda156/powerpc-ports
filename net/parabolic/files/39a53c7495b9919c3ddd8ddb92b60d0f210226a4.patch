@@ -1,0 +1,75 @@
+From 39a53c7495b9919c3ddd8ddb92b60d0f210226a4 Mon Sep 17 00:00:00 2001
+From: Nick Logozzo <nlogozzo225@gmail.com>
+Date: Fri, 15 Nov 2024 10:14:36 -0500
+Subject: [PATCH] Shared - Fix Truncating Filenames with `.`
+
+---
+ .../controllers/adddownloaddialogcontroller.cpp    | 14 ++++++++++++--
+ .../src/controllers/mainwindowcontroller.cpp       |  2 +-
+ .../org.nickvision.tubeconverter.metainfo.xml.in   |  2 +-
+ 3 files changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/libparabolic/src/controllers/adddownloaddialogcontroller.cpp b/libparabolic/src/controllers/adddownloaddialogcontroller.cpp
+index e6e9f8341..7c0a53b3d 100644
+--- libparabolic/src/controllers/adddownloaddialogcontroller.cpp
++++ libparabolic/src/controllers/adddownloaddialogcontroller.cpp
+@@ -301,12 +301,17 @@ namespace Nickvision::TubeConverter::Shared::Controllers
+         DownloadOptions options{ media.getUrl() };
+         options.setCredential(m_credential);
+         options.setSaveFolder(std::filesystem::exists(saveFolder) ? saveFolder : m_previousOptions.getSaveFolder());
+-        options.setSaveFilename(!filename.empty() ? StringHelpers::normalizeForFilename(std::filesystem::path(filename).filename().stem().string(), m_downloadManager.getDownloaderOptions().getLimitCharacters()) : media.getTitle());
+         if(media.getType() == MediaType::Audio)
+         {
+             fileTypeIndex += 5; 
+         }
+         options.setFileType(static_cast<MediaFileType::MediaFileTypeValue>(fileTypeIndex));
++        std::filesystem::path filenamePath{ filename };
++        if(filenamePath.extension().string() == options.getFileType().getDotExtension())
++        {
++            filenamePath = filenamePath.stem();
++        }
++        options.setSaveFilename(!filenamePath.empty() ? StringHelpers::normalizeForFilename(filenamePath.string(), m_downloadManager.getDownloaderOptions().getLimitCharacters()) : media.getTitle());
+         options.setAvailableFormats(m_urlInfo->get(0).getFormats());
+         if(qualityIndex != 0)
+         {
+@@ -357,8 +362,13 @@ namespace Nickvision::TubeConverter::Shared::Controllers
+             DownloadOptions options{ media.getUrl() };
+             options.setCredential(m_credential);
+             options.setSaveFolder(playlistSaveFolder);
+-            options.setSaveFilename(!pair.second.empty() ? StringHelpers::normalizeForFilename(std::filesystem::path(pair.second).filename().stem().string(), m_downloadManager.getDownloaderOptions().getLimitCharacters())  : media.getTitle());
+             options.setFileType(static_cast<MediaFileType::MediaFileTypeValue>(fileTypeIndex));
++            std::filesystem::path filenamePath{ pair.second };
++            if(filenamePath.extension().string() == options.getFileType().getDotExtension())
++            {
++                filenamePath = filenamePath.stem();
++            }
++            options.setSaveFilename(!filenamePath.empty() ? StringHelpers::normalizeForFilename(filenamePath.string(), m_downloadManager.getDownloaderOptions().getLimitCharacters()) : media.getTitle());
+             options.setSplitChapters(splitChapters);
+             options.setLimitSpeed(limitSpeed);
+             //Add Download
+diff --git a/libparabolic/src/controllers/mainwindowcontroller.cpp b/libparabolic/src/controllers/mainwindowcontroller.cpp
+index 9127afea2..9fe3d4fc2 100644
+--- libparabolic/src/controllers/mainwindowcontroller.cpp
++++ libparabolic/src/controllers/mainwindowcontroller.cpp
+@@ -41,7 +41,7 @@ namespace Nickvision::TubeConverter::Shared::Controllers
+         m_appInfo.setVersion({ "2024.11.1-next" });
+         m_appInfo.setShortName(_("Parabolic"));
+         m_appInfo.setDescription(_("Download web video and audio"));
+-        m_appInfo.setChangelog("-");
++        m_appInfo.setChangelog("- Fixed an issue where file names that included a period were truncated");
+         m_appInfo.setSourceRepo("https://github.com/NickvisionApps/Parabolic");
+         m_appInfo.setIssueTracker("https://github.com/NickvisionApps/Parabolic/issues/new");
+         m_appInfo.setSupportUrl("https://github.com/NickvisionApps/Parabolic/discussions");
+diff --git a/resources/linux/org.nickvision.tubeconverter.metainfo.xml.in b/resources/linux/org.nickvision.tubeconverter.metainfo.xml.in
+index 9e6d180f3..f7a56d3bb 100644
+--- resources/linux/org.nickvision.tubeconverter.metainfo.xml.in
++++ resources/linux/org.nickvision.tubeconverter.metainfo.xml.in
+@@ -57,7 +57,7 @@
+   <releases>
+     <release version="2024.11.1-next" date="2024-11-14">
+       <description translate="no">
+-        <p></p>
++        <p>- Fixed an issue where file names that included a period were truncated</p>
+       </description>
+     </release>
+   </releases>
