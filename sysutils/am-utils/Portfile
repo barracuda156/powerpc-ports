@@ -36,6 +36,9 @@ platform darwin {
     }
 }
 
+# https://trac.macports.org/ticket/71331
+use_parallel_build      no
+
 post-destroot {
     xinstall -d -m 0755 ${destroot}${prefix}/share/doc/${name}
     xinstall -W ${worksrcpath} -m 0444 \
