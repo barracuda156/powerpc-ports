@@ -3,9 +3,8 @@
 PortSystem          1.0
 
 name                factor
-version             0.97
+version             0.100
 categories          lang devel
-platforms           darwin
 license             BSD
 maintainers         {ciserlohn @ci42}
 
@@ -24,8 +23,9 @@ master_sites        http://downloads.factorcode.org/releases/${version}/
 distname            ${name}-src-${version}
 worksrcdir          ${name}
 
-checksums           rmd160  166ba7818e1833cb172a30f60c3a4cb072a63ce3 \
-                    sha256  fd75e765590691c89b866e5265ae16bfb36d0e28eed095702ae1e206114663b8
+checksums           rmd160  c8982ece133bb9369dd144754c3e5159f67d9709 \
+                    sha256  7a2d71ea6804a0355ed6629fa164860bd46064238da2f00f61f21d0253868bed \
+                    size    28188612
 
 use_zip             yes
 
