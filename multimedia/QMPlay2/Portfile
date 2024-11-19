@@ -25,7 +25,8 @@ if {${os.platform} eq "darwin" && ${os.major} < 15} {
                     0004-PlayClass-do-not-use-QRawFont.patch \
                     0005-Revert-some-broken-code.patch \
                     0006-FFMpeg-fix-compatibility-with-modern-FFMpeg.patch \
-                    0007-Fix-Qt-paths.patch
+                    0007-Fix-YT-search.patch \
+                    0008-Fix-Qt-paths.patch
 
     configure.args-append \
                     -DDEFAULT_QT5=OFF \
