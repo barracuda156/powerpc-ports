@@ -139,6 +139,9 @@ compiler.blacklist-append {clang < 800}
 # Also, -gpl2 causes other ports to fail to build due to the missing libpostproc (#35473)
 default_variants-append +gpl2
 
+# FIXME. For now, due to https://trac.macports.org/ticket/71353
+default_variants-append +x11
+
 if {[tbool configure.ccache]} {
     set ccache_path ${prefix}/bin/ccache
 
