@@ -39,6 +39,10 @@ installs_libs       no
 
 patchfiles          patch-tcp.c.diff
 
+# https://trac.macports.org/ticket/70146
+# https://github.com/folkertvanheusden/HTTPing/pull/22
+patchfiles-append   0001-Define-NO_TFO-on-macOS-10.11.patch
+
 configure.args      -DCMAKE_EXE_LINKER_FLAGS="-lintl"
 
 destroot {
