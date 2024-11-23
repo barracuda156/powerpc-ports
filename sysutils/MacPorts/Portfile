@@ -1,3 +1,5 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
 PortSystem          1.0
 PortGroup           github 1.0
 
@@ -24,18 +26,30 @@ github.tarball_from releases
 #dist_subdir         ${name}/testing
 use_bzip2           yes
 
-checksums           rmd160 043c163f97730252af50c2254b5698d330d4103a \
-                    sha256 cc5563fc9bd458e402122fcb162024c15ff6d43918a359064908af1be30f024e
+checksums           rmd160  043c163f97730252af50c2254b5698d330d4103a \
+                    sha256  cc5563fc9bd458e402122fcb162024c15ff6d43918a359064908af1be30f024e \
+                    size    17697322
 
 variant keep_prefix description "Use configured prefix instead of enforcing /opt/local" {}
 if {![variant_isset keep_prefix]} {
     prefix          /opt/local
 }
 
+platform darwin 10 powerpc {
+    # Flat package does not destroot due to a file conflict.
+    # Just use a standard package type with a better compatibility.
+    package.flat    no
+}
+
 # Readline is disabled by default to avoid support issues with people who
 # have a readline in /usr/local. Since this portfile is presumably used in a
 # clean environment, enable it here.
 configure.args      --enable-readline
+
+variant boostrap_curl description "Link to a bootstrapped curl" {
+    configure.args  --with-curlprefix=/opt/bootstrap \
+                    --with-universal-archs=""
+}
 
 # We don't want to use anything supplied by ports when building MacPorts itself.
 configure.env       PATH=/usr/bin:/bin:/usr/sbin:/sbin
@@ -182,6 +196,37 @@ platform darwin 9 {
     configure.args-append SHLIB_LDFLAGS='-arch ppc -arch i386'
 }
 
+platform darwin 10 {
+    if {${os.arch} eq "powerpc"} {
+        # Our bootstrapped curl is ppc-only.
+        if {[variant_isset boostrap_curl]} {
+            configure.cflags-append -arch ppc
+            configure.args-append SHLIB_LDFLAGS='-arch ppc'
+        } else {
+            configure.cflags-append -arch ppc -arch i386
+            configure.args-append SHLIB_LDFLAGS='-arch ppc -arch i386'
+        }
+    } else {
+        # Supply architecture flags to build MacPorts universal.
+        configure.cflags-append -arch x86_64 -arch i386
+        configure.args-append SHLIB_LDFLAGS='-arch x86_64 -arch i386'
+    }
+}
+
+platform darwin {
+    patchfiles-append \
+        0001-macports.tcl-fix-build_arch-choice-for-ppc.patch \
+        0002-macports.tcl-use-libstdc-on-10.6.patch \
+        0003-portconfigure-compiler-choices-for-PowerPC.patch \
+        0004-portsandbox-fix-for-10a190.patch \
+        0005-Fix-universal-archs-choices-for-Darwin.patch \
+        0006-portconfigure.tcl-use-libcxx-powerpc-if-libc-set.patch \
+        0007-Add-public-key-adjust-config-files.patch \
+        0008-Update-README.patch \
+        0009-Hierarchical-portgroup-search.patch \
+        0010-Default-portimage-mode-set-to-archive.patch
+}
+
 platform darwin {
     if {${os.major} >= 20} {
         # Big Sur runs on arm64 and x86_64.
@@ -199,10 +244,6 @@ platform darwin {
         # Lion through Catalina only run on x86_64.
         configure.cflags-append -arch x86_64
         configure.args-append SHLIB_LDFLAGS='-arch x86_64'
-    } elseif {${os.major} == 10} {
-        # Supply architecture flags to build MacPorts universal.
-        configure.cflags-append -arch x86_64 -arch i386
-        configure.args-append SHLIB_LDFLAGS='-arch x86_64 -arch i386'
     }
 
     # FIXME: "error: The specified item could not be found in the keychain."
