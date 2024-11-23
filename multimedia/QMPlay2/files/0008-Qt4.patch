@@ -1,0 +1,55 @@
+From 4247bf09fc35b608789b210b1d73901ba8b1ca71 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sat, 23 Nov 2024 15:21:16 +0800
+Subject: [PATCH 8/8] Qt4
+
+---
+ src/modules/Extensions/Downloader.cpp | 1 -
+ src/modules/Extensions/Downloader.hpp | 2 ++
+ src/modules/OpenGL2/OpenGL2Common.hpp | 4 +++-
+ 3 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git src/modules/Extensions/Downloader.cpp src/modules/Extensions/Downloader.cpp
+index de835166..0b5314aa 100644
+--- src/modules/Extensions/Downloader.cpp
++++ src/modules/Extensions/Downloader.cpp
+@@ -49,7 +49,6 @@
+ #if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+     #include <QLoggingCategory>
+ #else
+-    #include <QtLogging>
+     #define qCWarning qWarning
+ #endif
+ #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+diff --git src/modules/Extensions/Downloader.hpp src/modules/Extensions/Downloader.hpp
+index 75789df6..b200b1d5 100644
+--- src/modules/Extensions/Downloader.hpp
++++ src/modules/Extensions/Downloader.hpp
+@@ -90,7 +90,9 @@ private:
+     } *speedProgressW = nullptr;
+ 
+     QProcess *m_convertProcess = nullptr;
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QMetaObject::Connection m_convertProcessConn[2];
++#endif
+     bool finished, readyToPlay, m_needsConversion = false;
+     QString m_convertPreset;
+     QString filePath;
+diff --git src/modules/OpenGL2/OpenGL2Common.hpp src/modules/OpenGL2/OpenGL2Common.hpp
+index 6079a8ea..e2d1fda1 100644
+--- src/modules/OpenGL2/OpenGL2Common.hpp
++++ src/modules/OpenGL2/OpenGL2Common.hpp
+@@ -21,7 +21,9 @@
+ #include <VideoFrame.hpp>
+ #include <VideoAdjustment.hpp>
+ 
+-#include <QOpenGLShaderProgram>
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <QOpenGLShaderProgram>
++#endif
+ 
+ #include <QVariantAnimation>
+ #include <QCoreApplication>
+-- 
+2.47.0
+

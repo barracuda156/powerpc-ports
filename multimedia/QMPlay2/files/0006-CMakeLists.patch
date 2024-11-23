@@ -1,0 +1,34 @@
+From 75eaac39839953aa5240bc11c03fe4328306a3dc Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sat, 23 Nov 2024 14:37:29 +0800
+Subject: [PATCH 6/8] CMakeLists
+
+---
+ src/gui/CMakeLists.txt | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git src/gui/CMakeLists.txt src/gui/CMakeLists.txt
+index 4a097f5e..26d585b1 100644
+--- src/gui/CMakeLists.txt
++++ src/gui/CMakeLists.txt
+@@ -34,10 +34,15 @@ set(GUI_HDR
+     KeyBindingsDialog.hpp
+     Updater.hpp
+     RepeatMode.hpp
+-    PanGestureEventFilter.hpp
+-    EventFilterWorkarounds.hpp
+ )
+ 
++if(NOT USE_QT4)
++    list(APPEND GUI_HDR
++        PanGestureEventFilter.hpp
++        EventFilterWorkarounds.hpp
++    )
++endif()
++
+ set(GUI_SRC
+     Main.cpp
+     MenuBar.cpp
+-- 
+2.47.0
+

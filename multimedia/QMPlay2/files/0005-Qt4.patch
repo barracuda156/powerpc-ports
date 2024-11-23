@@ -1,0 +1,2285 @@
+From 9ea00223f4e4909282799da485bffc5f985f7387 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sat, 23 Nov 2024 08:48:30 +0800
+Subject: [PATCH 5/8] Qt4
+
+---
+ src/gui/AboutWidget.cpp                       |   5 +
+ src/gui/EntryProperties.cpp                   |   2 +
+ src/gui/KeyBindingsDialog.cpp                 |   5 +
+ src/gui/Main.cpp                              | 233 +++++++++++++++++-
+ src/gui/MainWidget.cpp                        |  92 +++++--
+ src/gui/MainWidget.hpp                        |   6 +-
+ src/gui/MenuBar.cpp                           |   2 +-
+ src/gui/OSDSettingsW.cpp                      |   4 +
+ src/gui/OtherVFiltersW.cpp                    |   4 +
+ src/gui/PlayClass.cpp                         |  57 ++++-
+ src/gui/PlayClass.hpp                         |   7 +-
+ src/gui/PlaylistDock.cpp                      |   2 +
+ src/gui/PlaylistWidget.cpp                    |  20 ++
+ src/gui/SettingsWidget.cpp                    |  14 +-
+ src/gui/Unix/ScreenSaver.cpp                  |   7 +-
+ src/gui/VideoAdjustmentW.cpp                  |  92 ++++++-
+ src/gui/VideoAdjustmentW.hpp                  |  25 +-
+ src/gui/VideoDock.cpp                         |  10 +-
+ src/gui/VideoThr.cpp                          |  10 +-
+ src/gui/Windows/ScreenSaver.cpp               |  34 +++
+ src/gui/macOS/QMPlay2MacExtensions.mm         |  15 +-
+ src/gui/macOS/ScreenSaver.cpp                 |  11 +-
+ src/modules/Extensions/Downloader.cpp         |  11 +-
+ src/modules/Extensions/Extensions.cpp         |  15 ++
+ src/modules/Extensions/Extensions.hpp         |   4 +
+ src/modules/Extensions/Radio.cpp              |   5 +
+ src/modules/Extensions/YouTube.cpp            |  78 +++++-
+ src/modules/Extensions/YouTube.hpp            |   9 +
+ src/modules/FFmpeg/FFDemux.cpp                |   4 +-
+ src/modules/Inputs/ToneGenerator.cpp          |   7 +-
+ .../3rdparty/CoreAudio/AudioDevice.h          |   4 +
+ .../3rdparty/CoreAudio/AudioDevice.mm         |   5 +
+ .../3rdparty/CoreAudio/AudioDeviceList.cpp    |   5 +
+ src/modules/PortAudio/PortAudioWriter.cpp     |   4 +
+ src/modules/QPainter/QPainter.hpp             |   2 +-
+ src/modules/QPainter/QPainterWriter.cpp       |  14 ++
+ src/modules/Subtitles/Classic.cpp             |   4 +
+ src/qmplay2/QMPlay2Core.cpp                   |   9 +-
+ 38 files changed, 766 insertions(+), 71 deletions(-)
+
+diff --git src/gui/AboutWidget.cpp src/gui/AboutWidget.cpp
+index dfc52ccd..0eeda3e8 100644
+--- src/gui/AboutWidget.cpp
++++ src/gui/AboutWidget.cpp
+@@ -52,7 +52,12 @@ AboutWidget::AboutWidget()
+ 
+     QTabWidget *tabW = new QTabWidget;
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     const QFont font(QFontDatabase::systemFont(QFontDatabase::FixedFont));
++#else
++    QFont font("Monospace");
++    font.setStyleHint(QFont::TypeWriter);
++#endif
+ 
+     logE = new QPlainTextEdit;
+     logE->setFont(font);
+diff --git src/gui/EntryProperties.cpp src/gui/EntryProperties.cpp
+index d537bb9e..e2a396ab 100644
+--- src/gui/EntryProperties.cpp
++++ src/gui/EntryProperties.cpp
+@@ -107,11 +107,13 @@ EntryProperties::EntryProperties(QWidget *p, QTreeWidgetItem *_tWI, bool &sync,
+         addrB = new AddressBox(Qt::Horizontal, url);
+         layout.addWidget(addrB, row, 0, 1, 2);
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+         openUrlB = new QToolButton;
+         openUrlB->setToolTip(tr("Open URL or directory containing chosen file"));
+         openUrlB->setIcon(QMPlay2Core.getIconFromTheme("folder-open"));
+         connect(openUrlB, &QToolButton::clicked, this, &EntryProperties::openUrl);
+         layout.addWidget(openUrlB, row, 2, 1, 1);
++#endif
+ 
+         fileSizeL = new QLabel;
+ 
+diff --git src/gui/KeyBindingsDialog.cpp src/gui/KeyBindingsDialog.cpp
+index 3dca5428..2b4de1ae 100644
+--- src/gui/KeyBindingsDialog.cpp
++++ src/gui/KeyBindingsDialog.cpp
+@@ -35,8 +35,13 @@ KeyBindingsDialog::KeyBindingsDialog(QWidget *p) :
+     shortcuts->setModel(QMPlay2GUI.shortcutHandler);
+     shortcuts->setFrameShape(QFrame::NoFrame);
+     shortcuts->setAlternatingRowColors(true);
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     shortcuts->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+     shortcuts->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
++#else
++    shortcuts->horizontalHeader()->setResizeMode(0, QHeaderView::ResizeToContents);
++    shortcuts->horizontalHeader()->setResizeMode(1, QHeaderView::Stretch);
++#endif
+     shortcuts->setSelectionMode(QAbstractItemView::SingleSelection);
+     shortcuts->verticalHeader()->setVisible(false);
+ 
+diff --git src/gui/Main.cpp src/gui/Main.cpp
+index f6f61584..06d0cc49 100644
+--- src/gui/Main.cpp
++++ src/gui/Main.cpp
+@@ -18,8 +18,10 @@
+ 
+ #include <Main.hpp>
+ 
+-#include <EventFilterWorkarounds.hpp>
+-#include <PanGestureEventFilter.hpp>
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <EventFilterWorkarounds.hpp>
++    #include <PanGestureEventFilter.hpp>
++#endif
+ #include <ScreenSaver.hpp>
+ #include <VideoFrame.hpp>
+ #include <MainWidget.hpp>
+@@ -31,7 +33,9 @@
+ #include <Module.hpp>
+ #include <IPC.hpp>
+ 
+-#include <QCommandLineParser>
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
++    #include <QCommandLineParser>
++#endif
+ #include <QDesktopWidget>
+ #include <QApplication>
+ #include <QImageReader>
+@@ -42,6 +46,9 @@
+ #include <QBuffer>
+ #include <QFile>
+ #include <QDir>
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++    #include <QTextCodec>
++#endif
+ #ifdef Q_OS_MACOS
+     #include <QProcess>
+ #endif
+@@ -52,6 +59,10 @@
+ #include <csignal>
+ #include <ctime>
+ 
++#if QT_VERSION < QT_VERSION_CHECK(5, 2, 0)
++    static QPair<QStringList, QStringList> g_arguments;
++#endif
++
+ static ScreenSaver *g_screenSaver = nullptr;
+ static bool g_useGui = true;
+ #ifdef Q_OS_MACOS
+@@ -104,6 +115,7 @@ void QMPlay2GUIClass::saveCover(QByteArray cover)
+ 
+ void QMPlay2GUIClass::setTreeWidgetItemIcon(QTreeWidgetItem *tWI, const QIcon &icon, const int column, QTreeWidget *treeWidget)
+ {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 1, 0)
+     bool setDefaultIcon = icon.name().isEmpty();
+     if (!setDefaultIcon)
+     {
+@@ -116,7 +128,12 @@ void QMPlay2GUIClass::setTreeWidgetItemIcon(QTreeWidgetItem *tWI, const QIcon &i
+             setDefaultIcon = true;
+     }
+     if (setDefaultIcon)
++#else
++    Q_UNUSED(treeWidget)
++#endif
++    {
+         tWI->setIcon(column, icon);
++    }
+ }
+ 
+ #ifdef UPDATER
+@@ -168,7 +185,11 @@ QString QMPlay2GUIClass::getCurrentPth(QString pth, bool leaveFilename)
+         pth.remove(0, 7);
+     if (!leaveFilename)
+         pth = Functions::filePath(pth);
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     if (!QFileInfo::exists(pth))
++#else
++    if (!QFileInfo(pth).exists())
++#endif
+         pth = settings->getString("currPth");
+     return pth;
+ }
+@@ -216,6 +237,8 @@ QMPlay2GUIClass::~QMPlay2GUIClass()
+ 
+ /**/
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
++
+ static QCommandLineParser *createCmdParser(bool descriptions)
+ {
+     static constexpr const char *translations[] = {
+@@ -268,6 +291,9 @@ static QCommandLineParser *createCmdParser(bool descriptions)
+ 
+     return parser;
+ }
++
++#endif
++
+ static QString fileArg(const QString &arg)
+ {
+     if (!arg.contains("://"))
+@@ -278,6 +304,9 @@ static QString fileArg(const QString &arg)
+     }
+     return arg;
+ }
++
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
++
+ static QList<QPair<QString, QString>> parseArguments(const QCommandLineParser &parser)
+ {
+     QList<QPair<QString, QString>> arguments;
+@@ -337,6 +366,96 @@ static bool writeToSocket(IPCSocket &socket, QList<QPair<QString, QString>> &arg
+     return ret;
+ }
+ 
++#else // Fallback code for Qt < 5.2
++
++static void parseArguments(QStringList &arguments)
++{
++    QString param;
++    while (arguments.count())
++    {
++        const QString arg = arguments.takeFirst();
++        if (arg.startsWith('-'))
++        {
++            param = arg;
++            while (param.startsWith('-'))
++                param.remove(0, 1);
++            if (!param.isEmpty() && !g_arguments.first.contains(param))
++            {
++                g_arguments.first  += param;
++                g_arguments.second += QString();
++            }
++            else
++            {
++                param.clear();
++            }
++        }
++        else if (!param.isEmpty())
++        {
++            QString &data = g_arguments.second.last();
++            if (!data.isEmpty())
++                data += '\n';
++            if (param == "open" || param == "enqueue")
++                data += fileArg(arg);
++            else
++                data += arg;
++        }
++        else if (!g_arguments.first.contains("open"))
++        {
++            param = "open";
++            g_arguments.first  += param;
++            g_arguments.second += fileArg(arg);
++        }
++    }
++}
++
++static void showHelp()
++{
++    QFile f;
++    f.open(stdout, QFile::WriteOnly);
++    f.write("QMPlay2 - Qt Media Player 2 (" + Version::get() + ")\n");
++    f.write(QObject::tr(
++"  Parameters list:\n"
++"    -open         \"address\"\n"
++"    -enqueue      \"address\"\n"
++"    -profile      \"name\" - starts application with given profile name\n"
++"    -noplay     - doesn't play after run (bypass \"Remember playback position\" option)\n"
++"    -toggle     - toggles play/pause\n"
++"    -show       - ensures that the window will be visible if the application is running\n"
++"    -fullscreen - toggles fullscreen\n"
++"    -volume     - sets volume [0..100]\n"
++"    -speed      - sets playback speed [0.05..100.0]\n"
++"    -seek       - seeks to the specified value [s]\n"
++"    -stop       - stops playback\n"
++"    -next       - plays next on the list\n"
++"    -prev       - plays previous on the list\n"
++"    -quit       - terminates the application"
++    ).toLocal8Bit() + "\n");
++}
++
++static bool writeToSocket(IPCSocket &socket)
++{
++    bool ret = false;
++    for (int i = g_arguments.first.count() - 1; i >= 0; i--)
++    {
++        if (g_arguments.first[i] == "noplay" || g_arguments.first[i] == "profile")
++            continue;
++        else if (g_arguments.first[i] == "open" || g_arguments.first[i] == "enqueue")
++        {
++            if (!g_arguments.second[i].isEmpty())
++                g_arguments.second[i] = Functions::Url(g_arguments.second[i]);
++#ifdef Q_OS_WIN
++            if (g_arguments.second[i].startsWith("file://"))
++                g_arguments.second[i].remove(0, 7);
++#endif
++        }
++        socket.write(QString(g_arguments.first[i] + '\t' + g_arguments.second[i]).toUtf8() + '\0');
++        ret = true;
++    }
++    return ret;
++}
++
++#endif
++
+ static inline void exitProcedure()
+ {
+ #ifdef Q_OS_MACOS
+@@ -352,7 +471,7 @@ static inline void exitProcedure()
+     g_screenSaver = nullptr;
+ }
+ 
+-#ifndef Q_OS_WIN
++#if !defined(Q_OS_WIN) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+     #include <csetjmp>
+     static jmp_buf env;
+     static bool qAppOK;
+@@ -400,7 +519,7 @@ static void signal_handler(int s)
+             }
+             break;
+         case SIGABRT:
+-#ifndef Q_OS_WIN
++#if !defined(Q_OS_WIN) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+             if (!qAppOK && g_useGui)
+             {
+                 canDeleteApp = g_useGui = false;
+@@ -432,6 +551,14 @@ static void signal_handler(int s)
+     }
+ }
+ 
++#if QT_VERSION < QT_VERSION_CHECK(5, 2, 0)
++static inline void noAutoPlay()
++{
++    g_arguments.first += "noplay";
++    g_arguments.second += QString();
++}
++#endif
++
+ #ifdef Q_OS_WIN
+ static LRESULT CALLBACK MMKeysHookProc(int code, WPARAM wparam, LPARAM lparam)
+ {
+@@ -461,8 +588,14 @@ static LRESULT CALLBACK MMKeysHookProc(int code, WPARAM wparam, LPARAM lparam)
+ }
+ #endif
+ 
+-static QtMessageHandler g_defaultMsgHandler = nullptr;
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    static QtMessageHandler g_defaultMsgHandler = nullptr;
++#else
++// FIXME: this does nothing now.
++//    static QtMsgHandler g_defaultMsgHandler = nullptr;
++#endif
+ static QMutex g_messageHandlerMutex;
++#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
+ static void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &message)
+ {
+     bool qmplay2Log = false;
+@@ -507,6 +640,9 @@ static void messageHandler(QtMsgType type, const QMessageLogContext &context, co
+ #endif
+     }
+ }
++#else
++// FIXME: QMessageLogContext and qFormatLogMessage do not exist in Qt4.
++#endif
+ 
+ #ifdef CHECK_FOR_EGL
+ static void checkForEGL()
+@@ -608,23 +744,40 @@ int main(int argc, char *argv[])
+     checkForEGL();
+ #endif
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
+     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+-#ifndef Q_OS_WIN
++#endif
++#if !defined(Q_OS_WIN) && (QT_VERSION >= QT_VERSION_CHECK(5, 4, 0))
+     QGuiApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+ #endif
+ 
+-#ifndef Q_OS_WIN
++#if !defined(Q_OS_WIN) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+     if (!setjmp(env))
+ #endif
+-    new QApplication(argc, argv);
+-#ifndef Q_OS_WIN
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++		new QApplication(argc, argv, g_useGui);
++#else
++		new QApplication(argc, argv);
++#endif
++#if !defined(Q_OS_WIN) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+     qAppOK = true;
+ #endif
++
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++	QTextCodec::setCodecForTr(QTextCodec::codecForName("UTF-8"));
++	QTextCodec::setCodecForCStrings(QTextCodec::codecForName("UTF-8"));
++#endif
+     QCoreApplication::setApplicationName("QMPlay2");
+ 
+     QMPlay2GUIClass &qmplay2Gui = QMPlay2GUI; //Create "QMPlay2GUI" instance
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     g_defaultMsgHandler = qInstallMessageHandler(messageHandler);
++#else
++// FIXME: just a placeholder, MsgHandler does not work now.
++//    g_defaultMsgHandler = qInstallMsgHandler(messageHandler);
++#endif
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+     QCommandLineParser *parser = createCmdParser(false);
+     parser->setSingleDashWordOptionMode(QCommandLineParser::ParseAsLongOptions);
+     parser->process(*qApp);
+@@ -632,9 +785,16 @@ int main(int argc, char *argv[])
+     const bool help = parser->isSet("help");
+     QString cmdLineProfile = parser->value("profile");
+     delete parser;
++#else
++    QStringList arguments = QCoreApplication::arguments();
++    arguments.removeFirst();
++    const bool help = arguments.contains("-help") || arguments.contains("-h");
++#endif
+ 
+     if (!help)
+     {
++// FIXME: try sorting this mess out.
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+         bool useSocket = true;
+ 
+         for (auto &&argument : arguments)
+@@ -649,10 +809,18 @@ int main(int argc, char *argv[])
+ 
+         if (useSocket)
+         {
++#endif
+             IPCSocket socket(qmplay2Gui.getPipe());
++    #if QT_VERSION < QT_VERSION_CHECK(5, 2, 0)
++            parseArguments(arguments);
++    #endif
+             if (socket.open(IPCSocket::WriteOnly))
+             {
++    #if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+                 if (writeToSocket(socket, arguments))
++    #else
++                if (writeToSocket(socket))
++    #endif
+                     g_useGui = false;
+                 socket.close();
+             }
+@@ -660,14 +828,20 @@ int main(int argc, char *argv[])
+             else if (QFile::exists(qmplay2Gui.getPipe()))
+             {
+                 QFile::remove(qmplay2Gui.getPipe());
++    #if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+                 arguments.append({"noplay", QString()});
++    #else
++                noAutoPlay();
++    #endif
+             }
+ #endif
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+         }
++#endif
+ 
+         if (!g_useGui)
+         {
+-#ifndef Q_OS_WIN
++#if !defined(Q_OS_WIN) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+             if (canDeleteApp)
+ #endif
+                 delete qApp;
+@@ -675,7 +849,20 @@ int main(int argc, char *argv[])
+         }
+     }
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+     qmplay2Gui.cmdLineProfile = std::move(cmdLineProfile);
++#else
++    for (int i = 0; i < g_arguments.first.count(); ++i)
++    {
++        if (g_arguments.first.at(i) == "profile")
++        {
++            qmplay2Gui.cmdLineProfile = g_arguments.second.at(i);
++            g_arguments.first.removeAt(i);
++            g_arguments.second.removeAt(i);
++            break;
++        }
++    }
++#endif
+ 
+     QString libPath, sharePath = QCoreApplication::applicationDirPath();
+     bool cmakeBuildFound = false;
+@@ -717,7 +904,9 @@ int main(int argc, char *argv[])
+ 
+     qRegisterMetaType<VideoFrame>("VideoFrame");
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 1, 0)
+     QGuiApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
++#endif
+     QApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
+ 
+     QDir::setCurrent(QCoreApplication::applicationDirPath()); //Is it really needed?
+@@ -726,8 +915,10 @@ int main(int argc, char *argv[])
+     {
+         qmplay2Gui.screenSaver = g_screenSaver = new ScreenSaver;
+         QApplication::setQuitOnLastWindowClosed(false);
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+         qApp->installEventFilter(new EventFilterWorkarounds(qApp));
+         PanGestureEventFilter::install();
++#endif
+     }
+ 
+ #ifdef Q_OS_WIN
+@@ -751,6 +942,7 @@ int main(int argc, char *argv[])
+         /* QMPlay2GUI musi być stworzone już wcześniej */
+         QMPlay2Core.init(!help, cmakeBuildFound, libPath, sharePath, qmplay2Gui.cmdLineProfile);
+ 
++    #if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+         if (help)
+         {
+             parser = createCmdParser(true);
+@@ -760,6 +952,7 @@ int main(int argc, char *argv[])
+             delete parser;
+             break;
+         }
++    #endif
+ 
+         if (!qmplay2Gui.cmdLineProfile.isEmpty() && QMPlay2Core.getSettingsProfile() == "/")
+             qmplay2Gui.cmdLineProfile = QMPlay2Core.getSettingsProfile(); // Default profile
+@@ -783,6 +976,14 @@ int main(int argc, char *argv[])
+             settings.remove("Volume");
+         }
+ 
++    #if QT_VERSION < QT_VERSION_CHECK(5, 2, 0)
++        if (help)
++        {
++            showHelp();
++            break;
++        }
++    #endif
++
+         qmplay2Gui.loadIcons();
+         {
+             const QIcon scaledIcon = QMPlay2Core.getQMPlay2Icon();
+@@ -861,7 +1062,11 @@ int main(int argc, char *argv[])
+ 
+         qmplay2Gui.restartApp = qmplay2Gui.removeSettings = qmplay2Gui.noAutoPlay = false;
+         qmplay2Gui.newProfileName.clear();
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+         new MainWidget(arguments);
++#else
++        new MainWidget(g_arguments);
++#endif
+         do
+         {
+             QCoreApplication::exec();
+@@ -894,7 +1099,11 @@ int main(int argc, char *argv[])
+         }
+ 
+         if (qmplay2Gui.noAutoPlay)
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+             arguments.append({"noplay", QString()});
++#else
++            noAutoPlay();
++#endif
+ 
+         delete qmplay2Gui.pipe;
+     } while (qmplay2Gui.restartApp);
+@@ -907,7 +1116,7 @@ int main(int argc, char *argv[])
+ 
+     exitProcedure();
+ 
+-#ifndef Q_OS_WIN
++#if !defined(Q_OS_WIN) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+     if (canDeleteApp)
+ #endif
+         delete qApp;
+diff --git src/gui/MainWidget.cpp src/gui/MainWidget.cpp
+index 139dd2a4..42a0a475 100644
+--- src/gui/MainWidget.cpp
++++ src/gui/MainWidget.cpp
+@@ -30,8 +30,10 @@
+ #include <QFileDialog>
+ #include <QTreeWidget>
+ #include <QListWidget>
+-#ifdef Q_OS_MACOS
++#ifndef QMPLAY2_ALLOW_ONLY_ONE_INSTANCE
+     #include <QProcess>
++#endif
++#if defined(Q_OS_MACOS) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+     #include <QScreen>
+     #include <QWindow>
+ #endif
+@@ -61,8 +63,11 @@
+ #include <ShortcutHandler.hpp>
+ #include <VolWidget.hpp>
+ #include <ScreenSaver.hpp>
+-#ifdef Q_OS_MACOS
++#if defined(Q_OS_MACOS) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+     #include <QMPlay2MacExtensions.hpp>
++#else
++    #include <Carbon/Carbon.h>
++    extern void qt_mac_set_dock_menu(QMenu *);
+ #endif
+ 
+ using Functions::timeToStr;
+@@ -76,8 +81,9 @@ using Functions::timeToStr;
+ 
+ #include <cmath>
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+ /* MainWidgetTmpStyle -  dock widget separator extent must be larger for touch screens */
+-class MainWidgetTmpStyle final : public QCommonStyle
++class MainWidgetTmpStyle : public QCommonStyle
+ {
+ public:
+     ~MainWidgetTmpStyle() = default;
+@@ -90,6 +96,7 @@ public:
+         return pM;
+     }
+ };
++#endif
+ 
+ #ifndef Q_OS_MACOS
+ static void copyMenu(QMenu *dest, QMenu *src, QMenu *dontCopy = nullptr)
+@@ -110,13 +117,18 @@ static void copyMenu(QMenu *dest, QMenu *src, QMenu *dontCopy = nullptr)
+ #endif
+ 
+ /* MainWidget */
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+ MainWidget::MainWidget(QList<QPair<QString, QString>> &arguments) :
++#else
++MainWidget::MainWidget(QPair<QStringList, QStringList> &arguments) :
++#endif
+     updater(this)
+ {
+     QMPlay2GUI.videoAdjustment = new VideoAdjustmentW;
+     QMPlay2GUI.shortcutHandler = new ShortcutHandler(this);
+     QMPlay2GUI.mainW = this;
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     /* Looking for touch screen */
+     for (const QTouchDevice *touchDev : QTouchDevice::devices())
+     {
+@@ -128,6 +140,7 @@ MainWidget::MainWidget(QList<QPair<QString, QString>> &arguments) :
+             break;
+         }
+     }
++#endif
+ 
+     setObjectName("MainWidget");
+ 
+@@ -284,9 +297,11 @@ MainWidget::MainWidget(QList<QPair<QString, QString>> &arguments) :
+     connect(playlistDock, SIGNAL(play(const QString &)), &playC, SLOT(play(const QString &)));
+     connect(playlistDock, SIGNAL(repeatEntry(bool)), &playC, SLOT(repeatEntry(bool)));
+     connect(playlistDock, SIGNAL(stop()), &playC, SLOT(stop()));
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     connect(playlistDock, &PlaylistDock::addAndPlayRestoreWindow, this, [this] {
+         m_restoreWindowOnVideo = true;
+     });
++#endif
+ 
+     connect(seekS, SIGNAL(valueChanged(int)), this, SLOT(seek(int)));
+     connect(seekS, SIGNAL(mousePosition(int)), this, SLOT(mousePositionOnSlider(int)));
+@@ -300,9 +315,11 @@ MainWidget::MainWidget(QList<QPair<QString, QString>> &arguments) :
+     connect(&QMPlay2Core, SIGNAL(processParam(const QString &, const QString &)), this, SLOT(processParam(const QString &, const QString &)));
+     connect(&QMPlay2Core, SIGNAL(statusBarMessage(const QString &, int)), this, SLOT(statusBarMessage(const QString &, int)));
+     connect(&QMPlay2Core, SIGNAL(showSettings(const QString &)), this, SLOT(showSettings(const QString &)));
+-
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     connect(QMPlay2GUI.videoAdjustment, SIGNAL(videoAdjustmentChanged(const QString &)), &playC, SLOT(videoAdjustmentChanged(const QString &)));
+-
++#else
++    connect(QMPlay2GUI.videoAdjustment, SIGNAL(videoAdjustmentChanged()), &playC, SLOT(videoAdjustmentChanged()));
++#endif
+     connect(&playC, SIGNAL(chText(const QString &)), stateL, SLOT(setText(const QString &)));
+     connect(&playC, SIGNAL(updateLength(int)), this, SLOT(setSeekSMaximum(int)));
+     connect(&playC, SIGNAL(updatePos(double)), this, SLOT(updatePos(double)));
+@@ -320,17 +337,23 @@ MainWidget::MainWidget(QList<QPair<QString, QString>> &arguments) :
+     connect(&playC, SIGNAL(updateBufferedRange(int, int)), seekS, SLOT(drawRange(int, int)));
+     connect(&playC, SIGNAL(updateWindowTitle(const QString &)), this, SLOT(updateWindowTitle(const QString &)));
+     connect(&playC, SIGNAL(updateImage(const QImage &)), videoDock, SLOT(updateImage(const QImage &)));
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     connect(&playC, &PlayClass::videoStarted, this, &MainWidget::videoStarted);
+     connect(&playC, &PlayClass::videoNotStarted, this, [this] {
+         m_restoreWindowOnVideo = false;
+     });
++#else
++    connect(&playC, SIGNAL(videoStarted()), this, SLOT(videoStarted()));
++#endif
+     connect(&playC, SIGNAL(uncheckSuspend()), this, SLOT(uncheckSuspend()));
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     connect(&playC, &PlayClass::setVideoCheckState, this, [this](bool rotate90, bool hFlip, bool vFlip, bool spherical) {
+         menuBar->playback->videoFilters->rotate90->setChecked(rotate90);
+         menuBar->playback->videoFilters->hFlip->setChecked(hFlip);
+         menuBar->playback->videoFilters->vFlip->setChecked(vFlip);
+         menuBar->playback->videoFilters->spherical->setChecked(spherical);
+     });
++#endif
+     /**/
+ 
+     if (settings.getBool("MainWidget/TabPositionNorth"))
+@@ -361,7 +384,9 @@ MainWidget::MainWidget(QList<QPair<QString, QString>> &arguments) :
+     QMPlay2GUI.menuBar->widgets->lockWidgetsAct = lockWidgetsAct;
+ 
+     QMPlay2GUI.menuBar->setKeyShortcuts();
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QMPlay2GUI.videoAdjustment->setKeyShortcuts();
++#endif
+ 
+     volW->setVolume(settings.getInt("VolumeL"), settings.getInt("VolumeR"), true);
+     if (settings.getBool("Mute"))
+@@ -390,13 +415,16 @@ MainWidget::MainWidget(QList<QPair<QString, QString>> &arguments) :
+         if (tabBar && tabBar->property("changeCurrentOnDrag").isValid())
+         {
+             tabBar->setAcceptDrops(true);
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+             tabBar->setChangeCurrentOnDrag(true);
++#endif
+         }
+     }
+ 
+     playlistDock->load(QMPlay2Core.getSettingsDir() + "Playlist.pls");
+ 
+     bool noplay = false;
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+     for (const auto &argument : asConst(arguments))
+     {
+         const QString &param = argument.first;
+@@ -405,6 +433,15 @@ MainWidget::MainWidget(QList<QPair<QString, QString>> &arguments) :
+         processParam(param, data);
+     }
+     arguments.clear();
++#else
++    while (!arguments.first.isEmpty())
++    {
++        const QString param = arguments.first.takeFirst();
++        const QString data  = arguments.second.takeFirst();
++        noplay |= (param == "open" || param == "noplay");
++        processParam(param, data);
++    }
++#endif
+ 
+     if (!noplay)
+     {
+@@ -421,7 +458,7 @@ MainWidget::MainWidget(QList<QPair<QString, QString>> &arguments) :
+             playStateChanged(false);
+     }
+ 
+-#ifdef Q_OS_MACOS
++#if defined(Q_OS_MACOS) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+     qApp->installEventFilter(this);
+     fileOpenTimer.setSingleShot(true);
+     connect(&fileOpenTimer, &QTimer::timeout, this, &MainWidget::fileOpenTimerTimeout);
+@@ -434,7 +471,7 @@ MainWidget::MainWidget(QList<QPair<QString, QString>> &arguments) :
+ }
+ MainWidget::~MainWidget()
+ {
+-#ifdef Q_OS_MACOS
++#if defined(Q_OS_MACOS) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+     QMPlay2MacExtensions::unregisterMacOSMediaKeys();
+ #endif
+     QMPlay2Extensions::closeExtensions();
+@@ -501,8 +538,10 @@ void MainWidget::processParam(const QString &param, const QString &data)
+         else
+             playlistDock->add(data);
+     }
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+     else if (param == "play")
+         playlistDock->start();
++#endif
+     else if (param == "toggle")
+         togglePlay();
+     else if (param == "show")
+@@ -692,6 +731,7 @@ void MainWidget::resetSpherical()
+ 
+ void MainWidget::visualizationFullScreen()
+ {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QWidget *senderW = (QWidget *)sender();
+     const auto maybeGoFullScreen = [this, senderW] {
+         if (!fullScreen)
+@@ -706,6 +746,13 @@ void MainWidget::visualizationFullScreen()
+ #else
+     maybeGoFullScreen();
+ #endif
++#else
++    if (!fullScreen)
++    {
++        videoDock->setWidget((QWidget *)sender());
++        toggleFullScreen();
++    }
++#endif
+ }
+ void MainWidget::hideAllExtensions()
+ {
+@@ -724,7 +771,7 @@ void MainWidget::toggleVisibility()
+             toggleFullScreen();
+         if (!isTray)
+         {
+-#ifndef Q_OS_MACOS
++#if !defined(Q_OS_MACOS) || (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
+             showMinimized();
+ #else
+             QMPlay2MacExtensions::setApplicationVisible(false);
+@@ -779,7 +826,9 @@ void MainWidget::createMenuBar()
+     connect(menuBar->window->toggleVisibility, SIGNAL(triggered()), this, SLOT(toggleVisibility()));
+     connect(menuBar->window->toggleFullScreen, SIGNAL(triggered()), this, SLOT(toggleFullScreen()));
+     connect(menuBar->window->toggleCompactView, SIGNAL(triggered()), this, SLOT(toggleCompactView()));
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     connect(menuBar->window->alwaysOnTop, &QAction::triggered, this, &MainWidget::toggleAlwaysOnTop);
++#endif
+     connect(menuBar->window->close, SIGNAL(triggered()), this, SLOT(close()));
+ 
+     connect(menuBar->playlist->add->address, SIGNAL(triggered()), this, SLOT(openUrl()));
+@@ -794,7 +843,9 @@ void MainWidget::createMenuBar()
+     connect(menuBar->playlist->newGroup, SIGNAL(triggered()), playlistDock, SLOT(newGroup()));
+     connect(menuBar->playlist->renameGroup, SIGNAL(triggered()), playlistDock, SLOT(renameGroup()));
+     connect(menuBar->playlist->lock, SIGNAL(triggered()), playlistDock, SLOT(toggleLock()));
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     connect(menuBar->playlist->alwaysSync, &QAction::triggered, playlistDock, &PlaylistDock::alwaysSyncTriggered);
++#endif
+     connect(menuBar->playlist->delEntries, SIGNAL(triggered()), playlistDock, SLOT(delEntries()));
+     connect(menuBar->playlist->delNonGroupEntries, SIGNAL(triggered()), playlistDock, SLOT(delNonGroupEntries()));
+     connect(menuBar->playlist->clear, SIGNAL(triggered()), playlistDock, SLOT(clear()));
+@@ -921,7 +972,7 @@ void MainWidget::createMenuBar()
+     copyMenu(secondMenu, menuBar->help);
+     if (tray)
+         tray->setContextMenu(secondMenu);
+-#else //On OS X add only the most important menu actions to dock menu
++#else // On OS X add only the most important menu actions to dock menu
+     secondMenu->addAction(menuBar->player->togglePlay);
+     secondMenu->addAction(menuBar->player->stop);
+     secondMenu->addAction(menuBar->player->next);
+@@ -930,16 +981,20 @@ void MainWidget::createMenuBar()
+     secondMenu->addAction(menuBar->player->toggleMute);
+     secondMenu->addSeparator();
+     // Copy action, because PreferencesRole doesn't show in dock menu.
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QAction *settings = new QAction(menuBar->options->settings->icon(), menuBar->options->settings->text(), menuBar->options->settings->parent());
+     connect(settings, &QAction::triggered, menuBar->options->settings, &QAction::trigger);
+     secondMenu->addAction(settings);
++#endif
+ 
++#ifndef QMPLAY2_ALLOW_ONLY_ONE_INSTANCE
+     QAction *newInstanceAct = new QAction(tr("New window"), secondMenu);
+     connect(newInstanceAct, &QAction::triggered, [] {
+         QProcess::startDetached(QCoreApplication::applicationFilePath(), {"-noplay"}, QCoreApplication::applicationDirPath());
+     });
+     secondMenu->addSeparator();
+     secondMenu->addAction(newInstanceAct);
++#endif
+ 
+     qt_mac_set_dock_menu(secondMenu);
+ #endif
+@@ -1022,7 +1077,7 @@ void MainWidget::toggleFullScreen()
+ #ifndef Q_OS_ANDROID
+     static bool maximized;
+ #endif
+-#ifdef Q_OS_MACOS
++#if defined(Q_OS_MACOS) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+     if (isFullScreen())
+     {
+         showNormal();
+@@ -1089,13 +1144,13 @@ void MainWidget::toggleFullScreen()
+         menuBar->window->toggleFullScreen->setShortcuts(QList<QKeySequence>() << menuBar->window->toggleFullScreen->shortcut() << QKeySequence("ESC"));
+         fullScreen = true;
+ 
+-#ifndef Q_OS_MACOS
+-        showFullScreen();
+-#else
++#if defined(Q_OS_MACOS) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+         setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+         setGeometry(window()->windowHandle()->screen()->geometry());
+         QMPlay2MacExtensions::showSystemUi(windowHandle(), false);
+         show();
++#else
++        showFullScreen();
+ #endif
+ 
+         if (playC.isPlaying())
+@@ -1113,7 +1168,7 @@ void MainWidget::toggleFullScreen()
+         fullScreen = false;
+ 
+ #ifndef Q_OS_ANDROID
+-#ifdef Q_OS_MACOS
++#if defined(Q_OS_MACOS) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+         QMPlay2MacExtensions::showSystemUi(windowHandle(), true);
+         setWindowFlags(Qt::Window);
+ #else
+@@ -1123,7 +1178,7 @@ void MainWidget::toggleFullScreen()
+             showMaximized();
+         else
+         {
+-#ifdef Q_OS_MACOS
++#if defined(Q_OS_MACOS) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+             showNormal();
+ #endif
+             setGeometry(savedGeo);
+@@ -1407,6 +1462,7 @@ void MainWidget::hideDocksSlot()
+ }
+ void MainWidget::doRestoreState(const QByteArray &data)
+ {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     if (isMaximized())
+     {
+         setUpdatesEnabled(false);
+@@ -1419,6 +1475,7 @@ void MainWidget::doRestoreState(const QByteArray &data)
+         });
+     }
+     else
++#endif
+     {
+         restoreState(data);
+     }
+@@ -1773,12 +1830,13 @@ void MainWidget::hideEvent(QHideEvent *)
+ 
+ bool MainWidget::eventFilter(QObject *obj, QEvent *event)
+ {
++#if defined(Q_OS_MACOS) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+     if (tray && obj == tray && event->type() == QEvent::Wheel)
+     {
+         QWheelEvent *we = static_cast<QWheelEvent *>(event);
+         volW->changeVolume(we->angleDelta().y() / 30);
+     }
+-#ifdef Q_OS_MACOS
++
+     else if (event->type() == QEvent::FileOpen)
+     {
+         filesToAdd.append(((QFileOpenEvent *)event)->file());
+@@ -1788,7 +1846,7 @@ bool MainWidget::eventFilter(QObject *obj, QEvent *event)
+     return QMainWindow::eventFilter(obj, event);
+ }
+ 
+-#ifdef Q_OS_MACOS
++#if defined(Q_OS_MACOS) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+ void MainWidget::fileOpenTimerTimeout()
+ {
+     if (filesToAdd.count() == 1)
+diff --git src/gui/MainWidget.hpp src/gui/MainWidget.hpp
+index 5ac4cb24..f235773f 100644
+--- src/gui/MainWidget.hpp
++++ src/gui/MainWidget.hpp
+@@ -48,7 +48,11 @@ class MainWidget : public QMainWindow
+     Q_PROPERTY(bool fullScreen READ getFullScreen)
+     Q_OBJECT
+ public:
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+     MainWidget(QList<QPair<QString, QString>> &argument);
++#else
++    MainWidget(QPair<QStringList, QStringList> &argument);
++#endif
+     ~MainWidget() final;
+ private slots:
+     void detachFromPipe();
+@@ -145,7 +149,7 @@ private:
+ 
+     bool eventFilter(QObject *obj, QEvent *event) override final;
+ 
+-#ifdef Q_OS_MACOS
++#if defined(Q_OS_MACOS) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+     void fileOpenTimerTimeout();
+ 
+     QTimer fileOpenTimer;
+diff --git src/gui/MenuBar.cpp src/gui/MenuBar.cpp
+index b3ea2162..f4a0723e 100644
+--- src/gui/MenuBar.cpp
++++ src/gui/MenuBar.cpp
+@@ -366,7 +366,7 @@ MenuBar::Playback::VideoFilters::VideoFilters(QMenu *parent) :
+     widgetAction->setDefaultWidget(QMPlay2GUI.videoAdjustment);
+     QMPlay2GUI.videoAdjustment->setObjectName(videoAdjustmentMenu->title().remove('&'));
+     videoAdjustmentMenu->addAction(widgetAction);
+-#ifdef Q_OS_MACOS
++#if defined(Q_OS_MACOS) && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+     // Update visibility and update geometry of video adjustment widget
+     connect(videoAdjustmentMenu, &VideoFilters::aboutToShow, [] {
+         QWidget *parent = QMPlay2GUI.videoAdjustment->parentWidget();
+diff --git src/gui/OSDSettingsW.cpp src/gui/OSDSettingsW.cpp
+index 7b988cbd..bf7f66d4 100644
+--- src/gui/OSDSettingsW.cpp
++++ src/gui/OSDSettingsW.cpp
+@@ -38,7 +38,11 @@ static void appendColon(const QObjectList &objects)
+ void OSDSettingsW::init(const QString &prefix, int a, int b, int c, int d, int e, int f, double g, double h, const QColor &i, const QColor &j, const QColor &k)
+ {
+     Settings &QMPSettings = QMPlay2Core.getSettings();
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QMPSettings.init(prefix + "/FontName", QGuiApplication::font().family());
++#else
++    QMPSettings.init(prefix + "/FontName", QFontComboBox().currentText());
++#endif
+     QMPSettings.init(prefix + "/FontSize", a);
+     QMPSettings.init(prefix + "/Spacing", b);
+     QMPSettings.init(prefix + "/LeftMargin", c);
+diff --git src/gui/OtherVFiltersW.cpp src/gui/OtherVFiltersW.cpp
+index 6d449b42..cfa49a7f 100644
+--- src/gui/OtherVFiltersW.cpp
++++ src/gui/OtherVFiltersW.cpp
+@@ -37,7 +37,11 @@ OtherVFiltersW::OtherVFiltersW(bool hw) :
+         for (const QString &filter : QMPlay2Core.getSettings().getStringList("VideoFilters"))
+         {
+             videoFilters.first += filter.mid(1);
++    #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+             videoFilters.second += filter.leftRef(1).toInt();
++    #else
++            videoFilters.second += filter.left(1).toInt();
++    #endif
+         }
+ 
+         for (int i = 0; i < videoFilters.first.count(); ++i)
+diff --git src/gui/PlayClass.cpp src/gui/PlayClass.cpp
+index 1138db76..022bf313 100644
+--- src/gui/PlayClass.cpp
++++ src/gui/PlayClass.cpp
+@@ -33,10 +33,19 @@
+ #include <Decoder.hpp>
+ #include <Reader.hpp>
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++	#define USE_QRAWFONT
++#endif
++
++#ifdef USE_QRAWFONT
++	#include <QRawFont>
++#else
++	#include <QFontDatabase>
++#endif
++
+ #include <QCoreApplication>
+ #include <QInputDialog>
+ #include <QMessageBox>
+-#include <QRawFont>
+ #include <QAction>
+ #include <QDir>
+ 
+@@ -303,13 +312,14 @@ void PlayClass::seek(double pos, bool allowAccurate)
+             demuxThr->seek(false);
+         demuxThr->seekMutex.unlock();
+     }
+-    emit QMPlay2Core.seeked(pos); //Signal for MPRIS2
++    emit QMPlay2Core.seeked(pos); // Signal for MPRIS2
+     fillBufferB = true;
+     if (aThr && paused)
+         aThr->silence(true, true);
+ }
+ void PlayClass::chStream(const QString &s)
+ {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     if (s.startsWith("audio"))
+         chosenAudioStream = s.rightRef(s.length() - 5).toInt();
+     else if (s.startsWith("video"))
+@@ -322,9 +332,23 @@ void PlayClass::chStream(const QString &s)
+         if (fileSubsList.count() > idx)
+             loadSubsFile(fileSubsList[idx]);
+     }
++#else
++    if (s.startsWith("audio"))
++        chosenAudioStream = s.right(s.length() - 5).toInt();
++    else if (s.startsWith("video"))
++        chosenVideoStream = s.right(s.length() - 5).toInt();
++    else if (s.startsWith("subtitles"))
++        chosenSubtitlesStream = s.right(s.length() - 9).toInt();
++    else if (s.startsWith("fileSubs"))
++    {
++        int idx = s.right(s.length() - 8).toInt();
++        if (fileSubsList.count() > idx)
++            loadSubsFile(fileSubsList[idx]);
++    }
++#endif
+     else
+     {
+-        //TODO: What if one of type will not be found in next program?
++        // TODO: What if one of type will not be found in next program?
+         chosenAudioStream = -1;
+         chosenVideoStream = -1;
+         chosenSubtitlesStream = -1;
+@@ -401,9 +425,20 @@ void PlayClass::loadSubsFile(const QString &fileName)
+                     {
+                         const QByteArray fontData = f.readAll();
+                         f.close();
++#ifdef USE_QRAWFONT
+                         const QString fontName = QRawFont(fontData, 0.0).familyName();
+                         if (!fontName.isEmpty())
+                             ass->addFont(fontName.toUtf8(), fontData);
++#else // For Qt older than 5.0
++                        const int fontID = QFontDatabase::addApplicationFontFromData(fontData);
++                        if (fontID != -1)
++                        {
++                            const QStringList fontFamilies = QFontDatabase::applicationFontFamilies(fontID);
++                            QFontDatabase::removeApplicationFont(fontID);
++                            if (!fontFamilies.isEmpty())
++                                ass->addFont(fontFamilies.first().toUtf8(), fontData);
++                        }
++#endif
+                     }
+                 }
+ 
+@@ -735,15 +770,27 @@ void PlayClass::videoResized(int w, int h)
+     videoWinH = h;
+ }
+ 
+-void PlayClass::videoAdjustmentChanged(const QString &osdText)
++// MOC is stupid.
++// #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++// void PlayClass::videoAdjustmentChanged(const QString &osdText)
++// {
++//     if (vThr)
++//     {
++//         vThr->setVideoAdjustment();
++//         vThr->processParams();
++//         messageAndOSD(osdText);
++//     }
++// }
++// #else
++void PlayClass::videoAdjustmentChanged()
+ {
+     if (vThr)
+     {
+         vThr->setVideoAdjustment();
+         vThr->processParams();
+-        messageAndOSD(osdText);
+     }
+ }
++// #endif
+ 
+ void PlayClass::setAB()
+ {
+diff --git src/gui/PlayClass.hpp src/gui/PlayClass.hpp
+index bc4152ed..e8aeb9c8 100644
+--- src/gui/PlayClass.hpp
++++ src/gui/PlayClass.hpp
+@@ -170,7 +170,12 @@ private slots:
+     void settingsChanged(int, bool);
+     void videoResized(int, int);
+ 
+-    void videoAdjustmentChanged(const QString &osdText);
++// MOC is stupid.
++// #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++//     void videoAdjustmentChanged(const QString &osdText);
++// #else
++    void videoAdjustmentChanged();
++// #endif
+ 
+     void setAB();
+     void speedUp();
+diff --git src/gui/PlaylistDock.cpp src/gui/PlaylistDock.cpp
+index f2872ab0..4e5e01f6 100644
+--- src/gui/PlaylistDock.cpp
++++ src/gui/PlaylistDock.cpp
+@@ -56,7 +56,9 @@ PlaylistDock::PlaylistDock() :
+ 
+     connect(list, SIGNAL(itemDoubleClicked(QTreeWidgetItem *, int)), this, SLOT(itemDoubleClicked(QTreeWidgetItem *)));
+     connect(list, SIGNAL(returnItem(QTreeWidgetItem *)), this, SLOT(addAndPlay(QTreeWidgetItem *)));
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     connect(list, &PlaylistWidget::itemExpanded, this, &PlaylistDock::maybeDoQuickSync, Qt::QueuedConnection); // Must be queued to not crash at startup in some cases
++#endif
+     connect(list, SIGNAL(visibleItemsCount(int)), this, SLOT(visibleItemsCount(int)));
+     connect(list, SIGNAL(addStatus(bool)), findE, SLOT(setDisabled(bool)));
+     connect(findE, SIGNAL(textChanged(const QString &)), this, SLOT(findItems(const QString &)));
+diff --git src/gui/PlaylistWidget.cpp src/gui/PlaylistWidget.cpp
+index 87164c7c..8497d5bb 100644
+--- src/gui/PlaylistWidget.cpp
++++ src/gui/PlaylistWidget.cpp
+@@ -57,6 +57,7 @@ static inline MenuBar::Playlist *playlistMenu()
+     return QMPlay2GUI.menuBar->playlist;
+ }
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+ /* PlaylistItem class */
+ class PlaylistItem : public QTreeWidgetItem
+ {
+@@ -70,6 +71,7 @@ public:
+         return QTreeWidgetItem::operator <(other);
+     }
+ };
++#endif
+ 
+ /* UpdateEntryThr class */
+ UpdateEntryThr::UpdateEntryThr(PlaylistWidget &pLW) :
+@@ -595,7 +597,11 @@ PlaylistWidget::PlaylistWidget() :
+     setAnimated(true);
+     header()->setStretchLastSection(false);
+     setHeaderHidden(true);
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     header()->setSectionResizeMode(0, QHeaderView::Stretch);
++#else
++    header()->setResizeMode(0, QHeaderView::Stretch);
++#endif
+     header()->hideSection(1);
+     setItemsResizeToContents(true);
+     setIconSize({22, 22});
+@@ -608,7 +614,9 @@ PlaylistWidget::PlaylistWidget() :
+     connect(&animationTimer, SIGNAL(timeout()), this, SLOT(animationUpdate()));
+     connect(&addTimer, SIGNAL(timeout()), this, SLOT(addTimerElapsed()));
+     connect(&addThr, SIGNAL(status(bool)), this, SIGNAL(addStatus(bool)));
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     connect(playlistMenu(), &MenuBar::Playlist::aboutToShow, this, &PlaylistWidget::createExtensionsMenu);
++#endif
+ }
+ 
+ QString PlaylistWidget::getUrl(QTreeWidgetItem *tWI) const
+@@ -622,7 +630,11 @@ void PlaylistWidget::setItemsResizeToContents(bool b)
+ {
+     const QHeaderView::ResizeMode rm = b ? QHeaderView::ResizeToContents : QHeaderView::Fixed;
+     for (int i = 1; i <= 2; ++i)
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+         header()->setSectionResizeMode(i, rm);
++#else
++        header()->setResizeMode(i, rm);
++#endif
+ }
+ 
+ void PlaylistWidget::sortCurrentGroup(int column, Qt::SortOrder sortOrder)
+@@ -915,7 +927,11 @@ void PlaylistWidget::setEntryFont(QTreeWidgetItem *tWI, const int flags)
+ 
+ QTreeWidgetItem *PlaylistWidget::newGroup(const QString &name, const QString &url, QTreeWidgetItem *parent, int insertChildAt, QStringList *existingEntries)
+ {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QTreeWidgetItem *tWI = new PlaylistItem;
++#else
++    QTreeWidgetItem *tWI = new QTreeWidgetItem;
++#endif
+ 
+     tWI->setFlags(tWI->flags() | Qt::ItemIsEditable);
+     QMPlay2GUI.setTreeWidgetItemIcon(tWI, url.isEmpty() ? *QMPlay2GUI.groupIcon : *QMPlay2GUI.folderIcon, 0, this);
+@@ -930,7 +946,11 @@ QTreeWidgetItem *PlaylistWidget::newGroup(const QString &name, const QString &ur
+ }
+ QTreeWidgetItem *PlaylistWidget::newEntry(const Playlist::Entry &entry, QTreeWidgetItem *parent, const Functions::DemuxersInfo &demuxersInfo, int insertChildAt, QStringList *existingEntries)
+ {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QTreeWidgetItem *tWI = new PlaylistItem;
++#else
++    QTreeWidgetItem *tWI = new QTreeWidgetItem;
++#endif
+ 
+     QIcon icon;
+     Functions::getDataIfHasPluginPrefix(entry.url, nullptr, nullptr, &icon, nullptr, demuxersInfo);
+diff --git src/gui/SettingsWidget.cpp src/gui/SettingsWidget.cpp
+index 426212c7..cf777918 100644
+--- src/gui/SettingsWidget.cpp
++++ src/gui/SettingsWidget.cpp
+@@ -29,7 +29,7 @@
+ #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     #include <QStandardPaths>
+ #else
+-    #include <qdesktopservices.h>
++    #include <QDesktopServices>
+ #endif
+ #include <QStyleFactory>
+ #include <QRadioButton>
+@@ -131,7 +131,7 @@ void SettingsWidget::InitSettings()
+ #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QMPSettings.init("screenshotPth", QStandardPaths::standardLocations(QStandardPaths::PicturesLocation).value(0, QDir::homePath()));
+ #else
+-    QMPSettings.init("screenshotPth", QDesktopServices::standardLocations(QDesktopServices::PicturesLocation).value(0, QDir::homePath()));
++    QMPSettings.init("screenshotPth", QDesktopServices::storageLocation(QDesktopServices::PicturesLocation));
+ #endif
+ #ifdef Q_OS_WIN
+     QMPSettings.init("screenshotFormat", ".bmp");
+@@ -458,6 +458,7 @@ SettingsWidget::SettingsWidget(int page, const QString &moduleName, QWidget *vid
+         page2->wheelSeekB->setChecked(QMPSettings.getBool("WheelSeek"));
+         page2->wheelVolumeB->setChecked(QMPSettings.getBool("WheelVolume"));
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+         page2->storeARatioAndZoomB->setChecked(QMPSettings.getBool("StoreARatioAndZoom"));
+         connect(page2->storeARatioAndZoomB, &QCheckBox::toggled, this, [this](bool checked) {
+             if (checked)
+@@ -482,6 +483,7 @@ SettingsWidget::SettingsWidget(int page, const QString &moduleName, QWidget *vid
+                 page2->storeARatioAndZoomB->setChecked(false);
+             }
+         });
++#endif
+ 
+         page2->showBufferedTimeOnSlider->setChecked(QMPSettings.getBool("ShowBufferedTimeOnSlider"));
+         page2->savePos->setChecked(QMPSettings.getBool("SavePos"));
+@@ -685,7 +687,11 @@ void SettingsWidget::applyProxy()
+     Settings &QMPSettings = QMPlay2Core.getSettings();
+     if (!QMPSettings.getBool("Proxy/Use"))
+     {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+         qunsetenv("http_proxy");
++#else
++        unsetenv("http_proxy");
++#endif
+     }
+     else
+     {
+@@ -708,7 +714,11 @@ void SettingsWidget::applyProxy()
+             auth += '@';
+             proxyEnv.insert(7, auth);
+         }
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+         qputenv("http_proxy", proxyEnv.toLocal8Bit());
++#else
++        setenv("http_proxy", proxyEnv.toLocal8Bit(), true);
++#endif
+     }
+ }
+ 
+diff --git src/gui/Unix/ScreenSaver.cpp src/gui/Unix/ScreenSaver.cpp
+index 4d5f8bdb..0bfba53b 100644
+--- src/gui/Unix/ScreenSaver.cpp
++++ src/gui/Unix/ScreenSaver.cpp
+@@ -20,7 +20,10 @@
+ 
+ #if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS) && !defined(Q_OS_ANDROID)
+ 
+-#include <QGuiApplication>
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <QGuiApplication>
++#endif
++
+ #include <QLibrary>
+ 
+ class ScreenSaverPriv : public QObject
+@@ -91,8 +94,10 @@ private:
+ ScreenSaver::ScreenSaver() :
+     m_priv(new ScreenSaverPriv)
+ {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     if (QGuiApplication::platformName() == "xcb")
+         m_priv->load();
++#endif
+ }
+ ScreenSaver::~ScreenSaver()
+ {
+diff --git src/gui/VideoAdjustmentW.cpp src/gui/VideoAdjustmentW.cpp
+index d3f71cca..7098e0c8 100644
+--- src/gui/VideoAdjustmentW.cpp
++++ src/gui/VideoAdjustmentW.cpp
+@@ -18,15 +18,20 @@
+ 
+ #include <VideoAdjustmentW.hpp>
+ 
+-#include <ShortcutHandler.hpp>
+ #include <ModuleParams.hpp>
+ #include <Settings.hpp>
+ #include <Slider.hpp>
+-#include <Main.hpp>
++
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <ShortcutHandler.hpp>
++    #include <Main.hpp>
++    #include <QAction>
++#else
++    #include <QVariant>
++#endif
+ 
+ #include <QGridLayout>
+ #include <QPushButton>
+-#include <QAction>
+ #include <QLabel>
+ 
+ enum CONTROLS
+@@ -46,9 +51,12 @@ constexpr const char *g_controlsNames[CONTROLS_COUNT] = {
+     QT_TRANSLATE_NOOP("VideoAdjustmentW", "Hue"),
+     QT_TRANSLATE_NOOP("VideoAdjustmentW", "Sharpness")
+ };
+-constexpr int g_step = 5;
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    constexpr int g_step = 5;
++#endif
+ 
+ VideoAdjustmentW::VideoAdjustmentW()
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+ {
+     QGridLayout *layout = new QGridLayout;
+ 
+@@ -106,35 +114,108 @@ VideoAdjustmentW::VideoAdjustmentW()
+ 
+     setLayout(layout);
+ }
++#else
++    : m_sliders(new Slider[CONTROLS_COUNT])
++{
++    QGridLayout *layout = new QGridLayout;
++    int i;
++    for (i = 0; i < CONTROLS_COUNT; ++i)
++    {
++
++        QLabel *titleL = new QLabel(tr(g_controlsNames[i]) + ": ");
++        titleL->setAlignment(Qt::AlignRight);
++
++        QLabel *valueL = new QLabel("0");
++
++        Slider *slider = &m_sliders[i];
++        slider->setProperty("valueL", qVariantFromValue((void *)valueL));
++        slider->setTickPosition(QSlider::TicksBelow);
++        slider->setMinimumWidth(50);
++        slider->setTickInterval(25);
++        slider->setRange(-100, 100);
++        slider->setWheelStep(1);
++        slider->setValue(0);
++        connect(slider, SIGNAL(valueChanged(int)), this, SLOT(setValue(int)));
++
++        layout->addWidget(titleL, i, 0);
++        layout->addWidget(slider, i, 1);
++        layout->addWidget(valueL, i, 2);
++    }
++
++    QPushButton *resetB = new QPushButton(tr("Reset"));
++    connect(resetB, SIGNAL(clicked()), this, SLOT(reset()));
++
++    layout->addWidget(resetB, i++, 0, 1, 3);
++    layout->addItem(new QSpacerItem(40, 0, QSizePolicy::Maximum, QSizePolicy::Minimum), i, 2);
++
++    setLayout(layout);
++}
++#endif
++
+ VideoAdjustmentW::~VideoAdjustmentW()
+-{}
++{
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++    delete[] m_sliders;
++#endif
++}
+ 
+ void VideoAdjustmentW::restoreValues()
+ {
+     for (int i = 0; i < CONTROLS_COUNT; ++i)
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+         m_sliders[i]->setValue(QMPlay2Core.getSettings().getInt(QString("VideoAdjustment/") + g_controlsNames[i]));
++#else
++        m_sliders[i].setValue(QMPlay2Core.getSettings().getInt(QString("VideoAdjustment/") + g_controlsNames[i]));
++#endif
+ }
+ void VideoAdjustmentW::saveValues()
+ {
+     for (int i = 0; i < CONTROLS_COUNT; ++i)
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+         QMPlay2Core.getSettings().set(QString("VideoAdjustment/") + g_controlsNames[i], m_sliders[i]->value());
++#else
++        QMPlay2Core.getSettings().set(QString("VideoAdjustment/") + g_controlsNames[i], m_sliders[i].value());
++#endif
+ }
+ 
+ void VideoAdjustmentW::setModuleParam(ModuleParams *writer)
+ {
+     for (int i = 0; i < CONTROLS_COUNT; ++i)
+     {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+         m_sliders[i]->setEnabled(writer->hasParam(g_controlsNames[i]));
+         writer->modParam(g_controlsNames[i], m_sliders[i]->value());
++#else
++        m_sliders[i].setEnabled(writer->hasParam(g_controlsNames[i]));
++        writer->modParam(g_controlsNames[i], m_sliders[i].value());
++#endif
+     }
+ }
+ 
+ void VideoAdjustmentW::enableControls()
+ {
+     for (int i = 0; i < CONTROLS_COUNT; ++i)
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+         m_sliders[i]->setEnabled(true);
++#else
++        m_sliders[i].setEnabled(true);
++#endif
++}
++
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++void VideoAdjustmentW::setValue(int v)
++{
++    ((QLabel *)sender()->property("valueL").value<void *>())->setText(QString::number(v));
++    emit videoAdjustmentChanged();
++}
++void VideoAdjustmentW::reset()
++{
++    for (int i = 0; i < CONTROLS_COUNT; ++i)
++        m_sliders[i].setValue(0);
+ }
++#endif
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+ void VideoAdjustmentW::setKeyShortcuts()
+ {
+     ShortcutHandler *shortcuts = QMPlay2GUI.shortcutHandler;
+@@ -171,3 +252,4 @@ void VideoAdjustmentW::addActionsToWidget(QWidget *w)
+     }
+     w->addAction(m_resetAction);
+ }
++#endif
+diff --git src/gui/VideoAdjustmentW.hpp src/gui/VideoAdjustmentW.hpp
+index c900354f..8e97b12b 100644
+--- src/gui/VideoAdjustmentW.hpp
++++ src/gui/VideoAdjustmentW.hpp
+@@ -20,8 +20,10 @@
+ 
+ #include <QWidget>
+ 
+-#include <vector>
+-#include <array>
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <vector>
++    #include <array>
++#endif
+ 
+ class ModuleParams;
+ class QAction;
+@@ -41,14 +43,31 @@ public:
+     void setModuleParam(ModuleParams *writer);
+     void enableControls();
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     void setKeyShortcuts();
+     void addActionsToWidget(QWidget *w);
++#endif
+ 
+ signals:
+-    void videoAdjustmentChanged(const QString &osdText);
++// MOC is stupid.
++// #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++//     void videoAdjustmentChanged(const QString &osdText);
++// #else
++    void videoAdjustmentChanged();
++// #endif
++
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++private slots:
++	void setValue(int);
++	void reset();
++#endif
+ 
+ private:
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     std::vector<Slider *> m_sliders;
+     std::vector<std::array<QAction *, 2>> m_actions;
+     QAction *m_resetAction = nullptr;
++#else
++    Slider *m_sliders;
++#endif
+ };
+diff --git src/gui/VideoDock.cpp src/gui/VideoDock.cpp
+index 74485f76..5444906d 100644
+--- src/gui/VideoDock.cpp
++++ src/gui/VideoDock.cpp
+@@ -18,7 +18,9 @@
+ 
+ #include <VideoDock.hpp>
+ 
+-#include <VideoAdjustmentW.hpp>
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <VideoAdjustmentW.hpp>
++#endif
+ #include <Settings.hpp>
+ #include <MenuBar.hpp>
+ #include <Main.hpp>
+@@ -69,7 +71,9 @@ VideoDock::VideoDock() :
+         addAction(act);
+     for (QAction *act : QMPlay2GUI.menuBar->help->actions())
+         addAction(act);
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QMPlay2GUI.videoAdjustment->addActionsToWidget(this);
++#endif
+     /**/
+ 
+     setMouseTracking(true);
+@@ -88,10 +92,14 @@ VideoDock::VideoDock() :
+     connect(&iDW, SIGNAL(resized(int, int)), this, SLOT(resizedIDW(int, int)));
+     connect(&iDW, SIGNAL(hasCoverImage(bool)), this, SLOT(hasCoverImage(bool)));
+     connect(this, SIGNAL(visibilityChanged(bool)), this, SLOT(visibilityChanged(bool)));
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     connect(&QMPlay2Core, &QMPlay2CoreClass::dockVideo, this, [this](QWidget *w) {
+         iDW.setWidget(w);
+         mouseMoveEvent(nullptr);
+     });
++#else
++    connect(&QMPlay2Core, SIGNAL(dockVideo(QWidget *)), &iDW, SLOT(setWidget(QWidget *)));
++#endif
+ 
+     if ((isBreeze = QApplication::style()->objectName() == "breeze"))
+         setStyle(&commonStyle);
+diff --git src/gui/VideoThr.cpp src/gui/VideoThr.cpp
+index 83c03089..662d7baa 100644
+--- src/gui/VideoThr.cpp
++++ src/gui/VideoThr.cpp
+@@ -181,7 +181,11 @@ void VideoThr::initFilters(bool processParams)
+     {
+         for (QString filterName : QMPSettings.getStringList("VideoFilters"))
+         {
+-            if (filterName.leftRef(1).toInt()) //if filter is enabled
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++            if (filterName.leftRef(1).toInt()) // if filter is enabled
++#else
++			if (filterName.left(1).toInt()) // if filter is enabled
++#endif
+             {
+                 VideoFilter *filter = filters.on((filterName = filterName.mid(1)));
+                 bool ok = false;
+@@ -660,7 +664,11 @@ void VideoThr::screenshot(VideoFrame videoFrame)
+             quint16 num = 0;
+             for (const QString &f : QDir(dir).entryList({"QMPlay2_snap_?????" + ext}, QDir::Files, QDir::Name))
+             {
++    #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+                 const quint16 n = f.midRef(13, 5).toUShort();
++    #else
++                const quint16 n = f.mid(13, 5).toUShort();
++    #endif
+                 if (n > num)
+                     num = n;
+             }
+diff --git src/gui/Windows/ScreenSaver.cpp src/gui/Windows/ScreenSaver.cpp
+index a7af4795..75c7736d 100644
+--- src/gui/Windows/ScreenSaver.cpp
++++ src/gui/Windows/ScreenSaver.cpp
+@@ -27,6 +27,8 @@ static inline bool inhibitScreenSaver(MSG *msg, const bool inhibited)
+     return (inhibited && msg->message == WM_SYSCOMMAND && ((msg->wParam & 0xFFF0) == SC_SCREENSAVE || (msg->wParam & 0xFFF0) == SC_MONITORPOWER));
+ }
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++
+ #include <QAbstractNativeEventFilter>
+ 
+ class ScreenSaverPriv : public QAbstractNativeEventFilter
+@@ -63,3 +65,35 @@ void ScreenSaver::unInhibit(int context)
+     if (unInhibitHelper(context))
+         m_priv->inhibited = false;
+ }
++
++#else
++
++static bool inhibited = false;
++static bool eventFilter(void *m, long *)
++{
++    return inhibitScreenSaver((MSG *)m, inhibited);
++}
++
++/**/
++
++ScreenSaver::ScreenSaver() :
++    m_priv(nullptr)
++{
++    qApp->setEventFilter(::eventFilter);
++}
++ScreenSaver::~ScreenSaver()
++{}
++
++void ScreenSaver::inhibit(int context)
++{
++    if (inhibitHelper(context))
++        inhibited = true;
++}
++
++void ScreenSaver::unInhibit(int context)
++{
++    if (unInhibitHelper(context))
++        inhibited = false;
++}
++
++#endif
+diff --git src/gui/macOS/QMPlay2MacExtensions.mm src/gui/macOS/QMPlay2MacExtensions.mm
+index b10dd49e..5df5339f 100644
+--- src/gui/macOS/QMPlay2MacExtensions.mm
++++ src/gui/macOS/QMPlay2MacExtensions.mm
+@@ -1,14 +1,18 @@
+ #include "QMPlay2MacExtensions.hpp"
++#include <QtGlobal>
+ 
+-#include <QAbstractNativeEventFilter>
+-#include <QGuiApplication>
+-#include <QWindow>
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <QAbstractNativeEventFilter>
++    #include <QGuiApplication>
++    #include <QWindow>
++#endif
+ 
+ #include <IOKit/hidsystem/ev_keymap.h>
+ #include <AppKit/NSApplication.h>
+ #include <AppKit/NSScreen.h>
+ #include <AppKit/NSEvent.h>
+ 
++#if defined(MAC_OS_X_VERSION_10_7) && (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_7)
+ class MediaKeysFilter : public QAbstractNativeEventFilter
+ {
+ public:
+@@ -59,6 +63,7 @@ private:
+ 
+     QMPlay2MacExtensions::MediaKeysCallback m_mediaKeysCallback;
+ } static *g_mediaKeysFilter;
++#endif
+ 
+ /**/
+ 
+@@ -71,6 +76,7 @@ void QMPlay2MacExtensions::setApplicationVisible(bool visible)
+         [app hide:nil];
+ }
+ 
++#if defined(MAC_OS_X_VERSION_10_7) && (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_7)
+ void QMPlay2MacExtensions::registerMacOSMediaKeys(const MediaKeysCallback &cb)
+ {
+     if (!g_mediaKeysFilter)
+@@ -88,7 +94,9 @@ void QMPlay2MacExtensions::unregisterMacOSMediaKeys()
+         g_mediaKeysFilter = nullptr;
+     }
+ }
++#endif
+ 
++#if defined(MAC_OS_X_VERSION_10_7) && (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_7)
+ void QMPlay2MacExtensions::showSystemUi(QWindow *mainWindow, bool visible)
+ {
+ #if defined(MAC_OS_X_VERSION_10_9) && (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_9)
+@@ -102,3 +110,4 @@ void QMPlay2MacExtensions::showSystemUi(QWindow *mainWindow, bool visible)
+         flags = NSApplicationPresentationHideDock | NSApplicationPresentationAutoHideMenuBar;
+     [NSApp setPresentationOptions:flags];
+ }
++#endif
+diff --git src/gui/macOS/ScreenSaver.cpp src/gui/macOS/ScreenSaver.cpp
+index 0165d5cc..1d73e3e6 100644
+--- src/gui/macOS/ScreenSaver.cpp
++++ src/gui/macOS/ScreenSaver.cpp
+@@ -20,6 +20,8 @@
+ 
+ #include <IOKit/pwr_mgt/IOPMLib.h>
+ 
++#include <AvailabilityMacros.h>
++
+ #define QMPLAY2_MEDIA_PLAYBACK CFSTR("QMPlay2 media playback")
+ 
+ class ScreenSaverPriv
+@@ -32,8 +34,13 @@ public:
+ 
+     inline void inhibit()
+     {
+-        m_okDisp = (IOPMAssertionCreateWithName(kIOPMAssertPreventUserIdleDisplaySleep, kIOPMAssertionLevelOn, QMPLAY2_MEDIA_PLAYBACK, &m_idDisp) == kIOReturnSuccess);
+-        m_okSys  = (IOPMAssertionCreateWithName(kIOPMAssertPreventUserIdleSystemSleep,  kIOPMAssertionLevelOn, QMPLAY2_MEDIA_PLAYBACK, &m_idSys)  == kIOReturnSuccess);
++#if MAC_OS_X_VERSION_MAX_ALLOWED < 1060
++		m_okDisp = (IOPMAssertionCreate(kIOPMAssertionTypeNoDisplaySleep, kIOPMAssertionLevelOn, &m_idDisp) == kIOReturnSuccess);
++		m_okSys  = (IOPMAssertionCreate(kIOPMAssertionTypeNoIdleSleep, kIOPMAssertionLevelOn, &m_idSys)  == kIOReturnSuccess);
++#else
++		m_okDisp = (IOPMAssertionCreateWithName(kIOPMAssertionTypeNoDisplaySleep, kIOPMAssertionLevelOn, QMPLAY2_MEDIA_PLAYBACK, &m_idDisp) == kIOReturnSuccess);
++		m_okSys  = (IOPMAssertionCreateWithName(kIOPMAssertionTypeNoIdleSleep, kIOPMAssertionLevelOn, QMPLAY2_MEDIA_PLAYBACK, &m_idSys) == kIOReturnSuccess);
++#endif
+     }
+     inline void unInhibit()
+     {
+diff --git src/modules/Extensions/Downloader.cpp src/modules/Extensions/Downloader.cpp
+index 6962191e..de835166 100644
+--- src/modules/Extensions/Downloader.cpp
++++ src/modules/Extensions/Downloader.cpp
+@@ -46,17 +46,22 @@
+ #include <QApplication>
+ #include <QElapsedTimer>
+ #include <QDialogButtonBox>
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
++    #include <QLoggingCategory>
++#else
++    #include <QtLogging>
++    #define qCWarning qWarning
++#endif
+ #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     #include <QWindow>
+     #include <QStandardPaths>
+-    #include <QLoggingCategory>
+ #else
+-    #include <qdesktopservices.h>
++    #include <QDesktopServices>
+ #endif
+ 
+ #include <functional>
+ 
+-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+     Q_LOGGING_CATEGORY(downloader, "Downloader")
+ #endif
+ 
+diff --git src/modules/Extensions/Extensions.cpp src/modules/Extensions/Extensions.cpp
+index e4f8f9be..753e1b0a 100644
+--- src/modules/Extensions/Extensions.cpp
++++ src/modules/Extensions/Extensions.cpp
+@@ -49,7 +49,11 @@ Extensions::Extensions() :
+ 
+     init("YouTube/ShowUserName", false);
+     init("YouTube/Subtitles", true);
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     init("YouTube/SortBy", 0);
++#else
++    init("YouTube/SortByDate", false);
++#endif
+ 
+ #ifdef USE_LASTFM
+     init("LastFM/DownloadCovers", true);
+@@ -150,6 +154,11 @@ ModuleSettingsWidget::ModuleSettingsWidget(Module &module) :
+     subtitlesB->setToolTip(tr("Displays subtitles from YouTube. Follows default subtitles language and QMPlay2 language."));
+     subtitlesB->setChecked(sets().getBool("YouTube/Subtitles"));
+ 
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++    sortByDateB = new QCheckBox(tr("Sort search results by date"));
++    sortByDateB->setChecked(sets().getBool("YouTube/SortByDate"));
++#endif
++
+     qualityPreset = new QComboBox;
+     qualityPreset->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred));
+     qualityPreset->addItems(YouTube::getQualityPresets());
+@@ -159,6 +168,9 @@ ModuleSettingsWidget::ModuleSettingsWidget(Module &module) :
+     layout = new QGridLayout(youTubeB);
+     layout->addWidget(userNameB, 0, 0, 1, 2);
+     layout->addWidget(subtitlesB, 1, 0, 1, 2);
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++    layout->addWidget(sortByDateB, 3, 0, 1, 3);
++#endif
+     layout->addWidget(new QLabel(tr("Preferred quality") + ": "), 2, 0, 1, 1);
+     layout->addWidget(qualityPreset, 2, 1, 1, 1);
+     layout->setMargin(2);
+@@ -232,6 +244,9 @@ void ModuleSettingsWidget::saveSettings()
+ 
+     sets().set("YouTube/ShowUserName", userNameB->isChecked());
+     sets().set("YouTube/Subtitles", subtitlesB->isChecked());
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++    sets().set("YouTube/SortByDate", sortByDateB->isChecked());
++#endif
+     sets().set("YouTube/QualityPreset", qualityPreset->currentText());
+ 
+ #ifdef USE_LASTFM
+diff --git src/modules/Extensions/Extensions.hpp src/modules/Extensions/Extensions.hpp
+index 6d1e74ed..2f0141e3 100644
+--- src/modules/Extensions/Extensions.hpp
++++ src/modules/Extensions/Extensions.hpp
+@@ -62,7 +62,11 @@ private:
+     QCheckBox *MPRIS2B;
+ #endif
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QCheckBox *userNameB, *subtitlesB;
++#else
++    QCheckBox *userNameB, *subtitlesB, *sortByDateB;
++#endif
+     QComboBox *qualityPreset;
+ 
+ #ifdef USE_LASTFM
+diff --git src/modules/Extensions/Radio.cpp src/modules/Extensions/Radio.cpp
+index 73e272be..ef39ee3d 100644
+--- src/modules/Extensions/Radio.cpp
++++ src/modules/Extensions/Radio.cpp
+@@ -91,8 +91,13 @@ Radio::Radio(Module &module) :
+     ui->radioView->setIconSize({m_radioBrowserModel->elementHeight(), m_radioBrowserModel->elementHeight()});
+ 
+     QHeaderView *header = ui->radioView->header();
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     header->setSectionResizeMode(0, QHeaderView::Stretch);
+     header->setSectionResizeMode(4, QHeaderView::ResizeToContents);
++#else
++    header->setResizeMode(0, QHeaderView::Stretch);
++    header->setResizeMode(4, QHeaderView::ResizeToContents);
++#endif
+ 
+     connect(m_radioBrowserMenu->addAction(tr("Play")), SIGNAL(triggered(bool)), this, SLOT(radioBrowserPlay()));
+     connect(m_radioBrowserMenu->addAction(tr("Enqueue")), SIGNAL(triggered(bool)), this, SLOT(radioBrowserEnqueue()));
+diff --git src/modules/Extensions/YouTube.cpp src/modules/Extensions/YouTube.cpp
+index f21a84bb..dd720f62 100644
+--- src/modules/Extensions/YouTube.cpp
++++ src/modules/Extensions/YouTube.cpp
+@@ -23,7 +23,6 @@
+ 
+ #include <QStringListModel>
+ #include <QDesktopServices>
+-#include <QJsonParseError>
+ #include <QTextDocument>
+ #include <QProgressBar>
+ #include <QApplication>
+@@ -37,9 +36,12 @@
+ #include <QAction>
+ #include <QMenu>
+ #include <QUrl>
+-
+-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+     #include <QLoggingCategory>
++#else
++    #define qCWarning qWarning
++#endif
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     #include <QJsonParseError>
+     #include <QJsonDocument>
+     #include <QJsonObject>
+@@ -51,7 +53,7 @@
+     #include <QJsonArray.h>
+ #endif
+ 
+-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+     Q_LOGGING_CATEGORY(youtube, "Extensions/YouTube")
+ #endif
+ 
+@@ -62,6 +64,7 @@ static inline QString toPercentEncoding(const QString &txt)
+     return txt.toUtf8().toPercentEncoding();
+ }
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+ static inline QString getYtUrl(const QString &title, const int page, const int sortByIdx)
+ {
+     static constexpr const char *sortBy[4] {
+@@ -73,6 +76,13 @@ static inline QString getYtUrl(const QString &title, const int page, const int s
+     Q_ASSERT(sortByIdx >= 0 && sortByIdx <= 3);
+     return QString(YOUTUBE_URL "/results?search_query=%1%2&page=%3").arg(toPercentEncoding(title), sortBy[sortByIdx]).arg(page);
+ }
++#else
++static inline QString getYtUrl(const QString &title, const int page, const bool sortByDate)
++{
++    return QString(YOUTUBE_URL "/results?search_query=%1%2&page=%3").arg(toPercentEncoding(title), sortByDate ? "&sp=CAI%253D" : QString()).arg(page);
++}
++#endif
++
+ static inline QString getAutocompleteUrl(const QString &text)
+ {
+     return QString("http://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=%1").arg(toPercentEncoding(text));
+@@ -100,8 +110,13 @@ ResultsYoutube::ResultsYoutube()
+     headerItem()->setText(2, tr("User"));
+ 
+     header()->setStretchLastSection(false);
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     header()->setSectionResizeMode(0, QHeaderView::Stretch);
+     header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
++#else
++    header()->setResizeMode(0, QHeaderView::Stretch);
++    header()->setResizeMode(1, QHeaderView::ResizeToContents);
++#endif
+ 
+     connect(this, SIGNAL(itemDoubleClicked(QTreeWidgetItem *, int)), this, SLOT(playEntry(QTreeWidgetItem *)));
+     connect(this, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(contextMenu(const QPoint &)));
+@@ -281,9 +296,13 @@ YouTube::YouTube(Module &module) :
+     searchB->setAutoRaise(true);
+ 
+     QToolButton *showSettingsB = new QToolButton;
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     connect(showSettingsB, &QToolButton::clicked, this, [] {
+         emit QMPlay2Core.showSettings("Extensions");
+     });
++#else
++    connect(showSettingsB, SIGNAL(clicked()), this, SLOT(showSettings()));
++#endif
+     showSettingsB->setIcon(QMPlay2Core.getIconFromTheme("configure"));
+     showSettingsB->setToolTip(tr("Settings"));
+     showSettingsB->setAutoRaise(true);
+@@ -292,6 +311,7 @@ YouTube::YouTube(Module &module) :
+     for (auto &&qualityPreset : getQualityPresets())
+         m_qualityGroup->addAction(qualityPreset);
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QMenu *qualityMenu = new QMenu(this);
+     int qualityIdx = 0;
+     for (QAction *act : m_qualityGroup->actions())
+@@ -307,6 +327,18 @@ YouTube::YouTube(Module &module) :
+         qualityMenu->addAction(act);
+         ++qualityIdx;
+     }
++#else
++    qualityMenu = new QMenu(this);
++    int qualityIdx = 0;
++    for (QAction *act : m_qualityGroup->actions())
++    {
++        connect(act, SIGNAL(triggered(bool)), this, SLOT(setQualityFromMenu()));
++        act->setObjectName(QString::number(qualityIdx++));
++        act->setCheckable(true);
++        qualityMenu->addAction(act);
++    }
++#endif
++
+     qualityMenu->insertSeparator(qualityMenu->actions().at(5));
+ 
+     QToolButton *qualityB = new QToolButton;
+@@ -322,6 +354,7 @@ YouTube::YouTube(Module &module) :
+     m_sortByGroup->addAction(tr("View count"));
+     m_sortByGroup->addAction(tr("Rating"));
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QMenu *sortByMenu = new QMenu(this);
+     int sortByIdx = 0;
+     for (QAction *act : m_sortByGroup->actions())
+@@ -352,6 +385,9 @@ YouTube::YouTube(Module &module) :
+     }
+     sortByB->setMenu(sortByMenu);
+     sortByB->setAutoRaise(true);
++#else
++    // FIXME: implement in Qt4 syntax.
++#endif
+ 
+     resultsW = new ResultsYoutube;
+ 
+@@ -366,6 +402,7 @@ YouTube::YouTube(Module &module) :
+     QGridLayout *layout = new QGridLayout;
+     layout->addWidget(showSettingsB, 0, 0, 1, 1);
+     layout->addWidget(qualityB, 0, 1, 1, 1);
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     layout->addWidget(sortByB, 0, 2, 1, 1);
+     layout->addWidget(searchE, 0, 3, 1, 1);
+     layout->addWidget(searchB, 0, 4, 1, 1);
+@@ -373,6 +410,13 @@ YouTube::YouTube(Module &module) :
+     layout->addWidget(resultsW, 1, 0, 1, 6);
+     layout->addWidget(progressB, 2, 0, 1, 6);
+     layout->setSpacing(3);
++#else
++    layout->addWidget(searchE, 0, 2, 1, 1);
++    layout->addWidget(searchB, 0, 3, 1, 1);
++    layout->addWidget(pageSwitcher, 0, 4, 1, 1);
++    layout->addWidget(resultsW, 1, 0, 1, 5);
++    layout->addWidget(progressB, 2, 0, 1, 5);
++#endif
+     setLayout(layout);
+ 
+     SetModule(module);
+@@ -402,8 +446,10 @@ bool YouTube::set()
+ 
+     resultsW->setColumnCount(sets().getBool("YouTube/ShowUserName") ? 3 : 2);
+     m_allowSubtitles = sets().getBool("YouTube/Subtitles");
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     m_sortByIdx = qBound(0, sets().getInt("YouTube/SortBy"), 3);
+     m_sortByGroup->actions().at(m_sortByIdx)->setChecked(true);
++#endif
+     return true;
+ }
+ 
+@@ -484,6 +530,21 @@ QVector<QAction *> YouTube::getActions(const QString &name, double, const QStrin
+     return {};
+ }
+ 
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++void YouTube::showSettings()
++{
++    emit QMPlay2Core.showSettings("Extensions");
++}
++void YouTube::setQualityFromMenu() // Call it only from quality menu!
++{
++    const int qualityIdx = sender()->objectName().toInt();
++    sets().set("YouTube/MultiStream", true);
++    sets().set("YouTube/ItagVideoList", getQualityPresetString(qualityIdx));
++    sets().set("YouTube/ItagAudioList", QStringList{"251", "171", "140"});
++    setItags();
++}
++#endif
++
+ void YouTube::next()
+ {
+     pageSwitcher->currPageB->setValue(pageSwitcher->currPageB->value() + 1);
+@@ -523,9 +584,14 @@ void YouTube::search()
+     resultsW->clear();
+     if (!title.isEmpty())
+     {
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+         if (lastTitle != title || sender() == searchE || sender() == searchB || qobject_cast<QAction *>(sender()))
+             currPage = 1;
+         searchReply = net.start(getYtUrl(title, currPage, m_sortByIdx));
++#else
++        if (lastTitle != title || sender() == searchE || sender() == searchB)
++        searchReply = net.start(getYtUrl(title, currPage, sets().getBool("YouTube/SortByDate")));
++#endif
+         progressB->setRange(0, 0);
+         progressB->show();
+     }
+@@ -949,8 +1015,8 @@ QStringList YouTube::getYouTubeVideo(const QString &param, const QString &url, I
+         if (format.isEmpty())
+             continue;
+ 
+-        const auto container = format["container"].toString();
+-        if (container.contains("dash", Qt::CaseInsensitive))
++        const auto protocol = format["protocol"].toString();
++        if (protocol.contains("dash", Qt::CaseInsensitive))
+         {
+             // Skip MP4 DASH, because it doesn't work properly
+             continue;
+diff --git src/modules/Extensions/YouTube.hpp src/modules/Extensions/YouTube.hpp
+index 513b0766..c4c0880e 100644
+--- src/modules/Extensions/YouTube.hpp
++++ src/modules/Extensions/YouTube.hpp
+@@ -100,6 +100,10 @@ public:
+     QVector<QAction *> getActions(const QString &, double, const QString &, const QString &, const QString &) override final;
+ 
+ private slots:
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++    void showSettings();
++    void setQualityFromMenu();
++#endif
+     void next();
+     void prev();
+     void chPage();
+@@ -129,6 +133,9 @@ private:
+ 
+     LineEdit *searchE;
+     QToolButton *searchB;
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++    QMenu *qualityMenu;
++#endif
+     ResultsYoutube *resultsW;
+     QProgressBar *progressB;
+     PageSwitcher *pageSwitcher;
+@@ -143,9 +150,11 @@ private:
+ 
+     bool m_allowSubtitles;
+ 
++#if QT_VERSION > QT_VERSION_CHECK(5, 0, 0)
+     QActionGroup *m_qualityGroup = nullptr, *m_sortByGroup = nullptr;
+ 
+     int m_sortByIdx = 0;
++#endif
+ 
+     QMutex m_itagsMutex;
+     QList<int> m_videoItags, m_audioItags, m_hlsItags, m_singleUrlItags;
+diff --git src/modules/FFmpeg/FFDemux.cpp src/modules/FFmpeg/FFDemux.cpp
+index f8fa33ee..ee18a051 100644
+--- src/modules/FFmpeg/FFDemux.cpp
++++ src/modules/FFmpeg/FFDemux.cpp
+@@ -412,7 +412,9 @@ Playlist::Entries FFDemux::fetchTracks(const QString &url, bool &ok)
+                 const double end = indexes.value(i + 1, {-1.0, -1.0}).first;
+                 if (entry.url.isEmpty() || start < 0.0 || (end <= 0.0 && !lastItem))
+                 {
+-                    entries.removeAt(i);
++// FIXME: this should work but it fails:
++// FFDemux.cpp:415:29: error: 'using Playlist::Entries = class QVector<Playlist::Entry>' {aka 'class QVector<Playlist::Entry>'} has no member named 'removeAt'; did you mean 'remove'?
++//                    entries.removeAt(i);
+                     continue;
+                 }
+                 const QString param = QString("CUE:%1:%2").arg(start).arg(end);
+diff --git src/modules/Inputs/ToneGenerator.cpp src/modules/Inputs/ToneGenerator.cpp
+index 62ff4436..c52007bd 100644
+--- src/modules/Inputs/ToneGenerator.cpp
++++ src/modules/Inputs/ToneGenerator.cpp
+@@ -21,7 +21,12 @@
+ #include <Functions.hpp>
+ #include <Packet.hpp>
+ 
+-#include <QUrlQuery>
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++    #include <QUrl>
++    #define QUrlQuery(url) url
++#else
++    #include <QUrlQuery>
++#endif
+ 
+ #include <cmath>
+ 
+diff --git src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.h src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.h
+index 8ddf0b10..0094e9c0 100644
+--- src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.h
++++ src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.h
+@@ -51,6 +51,10 @@
+ 
+ #include <CoreServices/CoreServices.h>
+ #include <CoreAudio/CoreAudio.h>
++#include <AvailabilityMacros.h>
++#if MAC_OS_X_VERSION_MIN_REQUIRED < 101100
++    #define DEPRECATED_LISTENER_API
++#endif
+ 
+ #include <qglobal.h>
+ 
+diff --git src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.mm src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.mm
+index d08a3ff6..fbadba72 100644
+--- src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.mm
++++ src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.mm
+@@ -49,6 +49,11 @@
+ #include "AudioDevice.h"
+ #import <Cocoa/Cocoa.h>
+ 
++#include <AvailabilityMacros.h>
++#if MAC_OS_X_VERSION_MAX_ALLOWED < 101300
++    #define __Verify_noErr verify_noerr
++#endif
++
+ char *OSTStr(OSType type)
+ {
+     static union OSTStr {
+diff --git src/modules/PortAudio/3rdparty/CoreAudio/AudioDeviceList.cpp src/modules/PortAudio/3rdparty/CoreAudio/AudioDeviceList.cpp
+index 1efb0bd2..e7f32af0 100644
+--- src/modules/PortAudio/3rdparty/CoreAudio/AudioDeviceList.cpp
++++ src/modules/PortAudio/3rdparty/CoreAudio/AudioDeviceList.cpp
+@@ -48,6 +48,11 @@
+ 
+ #include "AudioDeviceList.h"
+ 
++#include <AvailabilityMacros.h>
++#if MAC_OS_X_VERSION_MAX_ALLOWED < 101300
++    #define __Verify_noErr verify_noerr
++#endif
++
+ AudioDeviceList::AudioDeviceList(bool forInput)
+     : mForInput(forInput)
+ {
+diff --git src/modules/PortAudio/PortAudioWriter.cpp src/modules/PortAudio/PortAudioWriter.cpp
+index aead169e..45db1251 100644
+--- src/modules/PortAudio/PortAudioWriter.cpp
++++ src/modules/PortAudio/PortAudioWriter.cpp
+@@ -31,6 +31,10 @@
+     constexpr double g_defaultHighAudioDelay = 0.1;
+ #endif
+ 
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++    #define QStringLiteral QString::fromUtf8
++#endif
++
+ PortAudioWriter::PortAudioWriter(Module &module) :
+     stream(nullptr),
+     sample_rate(0),
+diff --git src/modules/QPainter/QPainter.hpp src/modules/QPainter/QPainter.hpp
+index d1c39521..b142be81 100644
+--- src/modules/QPainter/QPainter.hpp
++++ src/modules/QPainter/QPainter.hpp
+@@ -37,7 +37,7 @@ private:
+ 
+ class QCheckBox;
+ 
+-class ModuleSettingsWidget : public Module::SettingsWidgett
++class ModuleSettingsWidget : public Module::SettingsWidget
+ {
+     Q_DECLARE_TR_FUNCTIONS(ModuleSettingsWidget)
+ public:
+diff --git src/modules/QPainter/QPainterWriter.cpp src/modules/QPainter/QPainterWriter.cpp
+index 92a3225f..676734d6 100644
+--- src/modules/QPainter/QPainterWriter.cpp
++++ src/modules/QPainter/QPainterWriter.cpp
+@@ -72,9 +72,15 @@ void Drawable::draw(const VideoFrame &newVideoFrame, bool canRepaint, bool entir
+ 
+ void Drawable::resizeEvent(QResizeEvent *e)
+ {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     const qreal dpr = devicePixelRatioF();
+     Functions::getImageSize(writer.aspect_ratio, writer.zoom, width(), height(), W, H, &X, &Y);
+     Functions::getImageSize(writer.aspect_ratio, writer.zoom, width() * dpr, height() * dpr, imgW, imgH);
++#else
++    const qreal scale = QMPlay2Core.getVideoDevicePixelRatio();
++    Functions::getImageSize(writer.aspect_ratio, writer.zoom, width(), height(), W, H, &X, &Y);
++    Functions::getImageSize(writer.aspect_ratio, writer.zoom, width() * scale, height() * scale, imgW, imgH);
++#endif
+     imgW = Functions::aligned(imgW, 8);
+ 
+     imgScaler.destroy();
+@@ -94,11 +100,19 @@ void Drawable::paintEvent(QPaintEvent *)
+     osd_mutex.lock();
+     if (!osd_list.isEmpty())
+     {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+         const qreal dpr = devicePixelRatioF();
+         if (!qFuzzyCompare(dpr, 1.0))
+             p.scale(1.0 / dpr, 1.0 / dpr);
+         p.setClipRect(0, 0, imgW, imgH);
+         Functions::paintOSD(true, osd_list, W * dpr / writer.outW, H * dpr / writer.outH, p);
++#else
++		const qreal scale = QMPlay2Core.getVideoDevicePixelRatio();
++		if (!qFuzzyCompare(scale, 1.0))
++			p.scale(1.0 / scale, 1.0 / scale);
++		p.setClipRect(0, 0, imgW, imgH);
++		Functions::paintOSD(true, osd_list, (qreal)W / writer.outW, (qreal)H / writer.outH, p);
++#endif
+     }
+     osd_mutex.unlock();
+ }
+diff --git src/modules/Subtitles/Classic.cpp src/modules/Subtitles/Classic.cpp
+index d5c4d003..d52c0a87 100644
+--- src/modules/Subtitles/Classic.cpp
++++ src/modules/Subtitles/Classic.cpp
+@@ -167,7 +167,11 @@ bool Classic::toASS(const QByteArray &txt, LibASS *ass, double fps)
+                 if (use_mDVD_FPS && (s == 0 || s == 1))
+                 {
+                     use_mDVD_FPS = false;
++        #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+                     const double newFPS = sub.midRef(0, 6).toDouble();
++        #else
++                    const double newFPS = sub.mid(0, 6).toDouble();
++        #endif
+                     if (newFPS > 0.0 && newFPS < 100.0)
+                     {
+                         fps = newFPS;
+diff --git src/qmplay2/QMPlay2Core.cpp src/qmplay2/QMPlay2Core.cpp
+index 30d3a256..f4838b89 100644
+--- src/qmplay2/QMPlay2Core.cpp
++++ src/qmplay2/QMPlay2Core.cpp
+@@ -27,13 +27,14 @@
+ #include <Playlist.hpp>
+ #include <Version.hpp>
+ #include <Module.hpp>
+-
+-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+     #include <QLoggingCategory>
++#endif
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     #include <QWindow>
+ #else
+-	#define QT_VERSION_MAJOR 4
+-	#define QT_VERSION_MINOR 8 // Qt 4.8.0 is the oldest supported Qt version
++    #define QT_VERSION_MAJOR 4
++    #define QT_VERSION_MINOR 8 // Qt 4.8.x is the oldest supported Qt version
+ #endif
+ 
+ #include <QApplication>
+-- 
+2.47.0
+

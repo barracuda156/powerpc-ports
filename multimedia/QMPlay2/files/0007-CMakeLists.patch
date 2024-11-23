@@ -1,0 +1,28 @@
+From a1ecb996daf36ff2d07d301f78200656dcf2acd5 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sat, 23 Nov 2024 15:06:26 +0800
+Subject: [PATCH 7/8] CMakeLists
+
+---
+ src/gui/CMakeLists.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git src/gui/CMakeLists.txt src/gui/CMakeLists.txt
+index 26d585b1..8d802f00 100644
+--- src/gui/CMakeLists.txt
++++ src/gui/CMakeLists.txt
+@@ -231,9 +231,11 @@ elseif(APPLE)
+ 
+     set(QT_LIBS_DIR "${Qt5Widgets_DIR}/../..")
+     set(QT_PLUGINS_DIR "${QT_LIBS_DIR}/../plugins")
++if(NOT USE_QT4)
+     install(FILES
+         "${QT_PLUGINS_DIR}/platforms/libqcocoa.dylib"
+         DESTINATION "${MAC_BUNDLE_PATH}/Contents/plugins/platforms")
++endif()
+     install(FILES
+         "${QT_PLUGINS_DIR}/iconengines/libqsvgicon.dylib"
+         DESTINATION "${MAC_BUNDLE_PATH}/Contents/plugins/iconengines")
+-- 
+2.47.0
+

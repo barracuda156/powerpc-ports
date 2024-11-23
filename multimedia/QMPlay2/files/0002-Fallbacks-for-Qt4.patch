@@ -1,0 +1,678 @@
+From 3480d57df5ece598328c9387e48a17eb5f9dcbed Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Thu, 21 Nov 2024 08:32:00 +0800
+Subject: [PATCH 2/8] Fallbacks for Qt4
+
+---
+ src/gui/SettingsWidget.cpp                    | 10 +++-
+ src/modules/Extensions/Downloader.cpp         | 18 +++++--
+ src/modules/Extensions/Radio.cpp              | 13 +++--
+ .../Extensions/Radio/RadioBrowserModel.cpp    | 13 +++--
+ src/modules/Extensions/YouTube.cpp            | 21 ++++++--
+ src/qmplay2/Functions.cpp                     | 29 +++++++++-
+ src/qmplay2/InDockW.cpp                       |  9 ++++
+ src/qmplay2/LineEdit.cpp                      | 53 ++++++++++++++++++-
+ src/qmplay2/QMPlay2Core.cpp                   | 24 +++++++--
+ src/qmplay2/QMPlay2OSD.cpp                    | 13 ++++-
+ src/qmplay2/Writer.cpp                        | 10 +++-
+ src/qmplay2/YouTubeDL.cpp                     | 21 ++++++--
+ src/qmplay2/headers/LineEdit.hpp              | 26 +++++++++
+ src/qmplay2/headers/NetworkAccess.hpp         |  4 ++
+ src/qmplay2/headers/StreamInfo.hpp            |  4 ++
+ 15 files changed, 238 insertions(+), 30 deletions(-)
+
+diff --git src/gui/SettingsWidget.cpp src/gui/SettingsWidget.cpp
+index d5b5a702..426212c7 100644
+--- src/gui/SettingsWidget.cpp
++++ src/gui/SettingsWidget.cpp
+@@ -26,7 +26,11 @@
+ #include <Notifies.hpp>
+ #include <Main.hpp>
+ 
+-#include <QStandardPaths>
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <QStandardPaths>
++#else
++    #include <qdesktopservices.h>
++#endif
+ #include <QStyleFactory>
+ #include <QRadioButton>
+ #include <QApplication>
+@@ -124,7 +128,11 @@ void SettingsWidget::InitSettings()
+ 
+     QMPSettings.init("AudioLanguage", QString());
+     QMPSettings.init("SubtitlesLanguage", QString());
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QMPSettings.init("screenshotPth", QStandardPaths::standardLocations(QStandardPaths::PicturesLocation).value(0, QDir::homePath()));
++#else
++    QMPSettings.init("screenshotPth", QDesktopServices::standardLocations(QDesktopServices::PicturesLocation).value(0, QDir::homePath()));
++#endif
+ #ifdef Q_OS_WIN
+     QMPSettings.init("screenshotFormat", ".bmp");
+ #else
+diff --git src/modules/Extensions/Downloader.cpp src/modules/Extensions/Downloader.cpp
+index 78f30efe..6962191e 100644
+--- src/modules/Extensions/Downloader.cpp
++++ src/modules/Extensions/Downloader.cpp
+@@ -30,7 +30,6 @@
+ #include <QLabel>
+ #include <QAction>
+ #include <QScreen>
+-#include <QWindow>
+ #include <QProcess>
+ #include <QMimeData>
+ #include <QClipboard>
+@@ -46,13 +45,20 @@
+ #include <QProgressBar>
+ #include <QApplication>
+ #include <QElapsedTimer>
+-#include <QStandardPaths>
+-#include <QLoggingCategory>
+ #include <QDialogButtonBox>
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <QWindow>
++    #include <QStandardPaths>
++    #include <QLoggingCategory>
++#else
++    #include <qdesktopservices.h>
++#endif
+ 
+ #include <functional>
+ 
+-Q_LOGGING_CATEGORY(downloader, "Downloader")
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    Q_LOGGING_CATEGORY(downloader, "Downloader")
++#endif
+ 
+ /**/
+ 
+@@ -879,7 +885,11 @@ void Downloader::init()
+     layout->addItem(new QSpacerItem(10, 0, QSizePolicy::Fixed, QSizePolicy::Minimum), 1, 4, 1, 1);
+     layout->addWidget(m_convertsPresetsB, 1, 5, 1, 1);
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QString defDownloadPath = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation).value(0, QDir::homePath()) + "/";
++#else
++    defDownloadPath = QDir::homePath() + "/Downloads/";
++#endif
+ #ifdef Q_OS_WIN
+     defDownloadPath.replace('\\', '/');
+ #endif
+diff --git src/modules/Extensions/Radio.cpp src/modules/Extensions/Radio.cpp
+index c0310b5c..73e272be 100644
+--- src/modules/Extensions/Radio.cpp
++++ src/modules/Extensions/Radio.cpp
+@@ -24,19 +24,26 @@
+ #include <Functions.hpp>
+ 
+ #include <QDesktopServices>
+-#include <QJsonDocument>
+ #include <QInputDialog>
+ #include <QMessageBox>
+ #include <QFileDialog>
+-#include <QJsonObject>
+ #include <QScrollBar>
+-#include <QJsonArray>
+ #include <QMimeData>
+ #include <qevent.h>
+ #include <QTimer>
+ #include <QMenu>
+ #include <QUrl>
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <QJsonDocument>
++    #include <QJsonObject>
++    #include <QJsonArray>
++#else
++    #include <QJsonDocument.h>
++    #include <QJsonObject.h>
++    #include <QJsonArray.h>
++#endif
++
+ constexpr const char *g_fileDialogFilter = "QMPlay2 radio station list (*.qmplay2radio)";
+ 
+ Radio::Radio(Module &module) :
+diff --git src/modules/Extensions/Radio/RadioBrowserModel.cpp src/modules/Extensions/Radio/RadioBrowserModel.cpp
+index 395ed835..7fe38bec 100644
+--- src/modules/Extensions/Radio/RadioBrowserModel.cpp
++++ src/modules/Extensions/Radio/RadioBrowserModel.cpp
+@@ -22,9 +22,16 @@
+ #include <Functions.hpp>
+ #include <CppUtils.hpp>
+ 
+-#include <QJsonDocument>
+-#include <QJsonObject>
+-#include <QJsonArray>
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <QJsonDocument>
++    #include <QJsonObject>
++    #include <QJsonArray>
++#else
++    #include <QJsonDocument.h>
++    #include <QJsonObject.h>
++    #include <QJsonArray.h>
++#endif
++
+ #include <QPainter>
+ #include <QWidget>
+ #include <QUrl>
+diff --git src/modules/Extensions/YouTube.cpp src/modules/Extensions/YouTube.cpp
+index 4d7b794f..f21a84bb 100644
+--- src/modules/Extensions/YouTube.cpp
++++ src/modules/Extensions/YouTube.cpp
+@@ -21,19 +21,15 @@
+ #include <YouTubeDL.hpp>
+ #include <LineEdit.hpp>
+ 
+-#include <QLoggingCategory>
+ #include <QStringListModel>
+ #include <QDesktopServices>
+ #include <QJsonParseError>
+ #include <QTextDocument>
+-#include <QJsonDocument>
+ #include <QProgressBar>
+ #include <QApplication>
+-#include <QJsonObject>
+ #include <QHeaderView>
+ #include <QGridLayout>
+ #include <QToolButton>
+-#include <QJsonArray>
+ #include <QCompleter>
+ #include <QClipboard>
+ #include <QMimeData>
+@@ -42,7 +38,22 @@
+ #include <QMenu>
+ #include <QUrl>
+ 
+-Q_LOGGING_CATEGORY(youtube, "Extensions/YouTube")
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <QLoggingCategory>
++    #include <QJsonParseError>
++    #include <QJsonDocument>
++    #include <QJsonObject>
++    #include <QJsonArray>
++#else
++    #include <QJsonParseError.h>
++    #include <QJsonDocument.h>
++    #include <QJsonObject.h>
++    #include <QJsonArray.h>
++#endif
++
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    Q_LOGGING_CATEGORY(youtube, "Extensions/YouTube")
++#endif
+ 
+ #define YOUTUBE_URL "https://www.youtube.com"
+ 
+diff --git src/qmplay2/Functions.cpp src/qmplay2/Functions.cpp
+index 572952e2..ccf97b78 100644
+--- src/qmplay2/Functions.cpp
++++ src/qmplay2/Functions.cpp
+@@ -36,12 +36,15 @@
+ #include <QDir>
+ #include <QUrl>
+ #include <QRegExp>
+-#include <QWindow>
+ #include <QLibrary>
+ #include <QTextCodec>
+ #include <QMessageBox>
+ #include <QStyleOption>
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <QWindow>
++#endif
++
+ extern "C"
+ {
+     #include <libavformat/version.h>
+@@ -58,6 +61,7 @@ static inline void swapArray(quint8 *a, quint8 *b, int size)
+     memcpy(b, t, size);
+ }
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 1, 0)
+ static inline QWindow *getNativeWindow(const QWidget *w)
+ {
+     if (w)
+@@ -67,6 +71,7 @@ static inline QWindow *getNativeWindow(const QWidget *w)
+     }
+     return nullptr;
+ }
++#endif
+ 
+ /**/
+ 
+@@ -300,8 +305,12 @@ QPixmap Functions::getPixmapFromIcon(const QIcon &icon, QSize size, QWidget *w)
+         imgSize = icon.availableSizes().value(0);
+         imgSize.scale(size, size.isEmpty() ? Qt::KeepAspectRatioByExpanding : Qt::KeepAspectRatio);
+     }
+-
++#if QT_VERSION >= QT_VERSION_CHECK(5, 1, 0)
+     return icon.pixmap(getNativeWindow(w), imgSize);
++#else
++	Q_UNUSED(w)
++	return icon.pixmap(imgSize);
++#endif
+ }
+ void Functions::drawPixmap(QPainter &p, const QPixmap &pixmap, const QWidget *w, Qt::TransformationMode transformationMode, Qt::AspectRatioMode aRatioMode, QSize size, qreal scale)
+ {
+@@ -347,6 +356,7 @@ void Functions::drawPixmap(QPainter &p, const QPixmap &pixmap, const QWidget *w,
+         pixmapSize = pixmap.size();
+     }
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     const qreal dpr = w->devicePixelRatioF();
+ 
+     pixmapToDraw = pixmapToDraw.scaled(pixmapSize * dpr, Qt::IgnoreAspectRatio, transformationMode);
+@@ -356,6 +366,16 @@ void Functions::drawPixmap(QPainter &p, const QPixmap &pixmap, const QWidget *w,
+         size.width()  / 2 - int(pixmapToDraw.width()  / (dpr * 2)),
+         size.height() / 2 - int(pixmapToDraw.height() / (dpr * 2))
+     };
++#else
++    qreal devicePixelRatio = QMPlay2Core.getVideoDevicePixelRatio();
++
++    pixmapToDraw = pixmapToDraw.scaled(pixmapSize * devicePixelRatio, Qt::IgnoreAspectRatio, transformationMode);
++
++    const QPoint pixmapPos {
++        size.width()  / 2 - int(pixmapToDraw.width()  / (devicePixelRatio * 2)),
++        size.height() / 2 - int(pixmapToDraw.height() / (devicePixelRatio * 2))
++    };
++#endif
+ 
+     p.drawPixmap(pixmapPos, pixmapToDraw);
+ }
+@@ -405,8 +425,13 @@ void Functions::paintOSD(bool rgbSwapped, const QList<const QMPlay2OSD *> &osd_l
+         for (int j = 0; j < osd->imageCount(); j++)
+         {
+             const QMPlay2OSD::Image &img = osd->getImage(j);
++    #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+             const QImage qImg = QImage((const uchar *)img.data.constData(), img.rect.width(), img.rect.height(), rgbSwapped ? QImage::Format_RGBA8888 : QImage::Format_ARGB32);
+             painter.drawImage(img.rect.topLeft(), qImg);
++    #else
++            const QImage qImg = QImage((uchar *)img.data.data(), img.rect.width(), img.rect.height(), QImage::Format_ARGB32);
++            painter.drawImage(img.rect.topLeft(), rgbSwapped ? qImg.rgbSwapped() : qImg);
++    #endif
+         }
+         if (osd->needsRescale())
+             painter.restore();
+diff --git src/qmplay2/InDockW.cpp src/qmplay2/InDockW.cpp
+index 4d069ecf..ad568d6c 100644
+--- src/qmplay2/InDockW.cpp
++++ src/qmplay2/InDockW.cpp
+@@ -84,6 +84,15 @@ void InDockW::setWidget(QWidget *newW)
+     w = newW;
+     if (w)
+     {
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++        // Workaround for BUG in Qt4
++        QWidget *mainWidget = window();
++        if (mainWidget && mainWidget->isMinimized() && w->internalWinId() && !internalWinId())
++        {
++            mainWidget->hide();
++            mainWidget->show();
++        }
++#endif
+         w->setMinimumSize(2, 2);
+         w->setParent(this);
+         resizeEvent(nullptr);
+diff --git src/qmplay2/LineEdit.cpp src/qmplay2/LineEdit.cpp
+index 6f94853d..ee3c34a9 100644
+--- src/qmplay2/LineEdit.cpp
++++ src/qmplay2/LineEdit.cpp
+@@ -20,11 +20,33 @@
+ 
+ #include <QMPlay2Core.hpp>
+ 
+-#include <QAction>
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
++    #include <QAction>
++#else
++    #include <Functions.hpp>
++
++    #include <QResizeEvent>
++
++LineEditButton::LineEditButton()
++{
++    const QSize iconSize(16, 16);
++    setToolTip(tr("Clear"));
++    setPixmap(Functions::getPixmapFromIcon(QMPlay2Core.getIconFromTheme("edit-clear"), iconSize, this));
++    resize(iconSize);
++    setCursor(Qt::ArrowCursor);
++}
++
++void LineEditButton::mousePressEvent(QMouseEvent *e)
++{
++    if (e->button() & Qt::LeftButton)
++        emit clicked();
++}
++#endif
+ 
+ LineEdit::LineEdit(QWidget *parent)
+     : QLineEdit(parent)
+ {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+     QAction *clearAct = addAction(QMPlay2Core.getIconFromTheme("edit-clear"), TrailingPosition);
+     connect(clearAct, &QAction::triggered, this, &LineEdit::clearText);
+     connect(this, &LineEdit::textChanged, this, [=](const QString &text) {
+@@ -32,7 +54,36 @@ LineEdit::LineEdit(QWidget *parent)
+     });
+     clearAct->setToolTip(tr("Clear"));
+     clearAct->setVisible(false);
++#else
++    connect(this, SIGNAL(textChanged(const QString &)), this, SLOT(textChangedSlot(const QString &)));
++    connect(&b, SIGNAL(clicked()), this, SLOT(clearText()));
++    setMinimumWidth(b.width() * 2.5);
++    setTextMargins(0, 0, b.width() * 1.5, 0);
++    b.setParent(this);
++    b.hide();
++#endif
++}
++
++#if QT_VERSION < QT_VERSION_CHECK(5, 2, 0)
++void LineEdit::resizeEvent(QResizeEvent *e)
++{
++    b.move(e->size().width() - b.width() * 1.5, e->size().height() / 2 - b.height() / 2);
++}
++void LineEdit::mousePressEvent(QMouseEvent *e)
++{
++    if (!b.underMouse())
++        QLineEdit::mousePressEvent(e);
++}
++void LineEdit::mouseMoveEvent(QMouseEvent *e)
++{
++    if (!b.underMouse())
++        QLineEdit::mouseMoveEvent(e);
++}
++void LineEdit::textChangedSlot(const QString &str)
++{
++    b.setVisible(!str.isEmpty());
+ }
++#endif
+ 
+ void LineEdit::clearText()
+ {
+diff --git src/qmplay2/QMPlay2Core.cpp src/qmplay2/QMPlay2Core.cpp
+index 55f775da..30d3a256 100644
+--- src/qmplay2/QMPlay2Core.cpp
++++ src/qmplay2/QMPlay2Core.cpp
+@@ -28,7 +28,14 @@
+ #include <Version.hpp>
+ #include <Module.hpp>
+ 
+-#include <QLoggingCategory>
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <QLoggingCategory>
++    #include <QWindow>
++#else
++	#define QT_VERSION_MAJOR 4
++	#define QT_VERSION_MINOR 8 // Qt 4.8.0 is the oldest supported Qt version
++#endif
++
+ #include <QApplication>
+ #include <QLibraryInfo>
+ #include <QTranslator>
+@@ -36,13 +43,12 @@
+ #include <QLibrary>
+ #include <QPointer>
+ #include <QLocale>
+-#include <QWindow>
+ #include <QFile>
+ #include <QDir>
+ #if defined Q_OS_WIN
+     #include <windows.h>
+     #include <powrprof.h>
+-#elif defined Q_OS_MACOS
++#elif defined Q_OS_MACOS && (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+     #include <QStandardPaths>
+ #endif
+ 
+@@ -58,10 +64,13 @@ extern "C"
+ 
+ /**/
+ 
+-Q_LOGGING_CATEGORY(ffmpeglog, "FFmpegLog")
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    Q_LOGGING_CATEGORY(ffmpeglog, "FFmpegLog")
++#endif
+ 
+ static void avQMPlay2LogHandler(void *avcl, int level, const char *fmt, va_list vl)
+ {
++  #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     if (level <= AV_LOG_FATAL)
+     {
+         const QByteArray msg = QString::vasprintf(fmt, vl).trimmed().toUtf8();
+@@ -71,6 +80,7 @@ static void avQMPlay2LogHandler(void *avcl, int level, const char *fmt, va_list
+     {
+         av_log_default_callback(avcl, level, fmt, vl);
+     }
++  #endif
+ }
+ 
+ /**/
+@@ -204,7 +214,11 @@ void QMPlay2CoreClass::init(bool loadModules, bool modulesInSubdirs, const QStri
+ #if defined(Q_OS_WIN)
+         settingsDir = QFileInfo(QSettings(QSettings::IniFormat, QSettings::UserScope, QString()).fileName()).absolutePath() + "/QMPlay2/";
+ #elif defined(Q_OS_MACOS)
++    #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+         settingsDir = Functions::cleanPath(QStandardPaths::standardLocations(QStandardPaths::DataLocation).value(0, settingsDir));
++    #else
++        settingsDir = QDir::homePath() + "/.qmplay2/";
++    #endif
+ #else
+         settingsDir = QDir::homePath() + "/.qmplay2/";
+ #endif
+@@ -416,7 +430,9 @@ QStringList QMPlay2CoreClass::getModules(const QString &type, int typeLen) const
+ 
+ qreal QMPlay2CoreClass::getVideoDevicePixelRatio() const
+ {
++  #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     return getVideoDock()->devicePixelRatioF();
++  #endif
+ }
+ 
+ QIcon QMPlay2CoreClass::getIconFromTheme(const QString &iconName, const QIcon &fallback)
+diff --git src/qmplay2/QMPlay2OSD.cpp src/qmplay2/QMPlay2OSD.cpp
+index d77bc2ce..b7754d36 100644
+--- src/qmplay2/QMPlay2OSD.cpp
++++ src/qmplay2/QMPlay2OSD.cpp
+@@ -18,12 +18,21 @@
+ 
+ #include <QMPlay2OSD.hpp>
+ 
+-#include <QAtomicInteger>
+-static QAtomicInteger<quint64> g_id;
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <QAtomicInteger>
++    static QAtomicInteger<quint64> g_id;
++#else
++    #include <QAtomicInt>
++    static QAtomicInt g_id;
++#endif
+ 
+ void QMPlay2OSD::genId()
+ {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     m_id = ++g_id;
++#else
++    m_id = g_id.fetchAndAddOrdered(1) + 1;
++#endif
+ }
+ 
+ void QMPlay2OSD::clear(bool all)
+diff --git src/qmplay2/Writer.cpp src/qmplay2/Writer.cpp
+index 5eb05afd..04cc2f58 100644
+--- src/qmplay2/Writer.cpp
++++ src/qmplay2/Writer.cpp
+@@ -20,9 +20,15 @@
+ 
+ #include <Functions.hpp>
+ 
+-#include <QSaveFile>
+ #include <QBuffer>
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <QSaveFile>
++#else
++    #include <QFile>
++    #define QSaveFile QFile
++#endif
++
+ #include <memory>
+ 
+ class IODeviceWriter : public Writer
+@@ -50,11 +56,13 @@ protected:
+ 
+ class QMPlay2FileWriter : public IODeviceWriter
+ {
++  #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     ~QMPlay2FileWriter()
+     {
+         if (auto f = static_cast<QSaveFile *>(m_io.get()))
+             f->commit();
+     }
++  #endif
+ 
+     QString name() const override final
+     {
+diff --git src/qmplay2/YouTubeDL.cpp src/qmplay2/YouTubeDL.cpp
+index f05e615b..2d3c8ace 100644
+--- src/qmplay2/YouTubeDL.cpp
++++ src/qmplay2/YouTubeDL.cpp
+@@ -23,14 +23,21 @@
+ #include <Functions.hpp>
+ #include <CppUtils.hpp>
+ 
+-#include <QStandardPaths>
+-#include <QJsonDocument>
+-#include <QJsonObject>
+-#include <QJsonArray>
+ #include <QFileInfo>
+ #include <QMutex>
+ #include <QFile>
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++    #include <QStandardPaths>
++    #include <QJsonDocument>
++    #include <QJsonObject>
++    #include <QJsonArray>
++#else
++    #include <QJsonDocument.h>
++    #include <QJsonObject.h>
++    #include <QJsonArray.h>
++#endif
++
+ constexpr const char *g_name = "YouTubeDL";
+ static bool g_mustUpdate = true;
+ static QMutex g_mutex(QMutex::Recursive);
+@@ -181,7 +188,11 @@ QStringList YouTubeDL::exec(const QString &url, const QStringList &args, QString
+         }
+         else
+         {
++    #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+             result = result.constFirst().split('\n', QString::SkipEmptyParts);
++    #else
++            result = result[0].split('\n', QString::SkipEmptyParts);
++    #endif
+ 
+             // Verify if URLs has printable characters, because sometimes we
+             // can get binary garbage at output (especially on Openload).
+@@ -460,6 +471,7 @@ void YouTubeDL::startProcess(QStringList args)
+         if (shebang.startsWith("#!") && idx > -1)
+         {
+             const auto pythonCmd = shebang.mid(idx);
++    #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+             if (!QStandardPaths::findExecutable(pythonCmd).endsWith(pythonCmd))
+             {
+                 QStringList pythonCmdsToCheck {
+@@ -478,6 +490,7 @@ void YouTubeDL::startProcess(QStringList args)
+                     }
+                 }
+             }
++    #endif
+         }
+         ytDlFile.close();
+     }
+diff --git src/qmplay2/headers/LineEdit.hpp src/qmplay2/headers/LineEdit.hpp
+index 676be13e..f35ce503 100644
+--- src/qmplay2/headers/LineEdit.hpp
++++ src/qmplay2/headers/LineEdit.hpp
+@@ -22,12 +22,38 @@
+ 
+ #include <QLineEdit>
+ 
++#if QT_VERSION < QT_VERSION_CHECK(5, 2, 0)
++    #include <QLabel>
++
++class QMPLAY2SHAREDLIB_EXPORT LineEditButton final : public QLabel
++{
++    Q_OBJECT
++public:
++    LineEditButton();
++private:
++    void mousePressEvent(QMouseEvent *) override;
++signals:
++    void clicked();
++};
++#endif
++
+ class QMPLAY2SHAREDLIB_EXPORT LineEdit final : public QLineEdit
+ {
+     Q_OBJECT
+ 
+ public:
+     LineEdit(QWidget *parent = nullptr);
++#if QT_VERSION < QT_VERSION_CHECK(5, 2, 0)
++private:
++    void resizeEvent(QResizeEvent *) override;
++    void mousePressEvent(QMouseEvent *) override;
++    void mouseMoveEvent(QMouseEvent *) override;
++
++    LineEditButton b;
++private slots:
++    void textChangedSlot(const QString &);
++public slots:
++#endif
+ 
+     void clearText();
+ 
+diff --git src/qmplay2/headers/NetworkAccess.hpp src/qmplay2/headers/NetworkAccess.hpp
+index fef728fb..d8266d78 100644
+--- src/qmplay2/headers/NetworkAccess.hpp
++++ src/qmplay2/headers/NetworkAccess.hpp
+@@ -49,7 +49,9 @@ public:
+         Download,
+         Aborted
+     };
++#if QT_VERSION >= QT_VERSION_CHECK(5, 5, 0)
+     Q_ENUM(Error)
++#endif
+ 
+     enum class Wait
+     {
+@@ -57,7 +59,9 @@ public:
+         Timeout,
+         Error
+     };
++#if QT_VERSION >= QT_VERSION_CHECK(5, 5, 0)
+     Q_ENUM(Wait)
++#endif
+ 
+     ~NetworkReply();
+ 
+diff --git src/qmplay2/headers/StreamInfo.hpp src/qmplay2/headers/StreamInfo.hpp
+index 6a8951ac..c59b4f91 100644
+--- src/qmplay2/headers/StreamInfo.hpp
++++ src/qmplay2/headers/StreamInfo.hpp
+@@ -26,6 +26,10 @@
+ #include <QVector>
+ #include <QPair>
+ 
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++#include <qnumeric.h> // qQNaN
++#endif
++
+ using QMPlay2Tag = QPair<QString, QString>;
+ 
+ enum QMPlay2MediaType
+-- 
+2.47.0
+

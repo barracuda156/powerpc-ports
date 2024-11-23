@@ -1,0 +1,207 @@
+From 02eb18fbb670b24e8eec47328b204bf7d81b4a89 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sat, 23 Nov 2024 16:16:09 +0800
+Subject: [PATCH 10/11] qt4-tmp
+
+---
+ src/modules/Extensions/YouTube.cpp    | 60 ++++++++++++++++++++++++++-
+ src/modules/Extensions/YouTube.hpp    | 16 ++++---
+ src/modules/OpenGL2/OpenGL2Widget.hpp |  2 +-
+ 3 files changed, 69 insertions(+), 9 deletions(-)
+
+diff --git src/modules/Extensions/YouTube.cpp src/modules/Extensions/YouTube.cpp
+index dd720f62..80d124ab 100644
+--- src/modules/Extensions/YouTube.cpp
++++ src/modules/Extensions/YouTube.cpp
+@@ -169,6 +169,19 @@ void ResultsYoutube::copyPageURL()
+     }
+ }
+ 
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++
++void ResultsYoutube::enqueue()
++{
++	playOrEnqueue("enqueue", currentItem(), param);
++}
++void ResultsYoutube::playCurrentEntry()
++{
++	playOrEnqueue("open", currentItem(), param);
++}
++
++#endif
++
+ void ResultsYoutube::contextMenu(const QPoint &point)
+ {
+     menu->clear();
+@@ -186,12 +199,17 @@ void ResultsYoutube::contextMenu(const QPoint &point)
+         if (!tWI->isDisabled())
+         {
+             const auto param = i == 0 ? QString() : QString("audio");
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+             menu->addAction(tr("Play"), this, [=] {
+                 playOrEnqueue("open", currentItem(), param);
+             });
+             menu->addAction(tr("Enqueue"), this, [=] {
+                 playOrEnqueue("enqueue", currentItem(), param);
+             });
++#else
++            menu->addAction(tr("Enqueue"), this, SLOT(enqueue()));
++            menu->addAction(tr("Play"), this, SLOT(playCurrentEntry()));
++#endif
+             menu->addSeparator();
+         }
+ 
+@@ -265,6 +283,16 @@ const QStringList YouTube::getQualityPresets()
+     };
+ }
+ 
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++QStringList YouTube::getQualityPresetString(int qualityIdx)
++{
++    QStringList videoItags;
++    for (int itag : getQualityPresets()[qualityIdx])
++        videoItags.append(QString::number(itag));
++    return videoItags;
++}
++#endif
++
+ YouTube::YouTube(Module &module) :
+     completer(new QCompleter(new QStringListModel(this), this)),
+     currPage(1),
+@@ -307,11 +335,11 @@ YouTube::YouTube(Module &module) :
+     showSettingsB->setToolTip(tr("Settings"));
+     showSettingsB->setAutoRaise(true);
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     m_qualityGroup = new QActionGroup(this);
+     for (auto &&qualityPreset : getQualityPresets())
+         m_qualityGroup->addAction(qualityPreset);
+ 
+-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     QMenu *qualityMenu = new QMenu(this);
+     int qualityIdx = 0;
+     for (QAction *act : m_qualityGroup->actions())
+@@ -328,6 +356,19 @@ YouTube::YouTube(Module &module) :
+         ++qualityIdx;
+     }
+ #else
++	QActionGroup *m_qualityGroup = new QActionGroup(this);
++	m_qualityGroup->addAction("4320p 60FPS");
++	m_qualityGroup->addAction("2160p 60FPS");
++	m_qualityGroup->addAction("1440p 60FPS");
++	m_qualityGroup->addAction("1080p 60FPS");
++	m_qualityGroup->addAction("720p 60FPS");
++	m_qualityGroup->addAction("4320p");
++	m_qualityGroup->addAction("2160p");
++	m_qualityGroup->addAction("1440p");
++	m_qualityGroup->addAction("1080p");
++	m_qualityGroup->addAction("720p");
++	m_qualityGroup->addAction("480p");
++
+     qualityMenu = new QMenu(this);
+     int qualityIdx = 0;
+     for (QAction *act : m_qualityGroup->actions())
+@@ -584,7 +625,7 @@ void YouTube::search()
+     resultsW->clear();
+     if (!title.isEmpty())
+     {
+-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+         if (lastTitle != title || sender() == searchE || sender() == searchB || qobject_cast<QAction *>(sender()))
+             currPage = 1;
+         searchReply = net.start(getYtUrl(title, currPage, m_sortByIdx));
+@@ -802,13 +843,21 @@ void YouTube::setAutocomplete(const QByteArray &data)
+     const QJsonDocument json = QJsonDocument::fromJson(data, &jsonErr);
+     if (jsonErr.error != QJsonParseError::NoError)
+     {
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+         qCWarning(youtube) << "Cannot parse autocomplete JSON:" << jsonErr.errorString();
++#else
++        qWarning() << "Cannot parse autocomplete JSON:" << jsonErr.errorString();
++#endif
+         return;
+     }
+     const QJsonArray mainArr = json.array();
+     if (mainArr.count() < 2)
+     {
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+         qCWarning(youtube) << "Invalid autocomplete JSON array";
++#else
++        qWarning() << "Invalid autocomplete JSON array";
++#endif
+         return;
+     }
+     const QJsonArray arr = mainArr.at(1).toArray();
+@@ -1033,7 +1082,11 @@ QStringList YouTube::getYouTubeVideo(const QString &param, const QString &url, I
+         for (auto &&itag : itags)
+         {
+             auto it = itagsData.constFind(itag);
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+             if (it != itagsData.cend())
++#else
++            if (it != itagsData.constEnd())
++#endif
+             {
+                 urls += it->first;
+                 exts += it->second;
+@@ -1059,7 +1112,10 @@ QStringList YouTube::getYouTubeVideo(const QString &param, const QString &url, I
+ 
+     if (urls.isEmpty())
+     {
++// FIXME: error: invalid use of incomplete type 'class QDebug'
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+         qCritical() << "YouTube :: Can't find desired format, available:" << itagsData.keys();
++#endif
+         return {};
+     }
+ 
+diff --git src/modules/Extensions/YouTube.hpp src/modules/Extensions/YouTube.hpp
+index c4c0880e..9be10008 100644
+--- src/modules/Extensions/YouTube.hpp
++++ src/modules/Extensions/YouTube.hpp
+@@ -116,7 +116,11 @@ private slots:
+     void searchMenu();
+ 
+ private:
+-    void setItags(int qualityIdx);
++// #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++//     void setItags(int qualityIdx);
++// #else
++    void setItags();
++// #endif
+ 
+     void deleteReplies();
+ 
+@@ -150,11 +154,11 @@ private:
+ 
+     bool m_allowSubtitles;
+ 
+-#if QT_VERSION > QT_VERSION_CHECK(5, 0, 0)
+-    QActionGroup *m_qualityGroup = nullptr, *m_sortByGroup = nullptr;
+-
+-    int m_sortByIdx = 0;
+-#endif
++// #if QT_VERSION > QT_VERSION_CHECK(5, 0, 0)
++//     QActionGroup *m_qualityGroup = nullptr, *m_sortByGroup = nullptr;
++// 
++//     int m_sortByIdx = 0;
++// #endif
+ 
+     QMutex m_itagsMutex;
+     QList<int> m_videoItags, m_audioItags, m_hlsItags, m_singleUrlItags;
+diff --git src/modules/OpenGL2/OpenGL2Widget.hpp src/modules/OpenGL2/OpenGL2Widget.hpp
+index 51af2aae..1be38cc5 100644
+--- src/modules/OpenGL2/OpenGL2Widget.hpp
++++ src/modules/OpenGL2/OpenGL2Widget.hpp
+@@ -18,7 +18,7 @@
+ 
+ #pragma once
+ 
+-#include <OpenGL2Common.hpp>
++// #include <OpenGL2Common.hpp>
+ 
+ #include <QSurfaceFormat>
+ #include <QOpenGLWidget>
+-- 
+2.47.0
+

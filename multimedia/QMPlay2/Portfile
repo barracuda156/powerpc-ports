@@ -8,55 +8,77 @@ name                QMPlay2
 
 # Does not build with Qt5 on 10.10 and below.
 if {${os.platform} eq "darwin" && ${os.major} < 15} {
+    #PortGroup       legacysupport 1.1
     PortGroup       qt4 1.0
 
-    github.setup    zaps166 QMPlay2 b76e6ea46b4a32bb2becc9444ddc6f5fdff699cd
-    version         18.12.08
+    github.setup    zaps166 QMPlay2 19.09.03
     revision        0
-    checksums       rmd160  721638bc3641199387ec5e371dd22ddabe3a1c92 \
-                    sha256  2f1f9af17e7a0dd0ce6a12eb35f425cbc43b6869cb9a32bedfef3cca70908bc6 \
-                    size    1228156
+    checksums       rmd160  b2a8dbaecf070de5a2bdcfc79e140e554bd4a532 \
+                    sha256  95d912c68c5d61d9436bb970d410844f57348cbaeb96cac9ec3b3e3057b6eb08 \
+                    size    1290624
     github.tarball_from archive
 
+    # Added to support YouTube:
+    depends_lib-append \
+                    port:qjson4
+
     patchfiles-append \
-                    0001-macOS-unbreak-build-with-Qt4.patch \
-                    0002-MainWidget-fix-for-missing-qt_mac_set_dock_menu.patch \
-                    0003-ScreenSaver-fix-IOKit-defines.patch \
-                    0004-PlayClass-do-not-use-QRawFont.patch \
-                    0005-Revert-some-broken-code.patch \
-                    0006-FFMpeg-fix-compatibility-with-modern-FFMpeg.patch \
-                    0007-Fix-Qt-paths.patch
+                    0001-CMakeLists-adjustments-for-Qt4.patch \
+                    0002-Fallbacks-for-Qt4.patch \
+                    0003-OpenGL-do-not-use-glActiveTexture-on-macOS.patch \
+                    0004-Revert-change-to-override-final-in-headers-it-breaks.patch \
+                    0005-Qt4.patch \
+                    0006-CMakeLists.patch \
+                    0007-CMakeLists.patch \
+                    0008-Qt4.patch \
+                    0009-CMakeLists-MacPorts.patch \
+                    0010-qt4-tmp.patch \
+                    0011-tmp.patch
+
+    post-patch {
+        reinplace "s|@prefix@|${prefix}|g" ${worksrcpath}/src/modules/Extensions/CMakeLists.txt
+    }
 
     configure.args-append \
-                    -DDEFAULT_QT5=OFF \
-                    -DUSE_JEMALLOC=OFF \
+                    -DUSE_QT4=ON \
+                    -DUSE_CUVID=OFF \
+                    -DUSE_EXTENSIONS=OFF \
+                    -DUSE_FFMPEG_VTB=OFF \
+                    -DUSE_LINK_TIME_OPTIMIZATION=OFF \
+                    -DUSE_MEDIABROWSER=OFF \
                     -DUSE_OPENGL2=OFF \
-                    -DUSE_TEKSTOWO=ON \
-                    -DUSE_FFMPEG_VTB=OFF
+                    -DUSE_QML=OFF
 
-    compiler.cxx_standard   2011
+    compiler.cxx_standard       2011
 
     post-destroot {
         system "install_name_tool -id ${applications_dir}/${name}.app/Contents/MacOS/libqmplay2.dylib \
                     ${destroot}${applications_dir}/${name}.app/Contents/MacOS/libqmplay2.dylib"
-        system "install_name_tool -change ${prefix}/lib/libqmplay2.dylib \
+        if {${os.platform} eq "darwin" && ${os.major} < 15} {
+            system "install_name_tool -change ${prefix}/lib/libqmplay2.dylib \
                     ${applications_dir}/${name}.app/Contents/MacOS/libqmplay2.dylib \
                     ${destroot}${applications_dir}/${name}.app/Contents/MacOS/QMPlay2"
-        foreach dylib [ exec find ${destroot}${applications_dir}/${name}.app/Contents/MacOS/modules -name "\*.dylib" ] {
-            regsub ":$" ${dylib} "" destroot_dylib_path
-            regsub ${destroot} ${destroot_dylib_path} "" dylib_path
-            system "install_name_tool -id ${dylib_path} ${destroot_dylib_path}"
-            system "install_name_tool -change ${prefix}/lib/libqmplay2.dylib ${applications_dir}/${name}.app/Contents/MacOS/libqmplay2.dylib \
-                ${destroot_dylib_path}"
+            foreach dylib [ exec find ${destroot}${applications_dir}/${name}.app/Contents/MacOS/modules -name "\*.dylib" ] {
+                regsub ":$" ${dylib} "" destroot_dylib_path
+                regsub ${destroot} ${destroot_dylib_path} "" dylib_path
+                system "install_name_tool -id ${dylib_path} ${destroot_dylib_path}"
+                system "install_name_tool -change ${prefix}/lib/libqmplay2.dylib ${applications_dir}/${name}.app/Contents/MacOS/libqmplay2.dylib \
+                    ${destroot_dylib_path}"
+            }
+        } else {
+            system "install_name_tool -change @rpath/libqmplay2.dylib \
+                    ${applications_dir}/${name}.app/Contents/MacOS/libqmplay2.dylib \
+                    ${destroot}${applications_dir}/${name}.app/Contents/MacOS/QMPlay2"
+            foreach so [ exec find ${destroot}${applications_dir}/${name}.app/Contents/MacOS/modules -name "\*.so" ] {
+                regsub ":$" ${so} "" destroot_so_path
+                regsub ${destroot} ${destroot_so_path} "" so_path
+                system "install_name_tool -id ${so_path} ${destroot_so_path}"
+                system "install_name_tool -change @rpath/libqmplay2.dylib ${applications_dir}/${name}.app/Contents/MacOS/libqmplay2.dylib \
+                    ${destroot_so_path}"
+            }
         }
     }
 
-    variant jemalloc description "Use Jemalloc" {
-        depends_lib-append \
-                    port:jemalloc
-        configure.args-replace \
-                    -DUSE_JEMALLOC=OFF -DUSE_JEMALLOC=ON
-    }
 } else {
     PortGroup       qt5 1.0
 
@@ -170,14 +192,17 @@ configure.args-append \
                     -DCMAKE_INSTALL_PREFIX=${applications_dir} \
                     -DUSE_ALSA=OFF \
                     -DUSE_AUDIOCD=ON \
+                    -DUSE_CHIPTUNE_GME=OFF \
+                    -DUSE_CHIPTUNE_SID=OFF \
                     -DUSE_FFMPEG=ON \
-                    -DUSE_LASTFM=ON \
+                    -DUSE_LASTFM=OFF \
                     -DUSE_LIBASS=ON \
                     -DUSE_PORTAUDIO=ON \
                     -DUSE_PULSEAUDIO=OFF \
                     -DUSE_TAGLIB=ON \
                     -DUSE_VISUALIZATIONS=OFF \
-                    -DUSE_XVIDEO=OFF
+                    -DUSE_XVIDEO=OFF \
+                    -DUSE_YOUTUBE=OFF
 
 variant pulse description "Use Pulseaudio" {
     depends_lib-append \

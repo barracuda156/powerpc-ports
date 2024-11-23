@@ -1,0 +1,137 @@
+From 6eacba0d582d3dfb56b21ee4d379886b39600d28 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Sat, 23 Nov 2024 04:42:35 +0800
+Subject: [PATCH 3/8] OpenGL: do not use glActiveTexture on macOS
+
+---
+ src/modules/OpenGL2/OpenGL2Common.cpp | 24 ++++++++++++++++++++++--
+ src/modules/OpenGL2/OpenGL2Common.hpp |  4 ++++
+ 2 files changed, 26 insertions(+), 2 deletions(-)
+
+diff --git src/modules/OpenGL2/OpenGL2Common.cpp src/modules/OpenGL2/OpenGL2Common.cpp
+index a5c451d9..0cd15910 100644
+--- src/modules/OpenGL2/OpenGL2Common.cpp
++++ src/modules/OpenGL2/OpenGL2Common.cpp
+@@ -86,7 +86,9 @@ void RotAnimation::updateCurrentValue(const QVariant &value)
+ OpenGL2Common::OpenGL2Common() :
+ #ifndef OPENGL_ES2
+     supportsShaders(false), canCreateNonPowerOfTwoTextures(false),
++#ifndef Q_OS_MACOS
+     glActiveTexture(nullptr),
++#endif
+ #endif
+     vSync(true),
+     hwAccellnterface(nullptr),
+@@ -208,7 +210,7 @@ void OpenGL2Common::initializeGL()
+         return;
+     }
+ 
+-#ifndef OPENGL_ES2
++#if !defined(OPENGL_ES2) && !defined(Q_OS_MACOS)
+     if (!glActiveTexture) //Be sure that "glActiveTexture" has valid pointer (don't check "supportsShaders" here)!
+     {
+         showOpenGLMissingFeaturesMessage();
+@@ -452,7 +454,9 @@ void OpenGL2Common::paintGL()
+                 return;
+             for (int p = 0; p < numPlanes; ++p)
+             {
++    #ifndef Q_OS_MACOS
+                 glActiveTexture(GL_TEXTURE0 + p);
++    #endif
+                 glBindTexture(target, textures[p + 1]);
+                 if (m_useMipmaps)
+                     glGenerateMipmap(target);
+@@ -490,7 +494,9 @@ void OpenGL2Common::paintGL()
+                         data = nullptr;
+                     }
+                 }
++    #ifndef Q_OS_MACOS
+                 glActiveTexture(GL_TEXTURE0 + p);
++    #endif
+                 glBindTexture(GL_TEXTURE_2D, textures[p + 1]);
+                 if (hasPbo || correctLinesize)
+                     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_LUMINANCE, GL_UNSIGNED_BYTE, data);
+@@ -611,7 +617,9 @@ void OpenGL2Common::paintGL()
+     shaderProgramVideo->disableAttributeArray(texCoordYCbCrLoc);
+     shaderProgramVideo->disableAttributeArray(positionYCbCrLoc);
+ 
++#ifndef Q_OS_MACOS
+     glActiveTexture(GL_TEXTURE3);
++#endif
+ 
+     /* OSD */
+     osdMutex.lock();
+@@ -736,14 +744,20 @@ void OpenGL2Common::testGLInternal()
+     {
+         isOK = false;
+     }
+-    else if (!canCreateNonPowerOfTwoTextures || !supportsShaders || !glActiveTexture)
++    else if (!canCreateNonPowerOfTwoTextures || !supportsShaders
++#ifndef Q_OS_MACOS
++    || !glActiveTexture
++#endif
++    )
+     {
+         showOpenGLMissingFeaturesMessage();
+         isOK = false;
+     }
+     /* Reset variables */
+     supportsShaders = canCreateNonPowerOfTwoTextures = false;
++#ifndef Q_OS_MACOS
+     glActiveTexture = nullptr;
++#endif
+ #endif
+ 
+     numPlanes = 3;
+@@ -862,7 +876,9 @@ bool OpenGL2Common::initGLProc()
+         supportsShaders = !!strstr(glExtensions, "GL_ARB_vertex_shader") && !!strstr(glExtensions, "GL_ARB_fragment_shader") && !!strstr(glExtensions, "GL_ARB_shader_objects");
+         canCreateNonPowerOfTwoTextures = !!strstr(glExtensions, "GL_ARB_texture_non_power_of_two");
+     }
++#ifndef Q_OS_MACOS
+     glActiveTexture = (GLActiveTexture)context->getProcAddress("glActiveTexture");
++#endif
+     glGenBuffers = (GLGenBuffers)context->getProcAddress("glGenBuffers");
+     glBindBuffer = (GLBindBuffer)context->getProcAddress("glBindBuffer");
+     glBufferData = (GLBufferData)context->getProcAddress("glBufferData");
+@@ -889,10 +905,14 @@ void OpenGL2Common::showOpenGLMissingFeaturesMessage()
+         stderr,
+         "GL_ARB_texture_non_power_of_two : %s\n"
+         "Vertex & fragment shader: %s\n"
++#ifndef Q_OS_MACOS
+         "glActiveTexture: %s\n",
++#endif
+         canCreateNonPowerOfTwoTextures ? "yes" : "no",
+         supportsShaders ? "yes" : "no",
++#ifndef Q_OS_MACOS
+         glActiveTexture ? "yes" : "no"
++#endif
+     );
+     QMPlay2Core.logError("OpenGL 2 :: " + tr("Driver must support multitexturing, shaders and Non-Power-Of-Two texture size"), true, true);
+ }
+diff --git src/modules/OpenGL2/OpenGL2Common.hpp src/modules/OpenGL2/OpenGL2Common.hpp
+index 60604799..8e4a9ef1 100644
+--- src/modules/OpenGL2/OpenGL2Common.hpp
++++ src/modules/OpenGL2/OpenGL2Common.hpp
+@@ -60,7 +60,9 @@ class OpenGL2Common
+ {
+     Q_DECLARE_TR_FUNCTIONS(OpenGL2Common)
+ #ifndef OPENGL_ES2
++#ifndef Q_OS_MACOS
+     using GLActiveTexture  = void  (APIENTRY *)(GLenum);
++#endif
+     using GLGenBuffers     = void  (APIENTRY *)(GLsizei, GLuint *);
+     using GLBindBuffer     = void  (APIENTRY *)(GLenum, GLuint);
+     using GLBufferData     = void  (APIENTRY *)(GLenum, GLsizeiptr, const void *, GLenum);
+@@ -99,7 +101,9 @@ protected:
+     void showOpenGLMissingFeaturesMessage();
+ 
+     bool supportsShaders, canCreateNonPowerOfTwoTextures;
++#ifndef Q_OS_MACOS
+     GLActiveTexture glActiveTexture;
++#endif
+     GLGenBuffers glGenBuffers;
+     GLBindBuffer glBindBuffer;
+     GLBufferData glBufferData;
+-- 
+2.47.0
+

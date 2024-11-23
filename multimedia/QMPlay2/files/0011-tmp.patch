@@ -1,0 +1,279 @@
+From f89048742685326fd0bcafdd5fe63f7d4ecc5697 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Sat, 23 Nov 2024 16:38:11 +0800
+Subject: [PATCH 11/11] tmp
+
+---
+ src/gui/PlayClass.cpp                 |  7 +++++++
+ src/modules/OpenGL2/OpenGL2Common.cpp | 13 ++++++++++---
+ src/modules/OpenGL2/OpenGL2Common.hpp |  5 ++++-
+ src/modules/OpenGL2/OpenGL2Writer.cpp | 23 +++++++++++++++++++----
+ src/modules/OpenGL2/OpenGL2Writer.hpp |  2 ++
+ src/qmplay2/LibASS.cpp                |  5 +++++
+ src/qmplay2/QMPlay2Core.cpp           | 12 ++++++++++--
+ src/qmplay2/headers/QMPlay2Core.hpp   | 10 +++++++++-
+ 8 files changed, 66 insertions(+), 11 deletions(-)
+
+diff --git src/gui/PlayClass.cpp src/gui/PlayClass.cpp
+index 022bf313..9a311304 100644
+--- src/gui/PlayClass.cpp
++++ src/gui/PlayClass.cpp
+@@ -217,6 +217,9 @@ void PlayClass::play(const QString &_url)
+ 
+             paused = false;
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++            QMPlay2Core.setVideoDevicePixelRatio();
++#endif
+             demuxThr->start();
+         }
+     }
+@@ -226,6 +229,7 @@ void PlayClass::play(const QString &_url)
+         stop();
+     }
+ }
++
+ void PlayClass::stop(bool _quitApp)
+ {
+     quitApp = _quitApp;
+@@ -254,6 +258,7 @@ void PlayClass::stop(bool _quitApp)
+         stopPauseMutex.unlock();
+     }
+ }
++
+ void PlayClass::restart()
+ {
+     if (!url.isEmpty())
+@@ -289,6 +294,7 @@ void PlayClass::togglePause()
+         stopPauseMutex.unlock();
+     }
+ }
++
+ void PlayClass::seek(double pos, bool allowAccurate)
+ {
+     if (pos < 0.0)
+@@ -317,6 +323,7 @@ void PlayClass::seek(double pos, bool allowAccurate)
+     if (aThr && paused)
+         aThr->silence(true, true);
+ }
++
+ void PlayClass::chStream(const QString &s)
+ {
+ #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+diff --git src/modules/OpenGL2/OpenGL2Common.cpp src/modules/OpenGL2/OpenGL2Common.cpp
+index 0cd15910..ca86f4e0 100644
+--- src/modules/OpenGL2/OpenGL2Common.cpp
++++ src/modules/OpenGL2/OpenGL2Common.cpp
+@@ -26,9 +26,16 @@
+ #include <VideoFrame.hpp>
+ #include <Functions.hpp>
+ 
+-#include <QOffscreenSurface>
+-#include <QOpenGLContext>
+-#include <QOpenGLShader>
++#ifdef OPENGL_NEW_API
++    #include <QOffscreenSurface>
++    #include <QOpenGLContext>
++    #include <QOpenGLShader>
++#else
++    #include <QGLContext>
++    #include <QGLShader>
++    #define QOpenGLContext QGLContext
++    #define QOpenGLShader QGLShader
++#endif
+ #include <QResizeEvent>
+ #include <QMatrix4x4>
+ #include <QMatrix3x3>
+diff --git src/modules/OpenGL2/OpenGL2Common.hpp src/modules/OpenGL2/OpenGL2Common.hpp
+index e2d1fda1..07cd296f 100644
+--- src/modules/OpenGL2/OpenGL2Common.hpp
++++ src/modules/OpenGL2/OpenGL2Common.hpp
+@@ -21,8 +21,11 @@
+ #include <VideoFrame.hpp>
+ #include <VideoAdjustment.hpp>
+ 
+-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
++#ifdef OPENGL_NEW_API
+     #include <QOpenGLShaderProgram>
++#else
++    #include <QGLShaderProgram>
++    #define QOpenGLShaderProgram QGLShaderProgram
+ #endif
+ 
+ #include <QVariantAnimation>
+diff --git src/modules/OpenGL2/OpenGL2Writer.cpp src/modules/OpenGL2/OpenGL2Writer.cpp
+index 72fe4f70..d0fdc826 100644
+--- src/modules/OpenGL2/OpenGL2Writer.cpp
++++ src/modules/OpenGL2/OpenGL2Writer.cpp
+@@ -18,18 +18,26 @@
+ 
+ #include <OpenGL2Writer.hpp>
+ 
+-#include <OpenGL2Window.hpp>
+-#include <OpenGL2Widget.hpp>
++#ifdef OPENGL_NEW_API
++    #include <OpenGL2Window.hpp>
++    #include <OpenGL2Widget.hpp>
++#else
++    #include <OpenGL2OldWidget.hpp>
++#endif
+ 
+ #include <HWAccelInterface.hpp>
+ #include <VideoFrame.hpp>
+ 
+-#include <QGuiApplication>
++#ifdef OPENGL_NEW_API
++    #include <QGuiApplication>
++#endif
+ 
+ OpenGL2Writer::OpenGL2Writer(Module &module)
+     : drawable(nullptr)
+     , allowPBO(true)
++#ifdef OPENGL_NEW_API
+     , forceRtt(false)
++#endif
+ {
+     addParam("W");
+     addParam("H");
+@@ -70,11 +78,12 @@ bool OpenGL2Writer::set()
+     if (drawable && !drawable->setVSync(vSync))
+         doReset = true;
+ 
++#ifdef OPENGL_NEW_API
+     const bool newForceRtt = sets().getBool("ForceRtt");
+     if (forceRtt != newForceRtt)
+         doReset = true;
+     forceRtt = newForceRtt;
+-
++#endif
+ #ifdef Q_OS_WIN
+     bool newPreventFullScreen = sets().getBool("PreventFullScreen");
+     if (preventFullScreen != newPreventFullScreen)
+@@ -205,8 +214,10 @@ QString OpenGL2Writer::name() const
+     QString glStr = drawable->glVer ? QString("%1.%2").arg(drawable->glVer / 10).arg(drawable->glVer % 10) : "2";
+     if (drawable->hwAccellnterface)
+         glStr += " " + drawable->hwAccellnterface->name();
++#ifdef OPENGL_NEW_API
+     if (useRtt)
+         glStr += " (render-to-texture)";
++#endif
+ #ifdef OPENGL_ES2
+     return "OpenGL|ES " + glStr;
+ #else
+@@ -216,6 +227,7 @@ QString OpenGL2Writer::name() const
+ 
+ bool OpenGL2Writer::open()
+ {
++#ifdef OPENGL_NEW_API
+     static const QString platformName = QGuiApplication::platformName();
+     useRtt = platformName.startsWith("wayland") || platformName == "android" || forceRtt;
+     if (useRtt)
+@@ -228,6 +240,9 @@ bool OpenGL2Writer::open()
+         drawable = new OpenGL2Widget;
+     else
+         drawable = new OpenGL2Window;
++#else
++    drawable = new OpenGL2OldWidget;
++#endif
+     drawable->hwAccellnterface = m_hwAccelInterface;
+ #ifdef Q_OS_WIN
+     drawable->preventFullScreen = preventFullScreen;
+diff --git src/modules/OpenGL2/OpenGL2Writer.hpp src/modules/OpenGL2/OpenGL2Writer.hpp
+index ebc04bf0..00098ef0 100644
+--- src/modules/OpenGL2/OpenGL2Writer.hpp
++++ src/modules/OpenGL2/OpenGL2Writer.hpp
+@@ -57,8 +57,10 @@ private:
+ 
+     OpenGL2Common *drawable;
+     bool allowPBO;
++#ifdef OPENGL_NEW_API
+     bool m_hqScaling = false;
+     bool forceRtt, useRtt;
++#endif
+     bool vSync;
+ #ifdef Q_OS_WIN
+     bool preventFullScreen;
+diff --git src/qmplay2/LibASS.cpp src/qmplay2/LibASS.cpp
+index 593f9903..01030ed2 100644
+--- src/qmplay2/LibASS.cpp
++++ src/qmplay2/LibASS.cpp
+@@ -131,9 +131,14 @@ LibASS::~LibASS()
+ 
+ void LibASS::setWindowSize(int _winW, int _winH)
+ {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     const qreal dpr = QMPlay2Core.getVideoDevicePixelRatio();
+     winW = _winW * dpr;
+     winH = _winH * dpr;
++#else
++	winW = _winW * QMPlay2Core.getVideoDevicePixelRatio();
++	winH = _winH * QMPlay2Core.getVideoDevicePixelRatio();
++#endif
+     calcSize();
+ }
+ void LibASS::setARatio(double _aspect_ratio)
+diff --git src/qmplay2/QMPlay2Core.cpp src/qmplay2/QMPlay2Core.cpp
+index f4838b89..c3b0410d 100644
+--- src/qmplay2/QMPlay2Core.cpp
++++ src/qmplay2/QMPlay2Core.cpp
+@@ -120,6 +120,10 @@ QMPlay2CoreClass::QMPlay2CoreClass()
+ {
+     qmplay2Core = this;
+ 
++#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
++    videoDevicePixelRatio = 1.0;
++#endif
++
+     QFile f(":/Languages.txt");
+     if (f.open(QFile::ReadOnly))
+     {
+@@ -429,12 +433,16 @@ QStringList QMPlay2CoreClass::getModules(const QString &type, int typeLen) const
+     return modules + availableModules;
+ }
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+ qreal QMPlay2CoreClass::getVideoDevicePixelRatio() const
+ {
+-  #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+     return getVideoDock()->devicePixelRatioF();
+-  #endif
+ }
++#else
++void QMPlay2CoreClass::setVideoDevicePixelRatio()
++{
++}
++#endif
+ 
+ QIcon QMPlay2CoreClass::getIconFromTheme(const QString &iconName, const QIcon &fallback)
+ {
+diff --git src/qmplay2/headers/QMPlay2Core.hpp src/qmplay2/headers/QMPlay2Core.hpp
+index 287f9495..50451d52 100644
+--- src/qmplay2/headers/QMPlay2Core.hpp
++++ src/qmplay2/headers/QMPlay2Core.hpp
+@@ -92,7 +92,14 @@ public:
+         return *settings;
+     }
+ 
+-    qreal getVideoDevicePixelRatio() const;
++//    qreal getVideoDevicePixelRatio() const;
++// Compat code
++	inline qreal getVideoDevicePixelRatio() const
++	{
++		return videoDevicePixelRatio;
++	}
++	void setVideoDevicePixelRatio();
++// Compat code end
+ 
+     QIcon getIconFromTheme(const QString &iconName, const QIcon &fallback = QIcon());
+ 
+@@ -209,6 +216,7 @@ private:
+     QStringList logs;
+     QMap<QString, QString> languages;
+     QList<QPointer<QWidget>> videoFilters;
++    qreal videoDevicePixelRatio; // compat code
+     QString lang;
+ 
+     struct
+-- 
+2.47.0
+
