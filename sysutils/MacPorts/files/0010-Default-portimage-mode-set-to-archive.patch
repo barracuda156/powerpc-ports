@@ -1,0 +1,32 @@
+From a7c54727978200556e8fb26e8ebc9b8332c27d8d Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Thu, 31 Oct 2024 09:37:24 +0800
+Subject: [PATCH 10/10] Default portimage mode set to archive
+
+---
+ src/macports1.0/macports.tcl | 9 ++-------
+ 1 file changed, 2 insertions(+), 7 deletions(-)
+
+diff --git src/macports1.0/macports.tcl src/macports1.0/macports.tcl
+index e4e080fea..652fd48b7 100644
+--- src/macports1.0/macports.tcl
++++ src/macports1.0/macports.tcl
+@@ -1435,13 +1435,8 @@ Please edit sources.conf and change '$url' to '[string range $url 0 26]macports/
+         unset portimage_mode
+     }
+     if {![info exists portimage_mode]} {
+-        # Using an extracted directory is usually only a good idea if
+-        # the filesystem supports COW clones.
+-        if {![catch {fs_clone_capable [file join $portdbpath software]} result] && $result} {
+-            set portimage_mode directory
+-        } else {
+-            set portimage_mode archive
+-        }
++        # Default to archive mode
++        set portimage_mode archive
+     }
+     set portimage::keep_imagedir [expr {$portimage_mode ne "archive"}]
+     set portimage::keep_archive [expr {$portimage_mode ne "directory"}]
+-- 
+2.47.0
+
