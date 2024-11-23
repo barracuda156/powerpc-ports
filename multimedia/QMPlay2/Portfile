@@ -12,11 +12,15 @@ if {${os.platform} eq "darwin" && ${os.major} < 15} {
 
     github.setup    zaps166 QMPlay2 b76e6ea46b4a32bb2becc9444ddc6f5fdff699cd
     version         18.12.08
-    revision        0
+    revision        1
     checksums       rmd160  721638bc3641199387ec5e371dd22ddabe3a1c92 \
                     sha256  2f1f9af17e7a0dd0ce6a12eb35f425cbc43b6869cb9a32bedfef3cca70908bc6 \
                     size    1228156
     github.tarball_from archive
+
+    # Added to support YouTube:
+    depends_lib-append \
+                    port:qjson4
 
     patchfiles-append \
                     0001-macOS-unbreak-build-with-Qt4.patch \
@@ -25,10 +29,17 @@ if {${os.platform} eq "darwin" && ${os.major} < 15} {
                     0004-PlayClass-do-not-use-QRawFont.patch \
                     0005-Revert-some-broken-code.patch \
                     0006-FFMpeg-fix-compatibility-with-modern-FFMpeg.patch \
-                    0007-Fix-Qt-paths.patch
+                    0007-Fix-YT-search.patch \
+                    0008-Switch-to-yt-dlp.patch \
+                    0009-Fix-Qt-paths.patch
+
+    post-patch {
+        reinplace "s|@prefix@|${prefix}|g" ${worksrcpath}/src/modules/Extensions/CMakeLists.txt
+    }
 
     configure.args-append \
                     -DDEFAULT_QT5=OFF \
+                    -DUSE_CHIPTUNE_SID=OFF \
                     -DUSE_JEMALLOC=OFF \
                     -DUSE_OPENGL2=OFF \
                     -DUSE_TEKSTOWO=ON \
