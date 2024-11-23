@@ -1,0 +1,29 @@
+From d4f32f4e84a2bf3b9859072d7a4b28b8525bd2b7 Mon Sep 17 00:00:00 2001
+From: barracuda156 <vital.had@gmail.com>
+Date: Fri, 10 May 2024 08:16:49 +0800
+Subject: [PATCH 06/10] portconfigure.tcl: use libcxx-powerpc if libc++ set
+
+---
+ src/port1.0/portconfigure.tcl | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git src/port1.0/portconfigure.tcl src/port1.0/portconfigure.tcl
+index e47fb1e38..48f82c637 100644
+--- src/port1.0/portconfigure.tcl
++++ src/port1.0/portconfigure.tcl
+@@ -1750,9 +1750,9 @@ proc portconfigure::add_compiler_port_dependencies {compiler} {
+                 depends_lib-append "path:lib/libgcc/libgcc_s.1.dylib:libgcc"
+             } elseif {${configure.cxx_stdlib} eq "libc++" && ${os.major} < 11} {
+                 # libc++ does not exist on these systems
+-                ui_debug "Adding depends_lib libcxx"
+-                depends_lib-delete "port:libcxx"
+-                depends_lib-append "port:libcxx"
++                ui_debug "Adding depends_lib libcxx-powerpc"
++                depends_lib-delete "port:libcxx-powerpc"
++                depends_lib-append "port:libcxx-powerpc"
+             }
+             if {${compiler.openmp_version} ne ""} {
+                 ui_debug "Adding depends_lib port:libomp"
+-- 
+2.47.0
+

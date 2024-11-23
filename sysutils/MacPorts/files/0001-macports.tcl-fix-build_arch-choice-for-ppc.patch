@@ -1,0 +1,40 @@
+From 45a49f655d8d18ed8d15fd744e92fa4012113c03 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Tue, 13 Aug 2024 22:47:03 +0800
+Subject: [PATCH 01/10] macports.tcl: fix build_arch choice for ppc
+
+---
+ src/macports1.0/macports.tcl | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
+
+diff --git src/macports1.0/macports.tcl src/macports1.0/macports.tcl
+index 497b9c9d3..3b050e1f7 100644
+--- src/macports1.0/macports.tcl
++++ src/macports1.0/macports.tcl
+@@ -1549,7 +1549,9 @@ match macports.conf.default."
+     # Default arch to build for
+     if {![info exists build_arch]} {
+         if {$os_platform eq "darwin"} {
+-            if {$os_major >= 20} {
++            if {$os_arch eq "powerpc"} {
++                set build_arch ppc
++            } elseif {$os_major >= 20} {
+                 if {$os_arch eq "arm" || (![catch {sysctl sysctl.proc_translated} translated] && $translated)} {
+                     set build_arch arm64
+                 } else {
+@@ -1562,11 +1564,7 @@ match macports.conf.default."
+                     set build_arch i386
+                 }
+             } else {
+-                if {$os_arch eq "powerpc"} {
+-                    set build_arch ppc
+-                } else {
+-                    set build_arch i386
+-                }
++                set build_arch i386
+             }
+         } else {
+             switch -glob $tcl_platform(machine) {
+-- 
+2.47.0
+
