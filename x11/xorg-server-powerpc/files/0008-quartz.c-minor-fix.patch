@@ -1,0 +1,61 @@
+From 6667675debcfa3c77ae83cbf3d3132f41d51ef54 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Thu, 29 Aug 2024 14:28:46 +0800
+Subject: [PATCH 08/12] quartz.c: minor fix
+
+---
+ hw/xquartz/quartz.c | 17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
+
+diff --git a/hw/xquartz/quartz.c b/hw/xquartz/quartz.c
+index 4bbe56b93..9054ddcd5 100644
+--- a/hw/xquartz/quartz.c
++++ b/hw/xquartz/quartz.c
+@@ -35,6 +35,8 @@
+ #include <dix-config.h>
+ #endif
+ 
++#include <AvailabilityMacros.h>
++
+ #include "quartzRandR.h"
+ #include "inputstr.h"
+ #include "quartz.h"
+@@ -71,6 +73,13 @@
+ #include <rootlessCommon.h>
+ #include <Xplugin.h>
+ 
++/* Work around a bug on Leopard's headers */
++#if defined (__LP64__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1050 && MAC_OS_X_VERSION_MAX_ALLOWED < 1060
++extern OSErr UpdateSystemActivity(UInt8 activity);
++#define OverallAct 0
++#endif
++
++#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+ // These are vended by the Objective-C runtime, but they are unfortunately
+ // not available as API in the macOS SDK.  We are following suit with swift
+ // and clang in declaring them inline here.  They canot be removed or changed
+@@ -79,6 +88,7 @@
+ // These were added in macOS 10.7.
+ void * _Nonnull objc_autoreleasePoolPush(void);
+ void objc_autoreleasePoolPop(void * _Nonnull context);
++#endif
+ 
+ DevPrivateKeyRec quartzScreenKeyRec;
+ int aquaMenuBarHeight = 0;
+@@ -160,12 +170,7 @@ QuartzSetupScreen(int index,
+ static void
+ QuartzBlockHandler(void *blockData, void *pTimeout)
+ {
+-    static void *poolToken = NULL;
+-
+-    if (poolToken) {
+-        objc_autoreleasePoolPop(poolToken);
+-    }
+-    poolToken = objc_autoreleasePoolPush();
++    /* nothing here */
+ }
+ 
+ /*
+-- 
+2.46.0
+
