@@ -1,0 +1,22 @@
+From 8cbafc728f8c9b7756469135ea6f94adf9175f24 Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Wed, 27 Nov 2024 22:29:40 +0800
+Subject: [PATCH] OwlShmBuffer.m: fix type
+
+---
+ Sources/Compositor/OwlShmBuffer.m | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git Sources/Compositor/OwlShmBuffer.m Sources/Compositor/OwlShmBuffer.m
+index e984ef1..b07aab1 100644
+--- Sources/Compositor/OwlShmBuffer.m
++++ Sources/Compositor/OwlShmBuffer.m
+@@ -168,7 +168,7 @@ static void dataReleaseCallback(void *info, const void *data, size_t size) {
+     return NSMakeSize(width, height);
+ }
+ 
+-- (void) drawInRect: (NSRect) rect {
++- (void) drawInRect: (CGRect) rect {
+ #ifdef OWL_PLATFORM_APPLE
+     CGContextRef context = [[NSGraphicsContext currentContext] graphicsPort];
+     CGContextSetBlendMode(context, kCGBlendModeCopy);
