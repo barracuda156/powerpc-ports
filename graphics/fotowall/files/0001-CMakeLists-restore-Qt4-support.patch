@@ -1,0 +1,119 @@
+From d042c2950969d1518bea5d0203efdbb614eea37c Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Wed, 27 Nov 2024 11:32:11 +0800
+Subject: [PATCH] CMakeLists: restore Qt4 support
+
+---
+ CMakeLists.txt | 88 +++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 59 insertions(+), 29 deletions(-)
+
+diff --git CMakeLists.txt CMakeLists.txt
+index b93584c..57e23c6 100644
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -1,22 +1,37 @@
+ cmake_minimum_required(VERSION 3.1)
+ project(fotowall)
+ 
+-find_package(
+-  Qt5
+-  COMPONENTS
+-  REQUIRED
+-  Core
+-  Widgets
+-  Gui
+-  Network
+-  Svg
+-  Xml
+-  OpenGL
+-  WebKit
+-  WebKitWidgets
+-  PrintSupport)
++option(USE_QT4 "Compile with Qt4" OFF)
+ 
+-message(STATUS "Qt Version is: ${Qt5_VERSION}")
++if(USE_QT4)
++  find_package(
++    Qt4 4.7
++    REQUIRED
++    QtCore
++    QtGui
++    QtNetwork
++    QtSvg
++    QtXml
++    QtOpenGL
++    QtWebKit)
++else()
++  find_package(
++    Qt5
++    COMPONENTS
++    REQUIRED
++    Core
++    Widgets
++    Gui
++    Network
++    Svg
++    Xml
++    OpenGL
++    WebKit
++    WebKitWidgets
++    PrintSupport)
++
++  message(STATUS "Qt Version is: ${Qt5_VERSION}")
++endif()
+ 
+ set(CMAKE_CXX_STANDARD 17)
+ set(CMAKE_CXX_STANDARD_REQUIRED ON)
+@@ -227,20 +242,35 @@ set(SOURCE_FILES
+ 
+ add_executable(fotowall ${SOURCE_FILES})
+ add_compile_definitions(HAS_EXPORTDIALOG)
+-add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x051200)
+-target_link_libraries(
+-  fotowall
+-  Qt5::Gui
+-  Qt5::Widgets
+-  Qt5::Xml
+-  Qt5::Network
+-  Qt5::Svg
+-  Qt5::OpenGL
+-  Qt5::Core
+-  Qt5::WebKit
+-  Qt5::WebKitWidgets
+-  Qt5::PrintSupport
+-  X11)
++
++if(USE_QT4)
++  target_link_libraries(
++    fotowall
++    Qt4::QtGui
++    Qt4::QtXml
++    Qt4::QtNetwork
++    Qt4::QtSvg
++    Qt4::QtOpenGL
++    Qt4::QtCore
++    Qt4::QtWebKit
++    X11)
++else()
++  add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x051200)
++  target_link_libraries(
++    fotowall
++    Qt5::Gui
++    Qt5::Widgets
++    Qt5::Xml
++    Qt5::Network
++    Qt5::Svg
++    Qt5::OpenGL
++    Qt5::Core
++    Qt5::WebKit
++    Qt5::WebKitWidgets
++    Qt5::PrintSupport
++    X11)
++endif()
++
+ target_include_directories(fotowall
+                            PRIVATE ${CMAKE_SOURCE_DIR}/3rdparty/posterazor/)
+ 
+-- 
+2.47.0
+
