@@ -1,0 +1,29 @@
+From ae12b83f03e22e1f51a614404ecd0a395e436b1b Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Fri, 29 Nov 2024 07:11:21 +0800
+Subject: [PATCH] SDL_config_macosx.h: enable xinput2
+
+---
+ include/SDL_config_macosx.h | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git include/SDL_config_macosx.h include/SDL_config_macosx.h
+index aea6a0c99..ca4fe6683 100644
+--- include/SDL_config_macosx.h
++++ include/SDL_config_macosx.h
+@@ -198,7 +198,6 @@
+ #define SDL_VIDEO_DRIVER_X11_XSHAPE 1
+ #define SDL_VIDEO_DRIVER_X11_HAS_XKBKEYCODETOKEYSYM 1
+ 
+-#ifdef MAC_OS_X_VERSION_10_8
+ /*
+  * No matter the versions targeted, this is the 10.8 or later SDK, so you have
+  *  to use the external Xquartz, which is a more modern Xlib. Previous SDKs
+@@ -206,7 +205,6 @@
+  */
+ #define SDL_VIDEO_DRIVER_X11_XINPUT2 1
+ #define SDL_VIDEO_DRIVER_X11_SUPPORTS_GENERIC_EVENTS 1
+-#endif
+ 
+ #ifndef SDL_VIDEO_RENDER_OGL
+ #define SDL_VIDEO_RENDER_OGL    1

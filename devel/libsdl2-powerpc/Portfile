@@ -7,7 +7,7 @@ PortGroup           github 1.0
 name                libsdl2-powerpc
 conflicts           libsdl2-snowleopard
 github.setup        libsdl-org SDL 2.30.9 release-
-revision            0
+revision            1
 categories          devel multimedia
 platforms           {darwin < 11}
 supported_archs     ppc ppc64
@@ -88,11 +88,15 @@ patchfiles-append   0002-fix-x11.diff
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105522
 patchfiles-append   0003-hidapi-revert-a-commit-that-triggers-ICE-with-GCC.patch
 
+# Experimental:
+patchfiles-append   0004-SDL_config_macosx.h-enable-xinput2.patch
+
 # Config header hardcodes wrong paths.
 post-patch {
     reinplace "s|@PREFIX@|${prefix}|g" \
                     ${worksrcpath}/include/SDL_config_macosx.h \
-                    ${worksrcpath}/src/video/x11/SDL_x11opengl.c
+                    ${worksrcpath}/src/video/x11/SDL_x11opengl.c \
+                    ${worksrcpath}/configure
 }
 
 variant dbus description "Enable DBus support" {
