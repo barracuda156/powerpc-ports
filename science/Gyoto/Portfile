@@ -41,6 +41,9 @@ universal_variant   no
 
 patchfiles          dynamic_lookup-11.patch
 
+# Due to xercesc3
+compiler.cxx_standard   2011
+
 configure.args      --with-yorick=${prefix}/bin/yorick \
                     --with-lorene=${prefix}/lib/lorene \
                     --with-xerces \
