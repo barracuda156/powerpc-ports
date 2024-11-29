@@ -31,7 +31,10 @@ if {${os.platform} eq "darwin" && ${os.major} < 15} {
                     0006-FFMpeg-fix-compatibility-with-modern-FFMpeg.patch \
                     0007-Fix-YT-search.patch \
                     0008-Switch-to-yt-dlp.patch \
-                    0009-Fix-Qt-paths.patch
+                    0009-Fix-Qt-paths.patch \
+                    0010-PortAudio-Allow-bit-perfect-audio-output-for-macOS-1.patch \
+                    0011-OpenGL-try-fix-build.patch \
+                    0012-YouTubeDL-move-to-QJson.patch
 
     post-patch {
         reinplace "s|@prefix@|${prefix}|g" ${worksrcpath}/src/modules/Extensions/CMakeLists.txt

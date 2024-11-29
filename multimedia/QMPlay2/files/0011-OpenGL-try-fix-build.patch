@@ -1,0 +1,47 @@
+From 4ae6b80d90d9f142fbc83cfb8a515a1a4657debb Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <vital.had@gmail.com>
+Date: Fri, 29 Nov 2024 10:02:14 +0800
+Subject: [PATCH 11/11] OpenGL: try fix build
+
+---
+ src/modules/OpenGL2/CMakeLists.txt    | 3 ++-
+ src/modules/OpenGL2/OpenGL2Common.hpp | 9 +++++++++
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git src/modules/OpenGL2/CMakeLists.txt src/modules/OpenGL2/CMakeLists.txt
+index 6e23a397..fb43020d 100644
+--- src/modules/OpenGL2/CMakeLists.txt
++++ src/modules/OpenGL2/CMakeLists.txt
+@@ -98,7 +98,8 @@ target_link_libraries(${PROJECT_NAME}
+ 
+ if(APPLE)
+     find_package(OpenGL REQUIRED)
+-    target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES})
++    find_package(AGL)
++    target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} ${AGL})
+ elseif(WIN32)
+     if(QT_USES_OPENGLES)
+         target_link_libraries(${PROJECT_NAME} GLESv2)
+diff --git src/modules/OpenGL2/OpenGL2Common.hpp src/modules/OpenGL2/OpenGL2Common.hpp
+index d8f81dbe..041e64cd 100644
+--- src/modules/OpenGL2/OpenGL2Common.hpp
++++ src/modules/OpenGL2/OpenGL2Common.hpp
+@@ -38,6 +38,15 @@
+ 	#include <GL/glext.h>
+ #endif
+ 
++#if defined(Q_OS_MAC) && !defined(OPENGL_NEW_API)
++	#include <OpenGL/OpenGL.h>
++	/* Carbon header, supposed to be 32-bit only.
++		What about ppc64 though? */
++	#if defined(__i386__) || defined(__POWERPC__)
++		#include <AGL/agl.h>
++	#endif
++#endif
++
+ #if defined OPENGL_ES2 && !defined APIENTRY
+ 	#define APIENTRY
+ #endif
+-- 
+2.47.1
+
