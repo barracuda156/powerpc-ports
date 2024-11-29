@@ -1,12 +1,13 @@
-From 4c65367e67419d9d34b717f5c2832d543dcd9cf8 Mon Sep 17 00:00:00 2001
+From 1f572e97f5c4bad8e6a2223dd483b94e4a29c572 Mon Sep 17 00:00:00 2001
 From: Sergey Fedorov <vital.had@gmail.com>
 Date: Fri, 29 Nov 2024 10:41:22 +0800
-Subject: [PATCH 12/12] YouTubeDL: move to QJson
+Subject: [PATCH 11/11] YouTubeDL: move to QJson
 
 ---
  src/modules/Extensions/MediaBrowser/ProstoPleer.cpp |  7 ++++---
+ src/qmplay2/CMakeLists.txt                          |  3 ++-
  src/qmplay2/YouTubeDL.cpp                           | 12 +++++++-----
- 2 files changed, 11 insertions(+), 8 deletions(-)
+ 3 files changed, 13 insertions(+), 9 deletions(-)
 
 diff --git src/modules/Extensions/MediaBrowser/ProstoPleer.cpp src/modules/Extensions/MediaBrowser/ProstoPleer.cpp
 index cb3c287d..c35bd5d2 100644
@@ -35,6 +36,20 @@ index cb3c287d..c35bd5d2 100644
  					if (!tmpStreamUrl.isEmpty())
  						*streamUrl = tmpStreamUrl;
  					netReply.clear();
+diff --git src/qmplay2/CMakeLists.txt src/qmplay2/CMakeLists.txt
+index 01932ce6..270ad9cf 100644
+--- src/qmplay2/CMakeLists.txt
++++ src/qmplay2/CMakeLists.txt
+@@ -212,7 +212,8 @@ if(USE_QT5)
+         target_link_libraries(${PROJECT_NAME} ${APPKIT_LIBRARY})
+     endif()
+ else()
+-    target_link_libraries(${PROJECT_NAME} Qt4::QtCore Qt4::QtGui ${DBUS})
++    add_definitions(-I/opt/local/include/QJson4)
++    target_link_libraries(${PROJECT_NAME} Qt4::QtCore Qt4::QtGui QJson4 ${DBUS})
+ endif()
+ 
+ if(WIN32)
 diff --git src/qmplay2/YouTubeDL.cpp src/qmplay2/YouTubeDL.cpp
 index 98071fea..81185596 100644
 --- src/qmplay2/YouTubeDL.cpp

@@ -1,7 +1,7 @@
-From 4ae6b80d90d9f142fbc83cfb8a515a1a4657debb Mon Sep 17 00:00:00 2001
+From ca09fa2d5c95f05dfcbe7aab6da41d43e65bee1c Mon Sep 17 00:00:00 2001
 From: Sergey Fedorov <vital.had@gmail.com>
 Date: Fri, 29 Nov 2024 10:02:14 +0800
-Subject: [PATCH 11/11] OpenGL: try fix build
+Subject: [PATCH 10/11] OpenGL: try fix build
 
 ---
  src/modules/OpenGL2/CMakeLists.txt    | 3 ++-

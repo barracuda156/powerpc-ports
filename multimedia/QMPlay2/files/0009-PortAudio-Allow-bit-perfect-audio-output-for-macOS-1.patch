@@ -1,7 +1,7 @@
-From aa916f76a300b5e0de9a1b835ace0a63d814a5ac Mon Sep 17 00:00:00 2001
+From e2b6fc71e51170b93005382bd50190ce5c5f6a7c Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Ren=C3=A9=20Bertin?= <rjvbertin@gmail.com>
 Date: Mon, 12 Feb 2018 18:20:07 +0100
-Subject: [PATCH 10/11] PortAudio: Allow bit-perfect audio output for macOS
+Subject: [PATCH 09/11] PortAudio: Allow bit-perfect audio output for macOS
  (#108)
 
 When QMPlay2 isn't configured to resample all audio content to a
@@ -16,16 +16,16 @@ the content's sample rate or to the most appropriate (closest) supported
 sample rate. The initial device settings are cached and restored when
 playback is stopped.
 ---
- .../3rdparty/CoreAudio/AudioDevice.h          | 141 ++++
- .../3rdparty/CoreAudio/AudioDevice.mm         | 641 ++++++++++++++++++
- .../3rdparty/CoreAudio/AudioDeviceList.cpp    |  93 +++
+ .../3rdparty/CoreAudio/AudioDevice.h          | 136 ++++
+ .../3rdparty/CoreAudio/AudioDevice.mm         | 645 ++++++++++++++++++
+ .../3rdparty/CoreAudio/AudioDeviceList.cpp    |  98 +++
  .../3rdparty/CoreAudio/AudioDeviceList.h      |  82 +++
  src/modules/PortAudio/CMakeLists.txt          |  10 +
  src/modules/PortAudio/PortAudio.cpp           |  12 +
  src/modules/PortAudio/PortAudio.hpp           |   3 +
  src/modules/PortAudio/PortAudioWriter.cpp     |  49 +-
  src/modules/PortAudio/PortAudioWriter.hpp     |   7 +
- 9 files changed, 1037 insertions(+), 1 deletion(-)
+ 9 files changed, 1041 insertions(+), 1 deletion(-)
  create mode 100644 src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.h
  create mode 100644 src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.mm
  create mode 100644 src/modules/PortAudio/3rdparty/CoreAudio/AudioDeviceList.cpp
@@ -33,10 +33,10 @@ playback is stopped.
 
 diff --git src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.h src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.h
 new file mode 100644
-index 00000000..db82c012
+index 00000000..9d5788e4
 --- /dev/null
 +++ src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.h
-@@ -0,0 +1,141 @@
+@@ -0,0 +1,136 @@
 +/*
 +     File: AudioDevice.h 
 + Adapted from the CAPlayThough example
@@ -90,17 +90,12 @@ index 00000000..db82c012
 +
 +#include <CoreServices/CoreServices.h>
 +#include <CoreAudio/CoreAudio.h>
++#include <AvailabilityMacros.h>
 +
 +#include <qglobal.h>
 +
 +#ifndef DEPRECATED_LISTENER_API
-+#	if !defined(__MAC_10_11)
-+#		define __MAC_10_11 101100
-+#	endif
-+#	ifndef QT_MACOS_PLATFORM_SDK_EQUAL_OR_ABOVE
-+#		define QT_MACOS_PLATFORM_SDK_EQUAL_OR_ABOVE QT_OSX_PLATFORM_SDK_EQUAL_OR_ABOVE
-+#	endif
-+#	if !QT_MACOS_PLATFORM_SDK_EQUAL_OR_ABOVE(__MAC_10_11)
++#	if MAC_OS_X_VERSION_MIN_REQUIRED < 101100
 +#		define DEPRECATED_LISTENER_API
 +#		warning "Using the deprecated PropertyListener API; at least it works"
 +#	endif
@@ -180,10 +175,10 @@ index 00000000..db82c012
 +#endif // __AudioDevice_h__
 diff --git src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.mm src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.mm
 new file mode 100644
-index 00000000..8762add4
+index 00000000..f631b4e7
 --- /dev/null
 +++ src/modules/PortAudio/3rdparty/CoreAudio/AudioDevice.mm
-@@ -0,0 +1,641 @@
+@@ -0,0 +1,645 @@
 +/*
 +     File: AudioDevice.cpp
 + Adapted from the CAPlayThough example
@@ -234,6 +229,10 @@ index 00000000..8762add4
 +
 +#include "AudioDevice.h"
 +#import <Cocoa/Cocoa.h>
++
++#if MAC_OS_X_VERSION_MIN_REQUIRED > 1080
++    #define verify_noerr __Verify_noErr
++#endif
 +
 +char *OSTStr(OSType type)
 +{
@@ -827,10 +826,10 @@ index 00000000..8762add4
 +// kate: indent-mode cstyle; indent-width 4; replace-tabs on;
 diff --git src/modules/PortAudio/3rdparty/CoreAudio/AudioDeviceList.cpp src/modules/PortAudio/3rdparty/CoreAudio/AudioDeviceList.cpp
 new file mode 100644
-index 00000000..d7959efe
+index 00000000..ba3e00f1
 --- /dev/null
 +++ src/modules/PortAudio/3rdparty/CoreAudio/AudioDeviceList.cpp
-@@ -0,0 +1,93 @@
+@@ -0,0 +1,98 @@
 +/*
 +     File: AudioDeviceList.cpp
 + Adapted from the CAPlayThough example
@@ -880,6 +879,11 @@ index 00000000..d7959efe
 +*/
 +
 +#include "AudioDeviceList.h"
++#include <AvailabilityMacros.h>
++
++#if MAC_OS_X_VERSION_MIN_REQUIRED > 1080
++	#define verify_noerr __Verify_noErr
++#endif
 +
 +AudioDeviceList::AudioDeviceList(bool forInput)
 +	: mForInput(forInput)
@@ -1085,7 +1089,7 @@ index 5d3d57d7..98a72471 100644
 +#endif
  };
 diff --git src/modules/PortAudio/PortAudioWriter.cpp src/modules/PortAudio/PortAudioWriter.cpp
-index 38dc27d9..390ced0c 100644
+index 38dc27d9..d8b74f9e 100644
 --- src/modules/PortAudio/PortAudioWriter.cpp
 +++ src/modules/PortAudio/PortAudioWriter.cpp
 @@ -24,6 +24,8 @@
@@ -1097,10 +1101,10 @@ index 38dc27d9..390ced0c 100644
  	#define DEFAULT_HIGH_AUDIO_DELAY 0.2
  #else
  	#define DEFAULT_HIGH_AUDIO_DELAY 0.1
-@@ -46,6 +48,13 @@ PortAudioWriter::PortAudioWriter(Module &module) :
- 	SetModule(module);
+@@ -47,6 +49,13 @@ PortAudioWriter::PortAudioWriter(Module &module) :
  }
  PortAudioWriter::~PortAudioWriter()
+ {
 +#ifdef Q_OS_MAC
 +	if (coreAudioDevice)
 +	{
@@ -1108,9 +1112,9 @@ index 38dc27d9..390ced0c 100644
 +		delete coreAudioDevice;
 +	}
 +#endif
- {
  	close();
  }
+ 
 @@ -191,7 +200,30 @@ void PortAudioWriter::pause()
  
  QString PortAudioWriter::name() const
