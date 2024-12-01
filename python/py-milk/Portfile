@@ -27,5 +27,5 @@ if {${name} ne ${subport}} {
                         port:py${python.version}-setuptools
 
     depends_lib-append  port:py${python.version}-numpy \
-                        path:share/pkgconfig/eigen3.pc:eigen3
+                        port:eigen3-devel
 }

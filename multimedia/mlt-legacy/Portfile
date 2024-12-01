@@ -53,7 +53,7 @@ depends_build-append \
                     port:git
 
 depends_lib-append  port:atk \
-                    path:share/pkgconfig/eigen3.pc:eigen3 \
+                    port:eigen3-devel \
                     path:lib/libavcodec.dylib:ffmpeg \
                     port:fftw-3 \
                     port:frei0r-plugins \

@@ -27,7 +27,7 @@ installs_libs       yes
 
 patchfiles-append   patch-make_bundled_shaders.diff
 
-depends_lib-append  path:share/pkgconfig/eigen3.pc:eigen3 \
+depends_lib-append  port:eigen3-devel \
                     port:fftw-3 \
                     port:libepoxy \
                     port:libpng

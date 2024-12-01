@@ -49,7 +49,7 @@ if {${name} ne ${subport}} {
         port:coolprop-if97 \
         port:coolprop-refprop-headers \
         port:rapidjson-devel \
-        path:share/pkgconfig/eigen3.pc:eigen3 \
+        port:eigen3-devel \
         port:msgpack-cpp \
         port:boost176
 
