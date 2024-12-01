@@ -33,7 +33,7 @@ depends_build-append        path:bin/pkg-config:pkgconfig
 depends_lib                 path:lib/libssl.dylib:openssl \
                             port:libevent \
                             port:libidn2 \
-                            path:lib/pkgconfig/libuv.pc:libuv
+                            port:libuv-devel
 
 # cc1: error: unrecognized command line option "-Wpedantic"
 if {[string match *gcc-4.* ${configure.compiler}]} {

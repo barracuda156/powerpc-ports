@@ -33,7 +33,7 @@ depends_lib         path:lib/libluajit-5.1.2.dylib:luajit \
                     path:lib/pkgconfig/libknot.pc:libknot \
                     port:fstrm \
                     port:jemalloc \
-                    port:libuv \
+                    port:libuv-devel \
                     port:lmdb \
                     port:nghttp2 \
                     port:lua51-psl \
