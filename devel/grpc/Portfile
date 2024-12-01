@@ -47,7 +47,7 @@ depends_lib-append \
                     port:abseil \
                     port:c-ares \
                     port:lbzip2 \
-                    path:lib/pkgconfig/libuv.pc:libuv \
+                    port:libuv-devel \
                     path:lib/libssl.dylib:openssl \
                     port:protobuf3-cpp \
                     port:re2 \
