@@ -67,7 +67,7 @@ homepage            http://www.openscad.org/
 depends_build-append \
                     port:bison \
                     port:flex \
-                    path:share/pkgconfig/eigen3.pc:eigen3
+                    port:eigen3-devel
 
 depends_lib-append  port:double-conversion \
                     port:eigen3 \

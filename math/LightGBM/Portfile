@@ -28,7 +28,7 @@ set libfmt_ver      10
 cmake.module_path-append \
                     ${prefix}/lib/libfmt${libfmt_ver}/cmake
 
-depends_lib-append  path:share/pkgconfig/eigen3.pc:eigen3 \
+depends_lib-append  port:eigen3-devel \
                     port:fast_double_parser \
                     port:libfmt${libfmt_ver}
 

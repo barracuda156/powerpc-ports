@@ -40,7 +40,7 @@ boost.version       1.76
 depends_lib-append  port:mpfr \
                     port:zlib \
                     port:gmp \
-                    path:share/pkgconfig/eigen3.pc:eigen3
+                    port:eigen3-devel
 
 configure.args-append   -DCGAL_INSTALL_CMAKE_DIR="share/CGAL/cmake" \
                         -DWITH_CGAL_Qt5:BOOL=OFF \

@@ -21,7 +21,7 @@ checksums           rmd160  62e17b670616963ccc2e6adf3bc81af176d9836d \
 platforms           any
 supported_archs     noarch
 
-depends_lib-append  path:share/pkgconfig/eigen3.pc:eigen3
+depends_lib-append  port:eigen3-devel
 depends_build-append \
                     port:gtest
 
