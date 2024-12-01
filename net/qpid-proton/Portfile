@@ -29,7 +29,7 @@ depends_build-append \
                     path:bin/pkg-config:pkgconfig
 
 depends_lib-append  port:jsoncpp \
-                    path:lib/pkgconfig/libuv.pc:libuv
+                    port:libuv-devel
 
 cmake.build_type    RelWithDebInfo
 
