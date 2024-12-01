@@ -40,7 +40,7 @@ use_xz          yes
 depends_build   path:bin/pkg-config:pkgconfig
 
 depends_lib     path:lib/libssl.dylib:openssl  \
-                path:lib/pkgconfig/libuv.pc:libuv \
+                port:libuv-devel \
                 port:libxml2 \
                 port:nghttp2 \
                 path:lib/pkgconfig/jemalloc.pc:jemalloc \

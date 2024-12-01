@@ -31,7 +31,7 @@ checksums           rmd160  aed3594d639d46e926a4d445bee2ea44b7726a2c \
 depends_lib-append  path:lib/libssl.dylib:openssl \
                     port:zlib \
                     port:libev \
-                    port:libuv
+                    port:libuv-devel
 
 # https://trac.macports.org/ticket/65706
 compiler.blacklist-append *gcc-4.*

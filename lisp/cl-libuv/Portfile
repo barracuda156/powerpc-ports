@@ -31,6 +31,6 @@ post-patch {
 
 depends_lib-append  port:cl-alexandria \
                     port:cl-cffi \
-                    port:libuv
+                    port:libuv-devel
 
 common_lisp.ffi     yes

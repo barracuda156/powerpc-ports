@@ -31,7 +31,7 @@ checksums               rmd160  4d6f8395afad5763894c2cf60c56ada2a41ed2ad \
 depends_build-append    port:pkgconfig
 
 depends_lib             port:gettext \
-                        port:libuv \
+                        port:libuv-devel \
                         port:libvterm \
                         port:unibilium \
                         port:msgpack \
