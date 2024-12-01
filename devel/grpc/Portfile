@@ -52,7 +52,7 @@ depends_lib-append \
                     port:abseil \
                     port:c-ares \
                     port:lbzip2 \
-                    path:lib/pkgconfig/libuv.pc:libuv \
+                    port:libuv-devel \
                     port:protobuf3-cpp \
                     port:re2 \
                     port:zlib
