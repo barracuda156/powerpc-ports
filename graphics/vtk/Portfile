@@ -48,7 +48,7 @@ mpi.setup
 
 depends_lib-append \
     port:double-conversion \
-    path:share/pkgconfig/eigen3.pc:eigen3 \
+    port:eigen3-devel \
     port:expat \
     port:freetype \
     port:gl2ps \

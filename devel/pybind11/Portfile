@@ -47,7 +47,7 @@ variant tests description {Enable tests} {
     test.target                 pytest
     depends_test-append         port:py${python_version}-numpy \
                                 port:py${python_version}-scipy \
-                                path:share/pkgconfig/eigen3.pc:eigen3
+                                port:eigen3-devel
 
     require_active_variants     [boost::depends_portname]   python${python_version}
     configure.cxxflags-append   -std=c++17

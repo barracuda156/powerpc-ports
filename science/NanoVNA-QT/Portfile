@@ -40,7 +40,7 @@ subport libxavna {
     }
 
     depends_lib-append \
-        path:share/pkgconfig/eigen3.pc:eigen3 \
+        port:eigen3-devel \
         port:fftw-3
 
     use_autoreconf  yes
@@ -71,7 +71,7 @@ if {${subport} eq ${name}} {
 
     depends_lib-append \
         port:libxavna \
-        path:share/pkgconfig/eigen3.pc:eigen3 \
+        port:eigen3-devel \
         port:fftw-3
 
     # avoid conflict with autoconf files
