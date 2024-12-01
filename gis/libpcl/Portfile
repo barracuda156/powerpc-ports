@@ -23,7 +23,7 @@ long_description    The Point Cloud Library (PCL) is a standalone, large scale, 
 
 homepage            http://pointclouds.org
 
-depends_lib         path:share/pkgconfig/eigen3.pc:eigen3 \
+depends_lib         port:eigen3-devel \
                     port:flann \
                     port:libpng \
                     port:qhull \

@@ -17,7 +17,7 @@ checksums           rmd160  e932aeaf28a95776f8db4130a1ac745094d75aae \
                     sha256  5b5b88d653a676a2a0307e1f70ba48641c36f4741fba97e7fe2057adb4275874 \
                     size    52538
 
-depends_lib-append  path:share/pkgconfig/eigen3.pc:eigen3 \
+depends_lib-append  port:eigen3-devel \
                     port:hypre \
                     port:nlohmann-json
 

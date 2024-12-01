@@ -99,7 +99,7 @@ post-patch {
 configure.post_args-append  --buildtype=release
 
 depends_build-append \
-                    path:share/pkgconfig/eigen3.pc:eigen3 \
+                    port:eigen3-devel \
                     port:nlohmann-json \
                     port:pkgconfig
 

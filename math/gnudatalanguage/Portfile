@@ -54,7 +54,7 @@ depends_lib-append          port:zlib \
                             port:fftw-3-single \
                             port:cmsvlib \
                             port:pslib \
-                            path:share/pkgconfig/eigen3.pc:eigen3 \
+                            port:eigen3-devel \
                             port:gettext \
                             port:glpk \
                             port:libgeotiff

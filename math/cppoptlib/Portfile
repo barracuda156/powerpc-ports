@@ -21,7 +21,7 @@ checksums           rmd160  06ee36bfcf7ac1f8cc81047284c9718c95614de1 \
 github.tarball_from archive
 supported_archs     noarch
 
-depends_run-append  path:share/pkgconfig/eigen3.pc:eigen3
+depends_run-append  port:eigen3-devel
 
 compiler.cxx_standard   2017
 

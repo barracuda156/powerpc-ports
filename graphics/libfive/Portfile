@@ -30,7 +30,7 @@ checksums           rmd160  946e212d3de61c47d6ceb4bc0bd251ba5691ce39 \
 
 # Even though eigen3 is header-only, it must be a library dependency because
 # the libfive headers include it.
-depends_lib-append  path:share/pkgconfig/eigen3.pc:eigen3 \
+depends_lib-append  port:eigen3-devel \
                     port:libpng
 
 depends_build-append \

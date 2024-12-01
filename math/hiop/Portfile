@@ -23,7 +23,7 @@ checksums           rmd160  c7fe5727192429c78b96a9663f44c445bdb803a2 \
                     size    2632151
 github.tarball_from archive
 
-depends_lib-append  path:share/pkgconfig/eigen3.pc:eigen3
+depends_lib-append  port:eigen3-devel
 
 if {${os.platform} eq "darwin" && ${os.arch} eq "powerpc"} {
     mpi.setup       require require_fortran \

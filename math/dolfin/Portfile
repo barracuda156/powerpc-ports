@@ -54,7 +54,7 @@ depends_build-append \
 
 depends_lib-append  port:armadillo \
                     port:boost176 \
-                    path:share/pkgconfig/eigen3.pc:eigen3 \
+                    port:eigen3-devel \
                     port:py${python.version}-ffc \
                     port:py${python.version}-ply
 
