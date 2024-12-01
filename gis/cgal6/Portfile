@@ -39,7 +39,7 @@ boost.version           1.81
 depends_lib-append      port:mpfr \
                         port:zlib \
                         port:gmp \
-                        path:share/pkgconfig/eigen3.pc:eigen3
+                        port:eigen3-devel
 
 compiler.cxx_standard   2017
 compiler.thread_local_storage yes

@@ -17,7 +17,7 @@ checksums           rmd160  5e803fca05f570b94941572a4cbea20b32f3d30c \
 installs_libs       no
 cmake.out_of_source no
 
-depends_lib-append  path:share/pkgconfig/eigen3.pc:eigen3 \
+depends_lib-append  port:eigen3-devel \
                     port:zlib
 
 compiler.cxx_standard   2011
