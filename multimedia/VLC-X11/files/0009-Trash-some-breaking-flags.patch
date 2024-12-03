@@ -3,6 +3,16 @@ From: Sergey Fedorov <vital.had@gmail.com>
 Date: Mon, 15 Apr 2024 22:49:35 +0800
 Subject: [PATCH 09/13] Trash some breaking flags
 
+---
+ configure.ac                           | 2 +-
+ modules/access/Makefile.am             | 4 ++--
+ modules/gui/Makefile.am                | 2 +-
+ modules/gui/macosx/Makefile.am         | 2 +-
+ modules/keystore/Makefile.am           | 2 +-
+ modules/services_discovery/Makefile.am | 2 +-
+ test/Makefile.am                       | 1 -
+ 7 files changed, 7 insertions(+), 8 deletions(-)
+
 diff --git configure.ac configure.ac
 index e862ea5008..ba9f1176b7 100644
 --- configure.ac

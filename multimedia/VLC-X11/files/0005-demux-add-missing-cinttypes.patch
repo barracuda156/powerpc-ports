@@ -3,6 +3,20 @@ From: Sergey Fedorov <vital.had@gmail.com>
 Date: Mon, 15 Apr 2024 21:11:40 +0800
 Subject: [PATCH 05/13] demux: add missing cinttypes
 
+---
+ modules/demux/adaptive/PlaylistManager.cpp       | 5 +++++
+ modules/demux/adaptive/http/HTTPConnection.cpp   | 7 +++++++
+ modules/demux/adaptive/plumbing/SourceStream.cpp | 6 ++++++
+ modules/demux/mkv/Ebml_parser.cpp                | 6 ++++++
+ modules/demux/mkv/chapter_command.cpp            | 6 ++++++
+ modules/demux/mkv/demux.cpp                      | 6 ++++++
+ modules/demux/mkv/matroska_segment.cpp           | 5 +++++
+ modules/demux/mkv/matroska_segment_parse.cpp     | 7 +++++++
+ modules/demux/mkv/mkv.cpp                        | 5 +++++
+ modules/demux/mkv/util.cpp                       | 7 +++++++
+ modules/demux/mkv/virtual_segment.cpp            | 6 ++++++
+ 11 files changed, 66 insertions(+)
+
 diff --git modules/demux/adaptive/PlaylistManager.cpp modules/demux/adaptive/PlaylistManager.cpp
 index 62de59cac9..8ead0a9916 100644
 --- modules/demux/adaptive/PlaylistManager.cpp

@@ -3,6 +3,13 @@ From: Sergey Fedorov <vital.had@gmail.com>
 Date: Tue, 16 Apr 2024 00:56:31 +0800
 Subject: [PATCH 13/13] Restore working code for text_renderer
 
+---
+ modules/text_renderer/Makefile.am             |   2 +-
+ modules/text_renderer/freetype/fonts/darwin.c | 275 +++++-------------
+ modules/text_renderer/freetype/freetype.c     |   6 +-
+ .../text_renderer/freetype/platform_fonts.h   |   7 +-
+ 4 files changed, 78 insertions(+), 212 deletions(-)
+
 diff --git modules/text_renderer/Makefile.am modules/text_renderer/Makefile.am
 index d3cdf754aa..4cd1d762f4 100644
 --- modules/text_renderer/Makefile.am
@@ -26,9 +33,8 @@ index 40f6f4210e..26fb33926b 100644
 + * freetype.c : Put text on the video, using freetype2
   *****************************************************************************
 - * Copyright (C) 2015 VLC authors and VideoLAN
-- * $Id: 6de42015d29ba5ebaea6f18413b78a12966cb89c $
 + * Copyright (C) 2002 - 2015 VLC authors and VideoLAN
-+ * $Id$
+  * $Id$
   *
 - * Authors: Felix Paul Kühne <fkuehne@videolan.org>
 + * Authors: Sigmund Augdal Helberg <dnumgis@videolan.org>
@@ -39,7 +45,7 @@ index 40f6f4210e..26fb33926b 100644
   *          Salah-Eddin Shaban <salshaaban@gmail.com>
   *
   * This program is free software; you can redistribute it and/or modify it
-@@ -33,233 +36,93 @@
+@@ -33,291 +36,93 @@
  
  #include <vlc_common.h>
  #include <vlc_filter.h>                                      /* filter_sys_t */
@@ -56,15 +62,11 @@ index 40f6f4210e..26fb33926b 100644
  #include "../platform_fonts.h"
  
 -char* getPathForFontDescription(CTFontDescriptorRef fontDescriptor);
--void addNewFontToFamily(filter_t *p_filter, CTFontDescriptorRef iter, char *path, vlc_family_t *family);
+-void addNewFontToFamily(filter_t *p_filter, CTFontDescriptorRef iter, char *path, vlc_family_t *family, int index);
 -
 -
 -char* getPathForFontDescription(CTFontDescriptorRef fontDescriptor)
-+#if !TARGET_OS_IPHONE
-+char* MacLegacy_Select( filter_t *p_filter, const char* psz_fontname,
-+                        bool b_bold, bool b_italic,
-+                        int *i_idx, uni_char_t codepoint )
- {
+-{
 -    CFURLRef url = CTFontDescriptorCopyAttribute(fontDescriptor, kCTFontURLAttribute);
 -    if (url == NULL)
 -        return NULL;
@@ -79,8 +81,57 @@ index 40f6f4210e..26fb33926b 100644
 -    return retPath;
 -}
 -
--void addNewFontToFamily(filter_t *p_filter, CTFontDescriptorRef iter, char *path, vlc_family_t *p_family)
--{
+-static CFIndex getFontIndexInFontFile(const char* psz_filePath, const char* psz_family) {
+-    CFIndex index = kCFNotFound;
+-    CFURLRef url = CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault, (const UInt8 *)psz_filePath, strlen(psz_filePath), false);
+-    if (url == NULL) {
+-        return kCFNotFound;
+-    }
+-    CFArrayRef fontDescriptors = CTFontManagerCreateFontDescriptorsFromURL(url);
+-    if (fontDescriptors == NULL) {
+-        CFRelease(url);
+-        return kCFNotFound;
+-    }
+-    CFIndex numberOfFontDescriptors = CFArrayGetCount(fontDescriptors);
+-    CFStringRef targetFontName = CFStringCreateWithCString(kCFAllocatorDefault, psz_family, kCFStringEncodingUTF8);
+-    if (targetFontName == NULL) {
+-        CFRelease(fontDescriptors);
+-        CFRelease(url);
+-        return kCFNotFound;
+-    }
+-
+-    for (CFIndex i = 0; i < numberOfFontDescriptors; i++) {
+-        CTFontDescriptorRef descriptor = (CTFontDescriptorRef)CFArrayGetValueAtIndex(fontDescriptors, i);
+-        CFStringRef familyName = (CFStringRef)CTFontDescriptorCopyAttribute(descriptor, kCTFontFamilyNameAttribute);
+-        CFStringRef fontName = (CFStringRef)CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute);
+-        CFStringRef displayName = (CFStringRef)CTFontDescriptorCopyAttribute(descriptor, kCTFontDisplayNameAttribute);
+-
+-        if (CFStringCompare(targetFontName, familyName, kCFCompareCaseInsensitive) == kCFCompareEqualTo ||
+-            CFStringCompare(targetFontName, fontName, kCFCompareCaseInsensitive) == kCFCompareEqualTo ||
+-            CFStringCompare(targetFontName, displayName, kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+-            index = i;
+-        }
+-
+-        CFRelease(familyName);
+-        CFRelease(fontName);
+-        CFRelease(displayName);
+-
+-        if (index != kCFNotFound) {
+-            break;
+-        }
+-    }
+-    CFRelease(targetFontName);
+-    CFRelease(fontDescriptors);
+-    CFRelease(url);
+-    return index;
+-}
+-
+-void addNewFontToFamily(filter_t *p_filter, CTFontDescriptorRef iter, char *path, vlc_family_t *family, int index)
++#if !TARGET_OS_IPHONE
++char* MacLegacy_Select( filter_t *p_filter, const char* psz_fontname,
++                        bool b_bold, bool b_italic,
++                        int *i_idx, uni_char_t codepoint )
+ {
 -    bool b_bold = false;
 -    bool b_italic = false;
 -    CFDictionaryRef fontTraits = CTFontDescriptorCopyAttribute(iter, kCTFontTraitsAttribute);
@@ -98,7 +149,7 @@ index 40f6f4210e..26fb33926b 100644
 -#else
 -    VLC_UNUSED(p_filter);
 -#endif
--    NewFont(path, 0, b_bold, b_italic, p_family);
+-    NewFont(path, index, b_bold, b_italic, family);
 -
 -    CFRelease(fontTraits);
 -}
@@ -125,7 +176,7 @@ index 40f6f4210e..26fb33926b 100644
 +    if( psz_fontname == NULL )
          return NULL;
 -    }
- 
+-
 -    /* let's double check if we have parsed this family already */
 -    vlc_family_t *p_family = vlc_dictionary_value_for_key(&p_sys->family_map, psz_lc);
 -    if (p_family) {
@@ -135,8 +186,6 @@ index 40f6f4210e..26fb33926b 100644
 -
 -    CTFontCollectionRef coreTextFontCollection = NULL;
 -    CFArrayRef matchedFontDescriptions = NULL;
-+    msg_Dbg( p_filter, "looking for %s", psz_fontname );
-+    cf_fontName = CFStringCreateWithCString( kCFAllocatorDefault, psz_fontname, kCFStringEncodingUTF8 );
  
 -    /* we search for family name, display name and name to find them all */
 -    const size_t numberOfAttributes = 3;
@@ -147,15 +196,13 @@ index 40f6f4210e..26fb33926b 100644
 -        kCTFontDisplayNameAttribute,
 -        kCTFontNameAttribute,
 -    };
-+    ats_font_id = ATSFontFindFromName( cf_fontName, kATSOptionFlagsIncludeDisabledMask );
++    msg_Dbg( p_filter, "looking for %s", psz_fontname );
++    cf_fontName = CFStringCreateWithCString( kCFAllocatorDefault, psz_fontname, kCFStringEncodingUTF8 );
  
 -#ifndef NDEBUG
 -    msg_Dbg(p_filter, "Creating new family for '%s'", psz_family);
 -#endif
-+    if ( ats_font_id == 0 || ats_font_id == 0xFFFFFFFFUL )
-+    {
-+        msg_Dbg( p_filter, "ATS couldn't find %s by name, checking family", psz_fontname );
-+        ats_font_id = ATSFontFamilyFindFromName( cf_fontName, kATSOptionFlagsDefault );
++    ats_font_id = ATSFontFindFromName( cf_fontName, kATSOptionFlagsIncludeDisabledMask );
  
 -    CFStringRef familyName = CFStringCreateWithCString(kCFAllocatorDefault,
 -                                                       psz_family,
@@ -181,11 +228,7 @@ index 40f6f4210e..26fb33926b 100644
 -        msg_Warn(p_filter, "CTFontCollectionCreateMatchingFontDescriptors (2) failed!");
 -        goto end;
 -    }
-+        if ( ats_font_id == 0 || ats_font_id == 0xFFFFFFFFUL )
-+        {
-+            msg_Dbg( p_filter, "ATS couldn't find either %s nor its family, checking PS name", psz_fontname );
-+            ats_font_id = ATSFontFindFromPostScriptName( cf_fontName, kATSOptionFlagsDefault );
- 
+-
 -    CFIndex numberOfFoundFontDescriptions = CFArrayGetCount(matchedFontDescriptions);
 -
 -    char *path = NULL;
@@ -204,6 +247,23 @@ index 40f6f4210e..26fb33926b 100644
 -        if (path == NULL || *path == '\0') {
 -            FREENULL(path);
 -            continue;
+-        }
+-
+-        /* get the index of the font family in the font file */
+-        CFIndex fontIndex = getFontIndexInFontFile(path, psz_lc);
+-        if (fontIndex == kCFNotFound) {
+-            FREENULL(path);
+-            continue;
++    if ( ats_font_id == 0 || ats_font_id == 0xFFFFFFFFUL )
++    {
++        msg_Dbg( p_filter, "ATS couldn't find %s by name, checking family", psz_fontname );
++        ats_font_id = ATSFontFamilyFindFromName( cf_fontName, kATSOptionFlagsDefault );
++
++        if ( ats_font_id == 0 || ats_font_id == 0xFFFFFFFFUL )
++        {
++            msg_Dbg( p_filter, "ATS couldn't find either %s nor its family, checking PS name", psz_fontname );
++            ats_font_id = ATSFontFindFromPostScriptName( cf_fontName, kATSOptionFlagsDefault );
++
 +            if ( ats_font_id == 0 || ats_font_id == 0xFFFFFFFFUL )
 +            {
 +                msg_Err( p_filter, "ATS couldn't find %s (no font name, family or PS name)", psz_fontname );
@@ -212,7 +272,7 @@ index 40f6f4210e..26fb33926b 100644
 +            }
          }
 -
--        addNewFontToFamily(p_filter, iter, path, p_family);
+-        addNewFontToFamily(p_filter, iter, path, p_family, fontIndex);
      }
 +    CFRelease( cf_fontName );
  
@@ -281,11 +341,7 @@ index 40f6f4210e..26fb33926b 100644
 +    {
 +        ATSFontRef  id2 = ats_font_id - 1;
 +        FSRef       ref2;
- 
--    p_family = vlc_dictionary_value_for_key(&p_sys->family_map, psz_lc_fallback);
--    if (p_family) {
--        goto done;
--    }
++
 +        while ( id2 > 0 )
 +        {
 +            if ( noErr != ATSFontGetFileReference( id2, &ref2 ) )
@@ -293,20 +349,31 @@ index 40f6f4210e..26fb33926b 100644
 +            if ( noErr != FSCompareFSRefs( &ref, &ref2 ) )
 +                break;
  
+-    p_family = vlc_dictionary_value_for_key(&p_sys->family_map, psz_lc_fallback);
+-    if (p_family) {
+-        goto done;
+-    }
+-
 -    p_family = NewFamily(p_filter, psz_lc_fallback, &p_sys->p_families, &p_sys->family_map, psz_lc_fallback);
 -    if (unlikely(!p_family)) {
 -        goto done;
-+            id2 --;
-+        }
-+        *i_idx = ats_font_id - ( id2 + 1 );
-     }
- 
+-    }
+-
 -    postScriptFallbackFontname = CTFontCopyPostScriptName(fallbackFont);
 -    fallbackFontDescriptor = CTFontDescriptorCreateWithNameAndSize(postScriptFallbackFontname, 0.);
 -    psz_fontPath = getPathForFontDescription(fallbackFontDescriptor);
 -
 -    /* check if the path is empty, which can happen in rare circumstances */
 -    if (psz_fontPath == NULL || *psz_fontPath == '\0') {
+-        goto done;
++            id2 --;
++        }
++        *i_idx = ats_font_id - ( id2 + 1 );
+     }
+ 
+-    /* get the index of the font family in the font file */
+-    CFIndex fontIndex = getFontIndexInFontFile(psz_fontPath, psz_fallbackFamilyName);
+-    if (fontIndex == kCFNotFound) {
 -        goto done;
 +    if ( noErr != FSRefMakePath( &ref, path, sizeof(path) ) )
 +    {
@@ -315,7 +382,7 @@ index 40f6f4210e..26fb33926b 100644
      }
 +    msg_Dbg( p_filter, "found %s", path );
  
--    addNewFontToFamily(p_filter, fallbackFontDescriptor, strdup(psz_fontPath), p_family);
+-    addNewFontToFamily(p_filter, fallbackFontDescriptor, strdup(psz_fontPath), p_family, fontIndex);
 +    psz_path = strdup( (char *)path );
  
 -done:

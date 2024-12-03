@@ -3,6 +3,10 @@ From: Sergey Fedorov <vital.had@gmail.com>
 Date: Mon, 15 Apr 2024 18:09:20 +0800
 Subject: [PATCH 03/13] Avoid building tests
 
+---
+ Makefile.am | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
 diff --git Makefile.am Makefile.am
 index 51791983c9..a697d5707a 100644
 --- Makefile.am

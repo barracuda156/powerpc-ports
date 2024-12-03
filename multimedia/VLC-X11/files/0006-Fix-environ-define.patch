@@ -3,6 +3,12 @@ From: Sergey Fedorov <vital.had@gmail.com>
 Date: Tue, 16 Apr 2024 00:26:33 +0800
 Subject: [PATCH 06/13] Fix environ define
 
+---
+ modules/misc/inhibit/xdg.c     | 7 ++++++-
+ modules/stream_filter/decomp.c | 7 ++++++-
+ src/posix/netconf.c            | 7 ++++++-
+ 3 files changed, 18 insertions(+), 3 deletions(-)
+
 diff --git modules/misc/inhibit/xdg.c modules/misc/inhibit/xdg.c
 index b2fe26947e..598bf0b462 100644
 --- modules/misc/inhibit/xdg.c
