@@ -9,7 +9,7 @@ PortGroup               openssl 1.0
 # As long as everything works on 10.5+,
 # no version pegging is needed.
 name                    VLC-X11
-version                 3.0.20
+version                 3.0.21
 revision                0
 categories              multimedia
 license                 GPL-2 LGPL-2.1
@@ -22,9 +22,9 @@ long_description        {*}${description}, aimed primarily at supporting legacy 
 homepage                https://www.videolan.org
 master_sites            https://download.videolan.org/pub/videolan/vlc/${version}/
 distname                vlc-${version}
-checksums               rmd160  0a6263bbe189a2c08d2c2f5c94ee4bee908cb716 \
-                        sha256  adc7285b4d2721cddf40eb5270cada2aaa10a334cb546fd55a06353447ba29b5 \
-                        size    25596392
+checksums               rmd160  ce0dc68b5f978f1587291e80c35e37c664738f09 \
+                        sha256  24dbbe1d7dfaeea0994d5def0bbde200177347136dbfe573f5b6a4cee25afbb0 \
+                        size    25649288
 use_xz                  yes
 
 use_autoreconf          yes
@@ -60,7 +60,7 @@ patchfiles-append       0001-configure-allow-disabling-opengl.patch \
 
 if {[string match *gcc* ${configure.compiler}]} {
     patchfiles-append   0008-configure-do-not-err-out-on-implicit-function-decl.patch \
-                        0009-Trash-some-breaking-flags.patch \
+                        0009-Trash-some-breaking-flags.patch
 }
 
 if {${configure.cxx_stdlib} ne "libc++"} {
@@ -89,7 +89,10 @@ post-patch {
                         ${worksrcpath}/src/Makefile.am
 }
 
-depends_build-append    port:pkgconfig
+depends_build-append    path:bin/pkg-config:pkgconfig
+
+configure.pkg_config_path-prepend \
+                        ${prefix}/libexec/ffmpeg6/lib/pkgconfig
 
 depends_lib-append      port:a52dec \
                         port:aalib \
@@ -100,7 +103,7 @@ depends_lib-append      port:a52dec \
                         port:dav1d \
                         port:dbus \
                         port:faad2 \
-                        path:lib/libavcodec.dylib:ffmpeg \
+                        port:ffmpeg6 \
                         port:flac \
                         port:fluidsynth \
                         port:fontconfig \
