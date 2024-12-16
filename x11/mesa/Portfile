@@ -58,6 +58,9 @@ patchfiles              patch-meson-spec-python.diff \
                         patch-fix-build.diff \
                         patch-fix-linking.diff
 
+# https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/32658
+patchfiles-append       patch-fix-32-bit.diff
+
 # MP ticket 66269
 # the sizes of int and GLint are different on 10.4 PPC, at least
 # not sure how many systems this might affect, but all systems on buildbot were OK
@@ -78,6 +81,7 @@ compiler.cxx_standard   2017
 compiler.blacklist-append  {clang < 800}
 
 configure.args          -Dosmesa=true \
+                        -Dllvm=disabled \
                         -Dgallium-drivers=softpipe
 
 platform darwin {
@@ -119,10 +123,14 @@ variant llvm {
     # for llvm-ar
     build.env-append        PATH=${prefix}/libexec/llvm-${llvm_ver}/bin:$env(PATH)
     configure.args-replace  -Dgallium-drivers=softpipe \
-                            -Dgallium-drivers=softpipe,llvmpipe
+                            -Dgallium-drivers=softpipe,llvmpipe \
+                            -Dllvm=disabled \
+                            -Dllvm=enabled
 }
 
-default_variants        +llvm
+if {${os.platform} ne "darwin" || ${os.major} > 10} {
+    default_variants        +llvm
+}
 
 variant tests description "build tests" {
     # mesa uses it's own internal gtest version and fails with newer
