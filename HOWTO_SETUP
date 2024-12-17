@@ -1,0 +1,38 @@
+Summary is available at http://macos-powerpc.org
+
+There are two options with the OS:
+
+1. Developer build of 10a190, see: https://forums.macrumors.com/threads/snow-leopard-on-unsupported-powerpc-macs.2232031
+
+2. Release of Snow Leopard (10.6.8) with select OS components rebuilt or replaced to support PowerPC natively, see:
+https://forums.macrumors.com/threads/10-6-snow-leopard-powerpc-development.2439769
+
+10a190 is better tested (over a few years) and almost unmodified (some kexts had to be replaced to fix booting),
+however it is somewhat in between 10.5.8 and 10.6 in terms of the SDK and has minor, but noticeable issues
+with Finder and System Preferences.
+10.6.8 is recent, and its testing is in a preliminary stage. Most of issues related to everyday usage
+has been fixed, and presumably it is more stable and better optimized; one notable caveat is that UDP
+is broken presently, and the only way to have networking is DNS-over-TCP (for example, via `utdns` utility).
+
+Up till now (2024.12) everything in this repo and in http://macos-powerpc.org/packages was based on 10a190.
+This is likely to change shortly, and compatibility with 10a190 may partly be lost in pre-built binaries.
+If you have any concerns over this, please reach out via Discussions, Issues or e-mail.
+
+IMPORTANT NOTICE RE X11 / GTK APPS:
+
+Do not use Apple X11 or XQuartz with this repo, it is known to be broken.
+Recommended way is to remove both, see: https://www.xquartz.org/FAQs.html
+And install `xorg-server-legacy` from PowerPC Ports or upstream MacPorts.
+
+Everything that uses wxWidgets must build against wxGTK. Native wxWidgets are broken up to macOS 10.8
+(ports will build against them, but will not work correctly).
+
+GTK4 has a bug which upstream is disinterested to fix. Set GSK_RENDERER=cairo in the environment
+to make GTK4 apps usable. GTK3 works normally without any specific tweaks.
+
+NOTICE ON COMPILERS
+
+Besides Xcode gcc, the following compilers are good to use: gcc14, gcc13 or gcc-powerpc (development version);
+gcc10-bootstrap is supposed to be used exclusively to build the essential toolchain components.
+Versions prior to gcc10 are to be avoided. Clangs were and are broken, do not use them for anything.
+Building against libc++ is untested, but in principle possible with gcc and libcxx-powerpc runtime.
