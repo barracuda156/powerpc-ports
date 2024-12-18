@@ -41,6 +41,9 @@ if {${os.platform} eq "darwin" && ${os.major} <= 10} {
 # https://github.com/python/cpython/issues/127897
 patchfiles-append   patch-hacl-compatibility.diff
 
+# https://trac.macports.org/ticket/71206
+patchfiles-append   patch-posixmodule.diff
+
 depends_build       path:bin/pkg-config:pkgconfig
 depends_lib         port:bzip2 \
                     port:expat \
