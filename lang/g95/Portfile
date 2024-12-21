@@ -1,12 +1,18 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
-PortSystem 1.0
+PortSystem      1.0
 PortGroup		compiler_blacklist_versions 1.0
 
 name            g95
-version         0.93
-revision        5
-platforms       darwin
+version         0.94
+# This is an unfortunate hack, since the port was built earlier with rev. 1,
+# skipping 0, but now it fails to build with:
+# Undefined symbols:
+#  "___sprintf_chk$LDBLStub", referenced from:
+#      _cpp_interpret_string in libcpp.a(charset.o)
+#      _xstrerror in libiberty.a(xstrerror.o)
+# For now, at least make it possible to install what we got pre-built.
+revision        1
 categories      lang
 license         GPL-2
 maintainers     nomaintainer
@@ -15,10 +21,10 @@ long_description \
                 G95 is a stable, production Fortran 95 compiler \
                 available for multiple cpu architectures and operating systems. \
                 Parts of the F2003 standard have been implemented in g95.
-homepage        http://g95.org/
+homepage        http://g95.org
 dist_subdir     ${name}/${version}
 
-if {${os.major} < 10 || ${build_arch} eq "ppc" || ${build_arch} eq "i386"} {
+if {${os.major} < 10} {
     default_variants +gcc40
 }
 
@@ -46,24 +52,30 @@ if {[variant_isset gcc40]} {
     set version_gcc 4.2.4
     array set barch {ppc powerpc ppc64 powerpc64 i386 i386 x86_64 x86_64}
     if {[info exists barch(${build_arch})]} {
-        set triple  $barch(${build_arch})-apple-darwin${os.major}
+        if {${os.major} == 10 && ${build_arch} eq "ppc"} {
+            set triple  $barch(${build_arch})-apple-darwin9
+        } else {
+            set triple  $barch(${build_arch})-apple-darwin${os.major}
+        }
     }
     set dcore   gcc-core-${version_gcc}.tar.bz2
-    checksums   ${dcore} md5     b7a4c167f6a05301591b139b356e36d0 \
-                ${dcore} sha1    540fa6949415ded321a7cbe80bbf8befe85e3566 \
-                ${dcore} rmd160  d54581d0a2ecc22718e6be101c6dc524a4a88463
+    checksums       ${dcore} \
+                rmd160  d54581d0a2ecc22718e6be101c6dc524a4a88463 \
+                sha256  cfc9e7e14966097d24d510cfd905515e8f7464ab5379a50698ae3d88e1f7a532 \
+                size    18927613
 }
 master_sites    ftp://gcc.gnu.org/pub/gcc/releases/gcc-${version_gcc}/:gcc \
-                http://ftp.g95.org/v${version}/:g95
+                https://fossies.org/linux/misc/old/:g95
 set buildhost   "--build=${triple} --host=${triple}"
 
 set dg95        ${name}_source.tgz
 set gcclib      lib/${name}/${triple}/${version_gcc}
 distfiles       ${dcore}:gcc ${dg95}:g95
 
-checksums-append    ${dg95}  md5     f9552aef0975c1dcf70950b6e6b18ff1 \
-                    ${dg95}  sha1    b5e503fd6459b65cbda73190685f9490230d9cff \
-                    ${dg95}  rmd160  98d03e9a1835f4b3553a72a798bdf1d90a757176
+checksums-append    ${dg95} \
+                rmd160  0de4f0694745f6f026ca03741b6d660d3a325c69 \
+                sha256  f4d105de3130b85cfa2136b52b6a18ab95f7c7ae67859a1118749051d20faf30 \
+                size    1357116
 
 depends_build   port:ld64 port:cctools port:libtool
 depends_lib     port:libiconv path:share/doc/libgcc/README:libgcc
@@ -80,7 +92,6 @@ patchfiles      patch-Makefile.in.diff \
                 patch-libf95-quad-power16.c.diff
 
 universal_variant no
-use_parallel_build  no
 
 extract.only    ${dg95}
 
@@ -105,7 +116,12 @@ post-patch {
 
 compiler.blacklist-append   {clang < 500}
 
-configure.cflags-append -std=gnu89
+configure.cflags-append     -std=gnu89
+
+platform darwin 10 powerpc {
+    configure.cflags-append -mmacosx-version-min=10.5
+}
+
 pre-configure {
     file mkdir ${workpath}/gcc-${version_gcc}/${name}
     if {${build_arch} eq "i386"} {

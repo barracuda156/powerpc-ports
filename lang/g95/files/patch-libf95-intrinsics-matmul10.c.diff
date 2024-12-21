@@ -1,5 +1,5 @@
---- libf95.a-0.93/intrinsics/matmul10.c.orig	2008-06-23 10:44:29.000000000 +0900
-+++ libf95.a-0.93/intrinsics/matmul10.c	2014-10-18 11:32:28.000000000 +0900
+--- libf95.a-0.94/intrinsics/matmul10.c.orig	2008-06-23 10:44:29.000000000 +0900
++++ libf95.a-0.94/intrinsics/matmul10.c	2014-10-18 11:32:28.000000000 +0900
 @@ -899,7 +899,7 @@
  #define LOAD_B   "mov %0, %" EAX "\n" \
                   "movsbl (%" EAX "), %%eax\n" \
