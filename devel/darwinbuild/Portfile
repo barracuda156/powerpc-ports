@@ -5,7 +5,7 @@ PortGroup           github 1.0
 PortGroup           xcode 1.0
 
 github.setup        macosforge darwinbuild 37 darwinbuild-
-revision            1
+revision            2
 categories          devel
 maintainers         nomaintainer
 license             BSD
@@ -33,7 +33,7 @@ patchfiles-append   0001-prefix.xcconfig-add-ppc.patch \
                     0003-Replace-defunct-svn-URLs-with-macos-powerpc.patch \
                     0004-darwinbuild.in-fix-for-renamed-sources-from-Apple-re.patch \
                     0005-Only-build-for-powerpc-save-time.patch \
-                    0006-darwinup-a-hack-for-10a190.patch
+                    0006-darwinbuild.in-fix-alias-projects.patch
 
 depends_lib-append  port:sqlite3 \
                     port:tcl

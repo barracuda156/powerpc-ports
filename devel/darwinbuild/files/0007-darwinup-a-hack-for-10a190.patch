@@ -1,7 +1,7 @@
 From d72ddb76c9ea2e5734cdc93cc55e91b34cdeef11 Mon Sep 17 00:00:00 2001
 From: Sergey Fedorov <barracuda@macos-powerpc.org>
 Date: Sun, 22 Dec 2024 03:55:32 +0800
-Subject: [PATCH 6/6] darwinup: a hack for 10a190
+Subject: [PATCH] darwinup: a hack for 10a190
 
 ---
  darwinup/Database.cpp | 8 ++++++++
@@ -40,6 +40,3 @@ index c787d3d..a016696 100644
  	attrs.value_make_purgeable_cb = NULL;
  	attrs.value_make_nonpurgeable_cb = NULL;
  	attrs.user_data = NULL;
--- 
-2.48.0-rc0
-
