@@ -13,7 +13,6 @@ license             LGPL-2.1+
 set branch          [join [lrange [split ${version} .] 0 1] .]
 maintainers         {devans @dbevans} openmaintainer
 categories          gnome
-platforms           darwin
 description         GtkSourceView-3.0 is a source highlighting text widget for GTK+ 3
 
 long_description    GtkSourceView is a text widget that extends the standard \
@@ -36,7 +35,7 @@ set port_ver_major  [lindex [split ${version} .] 0]
 
 depends_build       port:gettext \
                     port:gtk-doc \
-                    port:pkgconfig
+                    path:bin/pkg-config:pkgconfig
 
 depends_lib         path:lib/pkgconfig/glib-2.0.pc:glib2 \
                     port:gettext-runtime \
@@ -45,6 +44,9 @@ depends_lib         path:lib/pkgconfig/glib-2.0.pc:glib2 \
                     path:bin/vala:vala
 
 gobject_introspection yes
+
+# https://trac.macports.org/ticket/71652
+patchfiles-append   patch-gtksourceview.c.diff
 
 # requires compiler that supports C11 (redefinition of typedef ‘GtkSourceTag’ at gtksourceview/gtksourcetag.h:35)
 compiler.c_standard 2011
