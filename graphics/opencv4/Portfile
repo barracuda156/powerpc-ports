@@ -375,14 +375,6 @@ platform darwin {
         patchfiles-append \
             patch-disable-cocoa.diff
 
-        # The code uses libdispatch unconditionally.
-        depends_lib-append \
-            port:libdispatch-legacy
-        configure.cppflags-prepend \
-            -I${prefix}/libexec/dispatch/usr/include
-        configure.ldflags-append \
-            ${prefix}/libexec/dispatch/usr/lib/libdispatch.a
-
         # There are invalid conversion errors in non-Eigen fallbacks which require -fpermissive:
         # essential_solver.cpp: error: invalid conversion from 'int*' to '__CLPK_integer*' {aka 'long int*'} [-fpermissive]
         # Unfortunately, enabling Eigen variant introduces another error:
