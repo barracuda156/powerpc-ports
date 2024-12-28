@@ -27,6 +27,20 @@ index 6efeb5d5..c3fa3328 100644
              machHeaderOffset = (off_t)arch.offset;
          }
  
--- 
-2.47.0
 
+--- a/src/util/binary_apple.c
++++ b/src/util/binary_apple.c
+@@ -10,6 +10,13 @@
+ #include <mach-o/swap.h>
+ #include <mach-o/fat.h>
+ 
++#ifndef FAT_MAGIC_64
++#define FAT_MAGIC_64 0xcafebabf
++#endif
++#ifndef FAT_CIGAM_64
++#define FAT_CIGAM_64 0xbfbafeca
++#endif
++
+ #pragma GCC diagnostic ignored "-Wdeprecated-declarations" // swap_fat_arch
+ 
+ // Ref: https://github.com/AlexDenisov/segment_dumper/blob/master/main.c
