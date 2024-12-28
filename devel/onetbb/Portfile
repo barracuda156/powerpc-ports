@@ -9,7 +9,7 @@ github.setup        oneapi-src oneTBB 2022.0.0 v
 github.tarball_from archive
 
 name                onetbb
-revision            0
+revision            1
 categories          devel parallel
 license             Apache-2
 maintainers         {makr @mohd-akram} openmaintainer
@@ -24,8 +24,13 @@ checksums           rmd160  4bbf82bf9c39c0945264e8775b8aa247a2284c11 \
                     sha256  e8e89c9c345415b17b30a2db3095ba9d47647611662073f7fbf54ad48b7f3c2a \
                     size    2654343
 
-patchfiles          patch-onetbb-older-platforms.diff \
+patchfiles          patch-onetbb-older-platforms.diff
+
+# 10.6.8 powerpc does not need this.
+if {${os.platform} eq "darwin" && ${os.major} < 10} {
+    patchfiles-append \
                     patch-onetbb-dispatch-fallback.diff
+}
 
 # https://trac.macports.org/ticket/69657
 compiler.blacklist-append   {clang < 900}
@@ -78,9 +83,15 @@ platform powerpc {
                     -Wno-unused-function
 }
 
-# ___atomic_fetch_add_8, ___atomic_load_8, ___atomic_fetch_sub_8
-# Drop once this is merged: https://github.com/oneapi-src/oneTBB/pull/987
 if {[string match *gcc* ${configure.compiler}] && ${configure.build_arch} in [list i386 ppc]} {
+    # FIXME: for now disable due to:
+    # Undefined symbols: "__ZTVN3tbb6detail2r111unsafe_waitE", referenced from:
+    # -exported_symbol[s_list] command line option
+    configure.args-append \
+                    -DTBB_ENABLE_IPO=OFF
+
+    # ___atomic_fetch_add_8, ___atomic_load_8, ___atomic_fetch_sub_8
+    # Drop once this is merged: https://github.com/oneapi-src/oneTBB/pull/987
     configure.ldflags-append \
                     -latomic
 }
