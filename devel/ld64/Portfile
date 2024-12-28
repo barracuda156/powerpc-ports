@@ -455,7 +455,7 @@ if {${subport} eq ${name}} {
         configure.cxx_stdlib    libstdc++
     }
 
-    if {${os.major} < 10 || ${build_arch} eq "ppc"} {
+    if {${os.major} < 10} {
         # 10a190, Leopard and earlier didn't have libunwind.h in the SDK
         depends_build-append    path:include/libunwind.h:libunwind-headers
     }
