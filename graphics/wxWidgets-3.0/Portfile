@@ -104,7 +104,7 @@ configure.env-append \
 patchfiles-append   patch-configure.diff
 
 # 10.6-on-PPC hack; tested also on Rosetta:
-patchfiles-append   patch-ppc.diff
+# patchfiles-append   patch-ppc.diff
 
 post-patch {
     reinplace "s|@@PREFIX@@|${prefix}|g" ${patch.dir}/configure
@@ -206,7 +206,7 @@ if {${subport} eq "wxPython-3.0"} {
     patchfiles-append       patch-sdl.diff \
                             patch-gtk-quartz.diff
 
-    depends_build-append    port:pkgconfig
+    depends_build-append    path:bin/pkg-config:pkgconfig
     depends_lib-append      path:lib/pkgconfig/cairo.pc:cairo \
                             port:libsdl \
                             port:libsdl_mixer
