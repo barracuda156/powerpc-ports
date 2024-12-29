@@ -80,9 +80,9 @@ variant java description {Build the Java API} {
     }
 }
 
-if {${os.subplatform} eq "macosx" && ${os.major} < 11} {
-    default_variants +java
-}
+# if {${os.subplatform} eq "macosx" && ${os.major} < 11} {
+#     default_variants +java
+# }
 
 variant sql description {Build the SQL API} {
     configure.args-append   --enable-sql
