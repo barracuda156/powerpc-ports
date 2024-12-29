@@ -150,23 +150,24 @@ if {![variant_isset exclusive]} {
 if {[info exists qt4_is_concurrent]} {
     set qt_dir              ${prefix}/libexec/${qt_name}
     set qt_dir_rel          libexec/${qt_name}
-    set qt_docs_dir         ${prefix}/share/doc/${qt_name}
-    set qt_plugins_dir      ${prefix}/share/${qt_name}/plugins
-    set qt_mkspecs_dir      ${prefix}/share/${qt_name}/mkspecs
-    set qt_imports_dir      ${prefix}/share/${qt_name}/imports
+    set qt_share_dir        ${prefix}/share
+    set qt_docs_dir         ${qt_share_dir}/doc/${qt_name}
+    set qt_plugins_dir      ${qt_share_dir}/${qt_name}/plugins
+    set qt_mkspecs_dir      ${qt_share_dir}/${qt_name}/mkspecs
+    set qt_imports_dir      ${qt_share_dir}/${qt_name}/imports
     set qt_includes_dir     ${prefix}/include/${qt_name}
     set qt_libs_dir         ${qt_dir}/lib
     set qt_frameworks_dir   ${qt_dir}/Library/Frameworks
     set qt_bins_dir         ${qt_dir}/bin
-    set qt_data_dir         ${prefix}/share/${qt_name}
-    set qt_translations_dir ${prefix}/share/${qt_name}/translations
+    set qt_data_dir         ${qt_share_dir}/${qt_name}
+    set qt_translations_dir ${qt_share_dir}/${qt_name}/translations
     set qt_sysconf_dir      ${prefix}/etc/${qt_name}
     #set qt_examples_dir     ${prefix}/share/${qt_name}/examples
     set qt_examples_dir     ${applications_dir}/Qt4/examples
     set qt_demos_dir        ${applications_dir}/Qt4/demos
     # no need to change the cmake_module_dir, though I'd have preferred to
     # put it into ${prefix}/lib/cmake as qt4-mac also does, and which is the place Linux uses
-    set qt_cmake_module_dir ${prefix}/share/cmake/Modules
+    set qt_cmake_module_dir ${qt_share_dir}/cmake/Modules
     set qt_qmake_cmd        ${qt_dir}/bin/qmake
     set qt_moc_cmd          ${qt_dir}/bin/moc
     set qt_uic_cmd          ${qt_dir}/bin/uic
@@ -174,20 +175,21 @@ if {[info exists qt4_is_concurrent]} {
 } else {
     set qt_dir              ${prefix}
     set qt_dir_rel          ""
-    set qt_docs_dir         ${qt_dir}/share/doc/${qt_name}
-    set qt_plugins_dir      ${qt_dir}/share/${qt_name}/plugins
-    set qt_mkspecs_dir      ${qt_dir}/share/${qt_name}/mkspecs
-    set qt_imports_dir      ${qt_dir}/share/${qt_name}/imports
+    set qt_share_dir        ${qt_dir}/share
+    set qt_docs_dir         ${qt_share_dir}/doc/${qt_name}
+    set qt_plugins_dir      ${qt_share_dir}/${qt_name}/plugins
+    set qt_mkspecs_dir      ${qt_share_dir}/${qt_name}/mkspecs
+    set qt_imports_dir      ${qt_share_dir}/${qt_name}/imports
     set qt_includes_dir     ${qt_dir}/include
     set qt_libs_dir         ${qt_dir}/lib
     set qt_frameworks_dir   ${qt_dir}/Library/Frameworks
     set qt_bins_dir         ${qt_dir}/bin
-    set qt_data_dir         ${qt_dir}/share/${qt_name}
-    set qt_translations_dir ${qt_dir}/share/${qt_name}/translations
+    set qt_data_dir         ${qt_share_dir}/${qt_name}
+    set qt_translations_dir ${qt_share_dir}/${qt_name}/translations
     set qt_sysconf_dir      ${qt_dir}/etc/${qt_name}
-    set qt_examples_dir     ${qt_dir}/share/${qt_name}/examples
-    set qt_demos_dir        ${qt_dir}/share/${qt_name}/demos
-    set qt_cmake_module_dir ${qt_dir}/share/cmake/Modules
+    set qt_examples_dir     ${qt_share_dir}/${qt_name}/examples
+    set qt_demos_dir        ${qt_share_dir}/${qt_name}/demos
+    set qt_cmake_module_dir ${qt_share_dir}/cmake/Modules
     set qt_qmake_cmd        ${qt_dir}/bin/qmake
     set qt_moc_cmd          ${qt_dir}/bin/moc
     set qt_uic_cmd          ${qt_dir}/bin/uic
