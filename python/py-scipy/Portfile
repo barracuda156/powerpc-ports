@@ -97,6 +97,8 @@ if {${name} ne ${subport}} {
                         port:py${python.version}-pybind11 \
                         port:py${python.version}-mypy
 
+    build.args-append   -Cbuild-dir=build
+
     # SciPy (and NumPy) only support the Accelerate framework for macOS 13.3+
     # see: https://scipy.github.io/devdocs/building/blas_lapack.html
     if {${os.platform} eq "darwin" && (${os.major} > 22 || ${os.major} == 22 && ${os.minor} >= 4)} {
