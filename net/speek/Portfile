@@ -1,0 +1,43 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+
+name                speek
+github.setup        Speek-App Speek 1.7.0 v -release
+revision            0
+checksums           rmd160  321c3524b7912494a4c2b6d470efe070f0d5a342 \
+                    sha256  4715d10ad756b87f48ba523c3e7fa67d676fae3493deffe8d5977cc36447600a \
+                    size    147133189
+github.tarball_from archive
+categories          net security p2p
+maintainers         {@barracuda156 gmail.com:vital.had} openmaintainer
+
+description         Anonymous private secure open-source chat
+long_description    {*}${description} using end-to-end encrypted transport.
+license             GPL-2
+
+if {${os.platform} eq "darwin" && ${os.major} < 11} {
+    PortGroup       qmake 1.0
+
+#     patchfiles-append \
+#                     patch-qt4.diff
+# 
+#     destroot {
+#         copy ${worksrcpath}/I2P-Messenger.app ${destroot}${applications_dir}
+#     }
+} else {
+    PortGroup       qmake5 1.0
+
+    qt5.depends_component qtmultimedia qtsvg
+
+    destroot {
+        copy ${worksrcpath}/I2PChat.app ${destroot}${applications_dir}
+    }
+}
+
+# compiler.cxx_standard   2011
+
+# Avoid a silly error:
+# https://github.com/vituperative/i2pchat/issues/32
+# patchfiles-append   0001-Patch-gitversion.pri.patch
