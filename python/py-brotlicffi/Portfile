@@ -23,4 +23,10 @@ python.versions     38 39 310 311 312 313
 if {${name} ne ${subport}} {
     depends_lib-append \
                     port:py${python.version}-cffi
+
+    # https://trac.macports.org/ticket/71686
+    if {${python.version} > 311} {
+        compiler.blacklist-append \
+                    *gcc-4.0 *gcc-4.2
+    }
 }

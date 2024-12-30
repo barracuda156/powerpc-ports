@@ -31,6 +31,12 @@ python.versions     38 39 310 311 312 313
 if {$subport ne $name} {
     patchfiles      CXXFLAGS.patch
 
+    # https://trac.macports.org/ticket/71686
+    if {${python.version} > 311} {
+        compiler.blacklist-append \
+                    *gcc-4.0 *gcc-4.2
+    }
+
     test.run yes
 }
 
