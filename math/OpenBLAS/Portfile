@@ -27,17 +27,19 @@ if {${os.major} < 9} {
 subport OpenBLAS-devel {}
 if {[string first "-devel" $subport] > 0} {
 
-    github.setup    OpenMathLib OpenBLAS e1eef56e0510fecd5a05df9a8fddaf63a3d91ef0
+    github.setup    OpenMathLib OpenBLAS 36b0fb3aff5a984f2138e8610da179623bf655e5
     github.tarball_from archive
-    version         20240704-[string range ${github.version} 0 7]
-    checksums       rmd160  0612839aa8727b4cc76a4ac35b93bac8ea3920a9 \
-                    sha256  6f501ad13a94eef28c55b301018b85ec4b7eb4c38f4ac4b021ef953d7de581e4 \
-                    size    24634029
+    version         20241230-[string range ${github.version} 0 7]
+    checksums       rmd160  b7e1da5c324f111f0631474e961af755f35878ff \
+                    sha256  85e819a04a0d8b4e479687448dc0a7cf5457507445508de7f9cf7602a8d083ac \
+                    size    24692178
     revision        0
 
     conflicts       OpenBLAS
 
-    patchfiles      patch-OpenBLAS-i386-Apple.diff
+    # https://github.com/OpenMathLib/OpenBLAS/issues/5034
+    patchfiles      patch-OpenBLAS-i386-Apple.diff \
+                    patch-ppc970.diff
 
     github.livecheck.branch develop
 
