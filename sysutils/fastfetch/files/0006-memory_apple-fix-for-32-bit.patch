@@ -41,7 +41,7 @@ index cabdab26..cdfdee12 100644
          + vmstat.inactive_count
          + vmstat.speculative_count
          + vmstat.wire_count
-+#if (MAC_OS_X_VERSION_MIN_REQUIRED >= 1060) && !defined(__ppc__)
++#if (MAC_OS_X_VERSION_MIN_REQUIRED >= 1060)
          + vmstat.compressor_page_count
          - vmstat.purgeable_count
          - vmstat.external_page_count
@@ -49,6 +49,3 @@ index cabdab26..cdfdee12 100644
      ) * instance.state.platform.sysinfo.pageSize;
  
      return NULL;
--- 
-2.47.0
-

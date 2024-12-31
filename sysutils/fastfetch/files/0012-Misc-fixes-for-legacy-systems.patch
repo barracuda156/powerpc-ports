@@ -548,7 +548,7 @@ index cdfdee12..23ce20dc 100644
          + vmstat.speculative_count
 +#endif
          + vmstat.wire_count
- #if (MAC_OS_X_VERSION_MIN_REQUIRED >= 1060) && !defined(__ppc__)
+ #if (MAC_OS_X_VERSION_MIN_REQUIRED >= 1060)
          + vmstat.compressor_page_count
 diff --git a/src/detection/os/os_apple.m b/src/detection/os/os_apple.m
 index b86202b1..803bed1c 100644
