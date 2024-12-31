@@ -4,7 +4,7 @@ PortSystem          1.0
 
 name                libt3widget
 version             1.2.2
-revision            0
+revision            1
 
 homepage            https://os.ghalkes.nl/
 
@@ -27,7 +27,7 @@ checksums           rmd160  2ab0839cba41200727b1138d7573315d9a14a738 \
 
 depends_build-append \
                     port:libtool \
-                    port:pkgconfig
+                    path:bin/pkg-config:pkgconfig
 
 depends_lib-append  port:libt3config    \
                     port:libt3key       \
@@ -50,3 +50,11 @@ configure.env-append \
                     LIBTOOL=${prefix}/bin/glibtool
 configure.args-append \
                     --without-gettext
+
+if {${configure.cxx_stdlib} ne "libc++"} {
+    # glibtool is not smart enough to pick the right library,
+    # and links to the old system libstdc++.
+    # Problem is that it does not support C++11.
+    configure.env-append \
+                    LDFLAGS=-L${prefix}/lib/libgcc -lstdc++
+}
