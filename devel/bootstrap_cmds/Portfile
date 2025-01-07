@@ -1,35 +1,35 @@
+# $Id$
+
 PortSystem              1.0
 PortGroup               xcode 1.0
 
 name                    bootstrap_cmds
-version                 121.100.1
+version                 85
+revision                1
 epoch                   1
 categories              devel
-maintainers             nomaintainer
+maintainers             mfeiri openmaintainer
 homepage                http://opensource.apple.com/source/${name}/
-master_sites            https://github.com/apple-oss-distributions/${name}/archive
+master_sites            http://opensource.apple.com/tarballs/${name}/
 license                 APSL-2
 installs_libs           no
 description             Darwin Core OS Bootstrap Commands
 long_description        Bootstrapping tools like the Mach Interface \
                         Generator (MIG) required to build the XNU kernel.
 
-checksums               rmd160  f297049f1f8e43d1d53ba1d47d268e81f1ba1e0f \
-                        sha256  c119228064f6e3f12dc22c38b9966aa36d9e89b78405e139fc2e75df399f62e3 \
-                        size    108737
+checksums               rmd160  1ad5a860fb3f907d86ae31b1bf0c2ab2b7e95fca \
+                        sha256  0603f6c73db38130742fe9742cff9d47cc5bc60d02d16e21d18239cfbf1c9f4f
 
 xcode.target            migcom
 xcode.destroot.path     ${prefix}/bin
 
-patchfiles              cc_fallback.patch
 
 # for replath and decomment
 if {${os.major} < 12} {
     version         80
-    revision        5
-    checksums       rmd160  772c9bf34e1f65ca5850b2cbc604504e60b8f117 \
-                    sha256  446cb2090064496a0ee9043415d8e9bf6b1695d2cfffc4e2b31b4975ed02d914 \
-                    size    279127
+    revision        4
+    checksums       rmd160  072e399562eb021e4fa0cd66132153afcc02f417 \
+                    sha256  2ae65cd2ca6f0f684b25aad46a649aeb95a774d06a8287c59962fba42900a2fc
 
     supported_archs i386 ppc
     xcode.project   migcom.tproj/migcom.xcodeproj
@@ -65,10 +65,6 @@ if {${os.major} < 12} {
     }
 
 }
-
-# handle stealth update; remove with next version change
-dist_subdir             ${name}/${version}_1
-worksrcdir              ${name}-${distname}
 
 livecheck.type          regex
 livecheck.regex         "${name}-(\[\\d.\]+)"
