@@ -38,6 +38,3 @@ index 0ab643d..be01832 100644
  		throwf("malformed 32-bit x.y.z version number: %s", versionString);
  
  	return (x << 16) | ( y << 8 ) | z;
--- 
-2.40.1
-

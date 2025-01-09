@@ -3,6 +3,7 @@
 PortSystem                  1.0
 PortGroup                   cmake 1.1
 PortGroup                   github 1.0
+PortGroup                   muniversal 1.0
 
 name                        darwin-xtools
 epoch                       2
@@ -110,7 +111,7 @@ if {${os.arch} eq "powerpc"} {
         depends_lib-append  port:llvm-powerpc
 
         configure.args-append \
-                            -DXTOOLS_LTO_PATH=${prefix}/libexec/llvm-${llvm_v} \
+                            -DXTOOLS_LTO_PATH=${prefix}/libexec/llvm-${prefix} \
                             -DXTOOLS_LTO_SUPPORT=ON
     }
 }
@@ -129,15 +130,58 @@ configure.ldflags-delete    -L${prefix}/lib
 
 compiler.cxx_standard       2011
 
-if {${configure.cxx_stdlib} ne "libc++"} {
+# compiler.blacklist-append   *gcc-4.*
+
+merger_arch_flag            yes
+merger_arch_compiler        yes
+merger_must_run_binaries    yes
+
+if {${os.platform} eq "darwin" && ${os.major} < 12} {
+#    depends_build-append    port:gcc10-bootstrap
+#    depends_skip_archcheck-append \
+                            gcc10-bootstrap
+
+    # Leopard is the first macOS which supports Rosetta
+    # See: https://trac.macports.org/ticket/67284
+#     if {${os.major} > 8} {
+#         pre-configure {
+#             file mkdir ${workpath}/bins
+# 
+#             set gcc [open "${workpath}/bins/gcc" w 0755]
+#             puts ${gcc} "#!/bin/sh"
+#             puts ${gcc} "arch -arch $\{BUILD_ARCH:-${build_arch}\} ${prefix}/libexec/gcc10-bootstrap/bin/gcc \"\$@\""
+#             close ${gcc}
+# 
+#             set gxx [open "${workpath}/bins/g++" w 0755]
+#             puts ${gxx} "#!/bin/sh"
+#             puts ${gxx} "arch -arch $\{BUILD_ARCH:-${build_arch}\} ${prefix}/libexec/gcc10-bootstrap/bin/g++ \"\$@\""
+#             close ${gxx}
+#         }
+# 
+#         configure.cc        ${workpath}/bins/gcc
+#         configure.cxx       ${workpath}/bins/g++
+# 
+#         if {[variant_exists universal] && [variant_isset universal]} {
+#             foreach arch ${universal_archs_supported} {
+#                 lappend merger_configure_env(${arch}) BUILD_ARCH=${arch}
+#                 lappend merger_build_env(${arch}) BUILD_ARCH=${arch}
+#             }
+#         }
+#     } else {
+#         configure.cc        ${prefix}/libexec/gcc10-bootstrap/bin/gcc
+#         configure.cxx       ${prefix}/libexec/gcc10-bootstrap/bin/g++
+#     }
+
     # Prevent it from linking against gcc's libstdc++.6.dylib and libgcc_s.1.1.dylib
     configure.ldflags-append \
                             -static-libstdc++ -static-libgcc
-    configure.args-append   -DXTOOLS_CXX_HAS_STDLIB_FLAG=OFF
+
+#    configure.compiler.add_deps no-DALLOW_64BIT_LEB_ON_32B_TARGET=1
 }
 
 cmake.install_prefix        ${prefix}/libexec/${name}
 
+cmake.build_type            Release
 cmake.generator             {Unix Makefiles}
 
 proc xtools_arch {arch} {
@@ -156,10 +200,15 @@ platform darwin {
 }
 
 configure.pre_args-replace  -DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON \
-                            -DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=OFF
+                            -DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=OFF \
+                            -DCMAKE_INSTALL_RPATH="${prefix}/lib\;${cmake.install_prefix}/lib" \
+                            -DCMAKE_INSTALL_RPATH="${cmake.install_prefix}/lib" \
+                            -DCMAKE_SYSTEM_PREFIX_PATH="${prefix}\;${cmake.install_prefix}\;/usr" \
+                            -DCMAKE_SYSTEM_PREFIX_PATH="${cmake.install_prefix}\;/usr"
 
 configure.args-append       -DCCTOOLS_LD_CLASSIC=OFF \
-                            -DPACKAGE_VERSION="macos-powerpc"
+                            -DPACKAGE_VERSION="macos-powerpc" \
+                            -DXTOOLS_CXX_HAS_STDLIB_FLAG=OFF
 
 # 64bit LD requires futures patches
 if {${configure.build_arch} ni [list i386 ppc]} {
