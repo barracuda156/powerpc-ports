@@ -1,0 +1,68 @@
+From 6585c10d0b12283310b32289ee6cce965cb88f1b Mon Sep 17 00:00:00 2001
+From: Maarten Bent <MaartenBent@users.noreply.github.com>
+Date: Wed, 4 Sep 2024 20:42:32 +0200
+Subject: [PATCH] update sources
+
+---
+ build/cmake/functions.cmake         |  5 +++++
+ build/cmake/lib/base/CMakeLists.txt | 10 +++++++---
+ build/cmake/lib/core/CMakeLists.txt |  2 ++
+ 3 files changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/build/cmake/functions.cmake b/build/cmake/functions.cmake
+index 01b9cce2c55e..16b2678499ae 100644
+--- build/cmake/functions.cmake
++++ build/cmake/functions.cmake
+@@ -62,6 +62,11 @@ macro(wx_append_sources src_var source_base_name)
+         list(APPEND wxINSTALL_HEADERS ${${source_base_name}_HDR})
+         set(wxINSTALL_HEADERS ${wxINSTALL_HEADERS} PARENT_SCOPE)
+     endif()
++
++    if(DEFINED ${source_base_name}_RSC)
++        list(APPEND wxINSTALL_HEADERS ${${source_base_name}_RSC})
++        set(wxINSTALL_HEADERS ${wxINSTALL_HEADERS} PARENT_SCOPE)
++    endif()
+ endmacro()
+ 
+ # Add prefix to list of items
+diff --git a/build/cmake/lib/base/CMakeLists.txt b/build/cmake/lib/base/CMakeLists.txt
+index d8c587994bbd..7f60e93f5273 100644
+--- build/cmake/lib/base/CMakeLists.txt
++++ build/cmake/lib/base/CMakeLists.txt
+@@ -14,9 +14,13 @@ if(WIN32)
+     wx_append_sources(BASE_FILES BASE_WIN32)
+     wx_append_sources(BASE_FILES BASE_AND_GUI_WIN32)
+ elseif(APPLE)
+-    wx_append_sources(BASE_FILES BASE_OSX_SHARED)
+-    if(WXOSX_COCOA)
+-        wx_append_sources(BASE_FILES BASE_AND_GUI_OSX_COCOA)
++    if(WXOSX_COCOA OR WXOSX_IPHONE)
++        wx_append_sources(BASE_FILES BASE_OSX_SHARED)
++        if(WXOSX_COCOA)
++            wx_append_sources(BASE_FILES BASE_AND_GUI_OSX_COCOA)
++        endif()
++    else()
++        wx_append_sources(BASE_FILES BASE_OSX_NOTWXMAC)
+     endif()
+ elseif(UNIX)
+     wx_append_sources(BASE_FILES BASE_UNIX)
+diff --git a/build/cmake/lib/core/CMakeLists.txt b/build/cmake/lib/core/CMakeLists.txt
+index 22f523a65ef7..a2d47b9867fd 100644
+--- build/cmake/lib/core/CMakeLists.txt
++++ build/cmake/lib/core/CMakeLists.txt
+@@ -28,6 +28,7 @@ if(WXMSW)
+     endif()
+ elseif(WXGTK)
+     if(WXGTK2)
++        set(GTK2_LOWLEVEL_HDR ${GTK_LOWLEVEL_HDR})
+         wx_append_sources(CORE_SRC GTK2_LOWLEVEL)
+         wx_append_sources(CORE_SRC GTK2)
+     else()
+@@ -47,6 +48,7 @@ elseif(WXOSX_COCOA)
+     wx_append_sources(CORE_SRC OSX_COCOA)
+ elseif(WXOSX_IPHONE)
+     wx_append_sources(CORE_SRC OSX_LOWLEVEL)
++    wx_append_sources(CORE_SRC OSX_SHARED)
+     wx_append_sources(CORE_SRC OSX_IPHONE)
+ elseif(WXQT)
+     wx_append_sources(CORE_SRC QT)
