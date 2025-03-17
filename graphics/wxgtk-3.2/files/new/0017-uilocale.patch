@@ -1,0 +1,32 @@
+From cb16b640d47f0f4459ed6694ce908a6be23cbccc Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Tue, 18 Mar 2025 00:06:38 +0800
+Subject: [PATCH 17/17] uilocale
+
+---
+ build/cmake/files.cmake | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/build/cmake/files.cmake b/build/cmake/files.cmake
+index 9cddcd2321..813727f4e3 100644
+--- a/build/cmake/files.cmake
++++ b/build/cmake/files.cmake
+@@ -36,6 +36,7 @@ set(BASE_UNIX_AND_DARWIN_NOTWXMAC_SRC
+     ${BASE_UNIX_AND_DARWIN_SRC}
+     src/unix/mimetype.cpp
+     src/unix/stdpaths.cpp
++    src/unix/uilocale.cpp
+ )
+ 
+ set(BASE_UNIX_AND_DARWIN_NOTWXMAC_HDR
+@@ -48,7 +49,6 @@ set(BASE_UNIX_SRC
+     ${BASE_UNIX_AND_DARWIN_NOTWXMAC_SRC}
+     src/unix/fswatcher_inotify.cpp
+     src/unix/secretstore.cpp
+-    src/unix/uilocale.cpp
+ )
+ 
+ set(BASE_UNIX_HDR
+-- 
+2.49.0
+

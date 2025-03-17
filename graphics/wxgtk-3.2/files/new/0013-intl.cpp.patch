@@ -1,0 +1,52 @@
+From 34da5fc978f3ddbbcb6a484dbeb5b8f6f5a2979f Mon Sep 17 00:00:00 2001
+From: Sergey Fedorov <barracuda@macos-powerpc.org>
+Date: Mon, 17 Mar 2025 21:44:06 +0800
+Subject: [PATCH 13/13] intl.cpp
+
+---
+ src/common/intl.cpp | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/common/intl.cpp b/src/common/intl.cpp
+index 86f36a82d0..60a87a5576 100644
+--- a/src/common/intl.cpp
++++ b/src/common/intl.cpp
+@@ -331,7 +331,7 @@ bool wxLocale::Init(const wxString& name,
+ 
+     // Under (non-Darwin) Unix wxUILocale already set the C locale, but under
+     // the other platforms we still have to do it here.
+-#if defined(__WIN32__) || defined(__WXOSX__)
++#if defined(__WIN32__) || defined(__APPLE__)
+     ok = wxSetlocale(LC_ALL, szLocale) != NULL;
+ #endif // __WIN32__
+ 
+@@ -470,7 +470,7 @@ bool wxLocale::Init(int lang, int flags)
+ 
+     // Under (non-Darwn) Unix wxUILocale already set the C locale, but under
+     // the other platforms we still have to do it.
+-#if defined(__WXOSX__)
++#if defined(__APPLE__)
+     // Locale-related environment variables are typically not set at all under
+     // macOS, so don't rely on them unless we really have no other choice, i.e.
+     // we don't recognize the locale ourselves.
+@@ -1246,7 +1246,7 @@ wxString wxTranslateFromUnicodeFormat(const wxString& fmt)
+ }
+ 
+ 
+-#endif // __WINDOWS__ || __WXOSX__
++#endif // __WINDOWS__ || __APPLE__
+ 
+ wxString wxGetStdCLocaleInfo(wxLocaleInfo index, wxLocaleCategory WXUNUSED(cat))
+ {
+@@ -1465,7 +1465,7 @@ wxString wxLocale::GetInfo(wxLocaleInfo index, wxLocaleCategory cat)
+     return wxGetInfoFromCFLocale(userLocaleRef, index, cat);
+ }
+ 
+-#else // !__WINDOWS__ && !__WXOSX__, assume generic POSIX
++#else // !__WINDOWS__ && !__APPLE__, assume generic POSIX
+ 
+ #ifdef HAVE_LANGINFO_H
+ 
+-- 
+2.49.0
+
