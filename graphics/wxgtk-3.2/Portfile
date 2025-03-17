@@ -149,7 +149,8 @@ platform darwin {
                     0009-stdpaths.patch \
                     0010-uilocale.patch \
                     0011-cfstring-fix.patch \
-                    0012-utils_base.mm-fix.patch
+                    0012-xlocale.patch \
+                    0013-utils_base.mm-fix.patch
 
     # FIXME: find a way to fix wxLocale, since third-party apps may require it.
     if {${os.major} < 16} {

@@ -1,21 +1,21 @@
-From 14c4b52da4e81dfbbac60471054bb26721f2934b Mon Sep 17 00:00:00 2001
+From be228c5a1590694c53d4ec70d7006f2d1a036772 Mon Sep 17 00:00:00 2001
 From: Sergey Fedorov <barracuda@macos-powerpc.org>
 Date: Mon, 17 Feb 2025 11:01:28 +0800
-Subject: [PATCH 12/13] utils_base.mm: fix
+Subject: [PATCH 13/13] utils_base.mm: fix
 
 ---
  src/osx/cocoa/utils_base.mm | 63 ++++++++++++++++++++++++++++++++++---
  1 file changed, 58 insertions(+), 5 deletions(-)
 
 diff --git a/src/osx/cocoa/utils_base.mm b/src/osx/cocoa/utils_base.mm
-index c7c253363d..56dfee8ff4 100644
+index c7c253363d..71ea57b9df 100644
 --- a/src/osx/cocoa/utils_base.mm
 +++ b/src/osx/cocoa/utils_base.mm
 @@ -24,6 +24,13 @@
  #include "wx/osx/private.h"
  #include "wx/osx/private/available.h"
  
-+#if (defined(__APPLE__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_10) \
++#if (defined(__APPLE__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101000) \
 +    || (defined(__WXOSX_IPHONE__) && defined(__IPHONE_8_0))
 +    #define wxHAS_NSPROCESSINFO 1
 +#endif
@@ -29,7 +29,7 @@ index c7c253363d..56dfee8ff4 100644
  // our OS version is the same in non GUI and GUI cases
  wxOperatingSystemId wxGetOsVersion(int *verMaj, int *verMin, int *verMicro)
  {
-+#ifdef wxHAS_NSPROCESSINFO
++#if wxHAS_NSPROCESSINFO
      NSOperatingSystemVersion osVer = [NSProcessInfo processInfo].operatingSystemVersion;
  
      if ( verMaj != NULL )
@@ -58,7 +58,7 @@ index c7c253363d..56dfee8ff4 100644
  
  bool wxCheckOsVersion(int majorVsn, int minorVsn, int microVsn)
  {
-+#ifdef wxHAS_NSPROCESSINFO
++#if wxHAS_NSPROCESSINFO
      NSOperatingSystemVersion osVer;
      osVer.majorVersion = majorVsn;
      osVer.minorVersion = minorVsn;
